@@ -1,0 +1,27 @@
+# Exclude node_modules by default
+node_modules/
+
+# Exclude git and cache directories
+.git/
+.gitignore
+.github/
+
+# Exclude local development files
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Exclude test files
+__tests__/
+test/
+tests/
+
+# Exclude TypeScript source maps
+*.js.map
+
+# Exclude environment files except for example
+.env
+!.env.example
+
+# DO NOT exclude service account key
+!service-account-key.json 

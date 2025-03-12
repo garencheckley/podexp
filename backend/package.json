@@ -1,0 +1,37 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for the podcast generation system",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "clean": "rm -rf dist/",
+    "build": "npm run clean && tsc",
+    "start": "node dist/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "ts-node src/scripts/migrate-data.ts"
+  },
+  "keywords": [
+    "podcast",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/storage": "^7.15.2",
+    "@google-cloud/text-to-speech": "^5.8.1",
+    "@google/generative-ai": "^0.24.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.28",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.3",
+    "firebase-admin": "^13.2.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.2"
+  }
+}
