@@ -193,7 +193,7 @@ router.post('/:id/generate-episode', async (req, res) => {
     // Parse the prompt to check for length specification
     // Look for patterns like "episode length: X minutes" or "episode duration: X words"
     let targetWordCount = 300; // Default to 2 minutes (approximately 300 words)
-    let lengthSpecification = "";
+    let lengthSpecification = "approximately 2 minutes of spoken content (about 300 words)";
     
     const lengthRegex = /episode\s+(?:length|duration):\s*(\d+)\s*(minute|minutes|min|words|word)/i;
     const match = podcastPrompt.match(lengthRegex);
@@ -210,9 +210,6 @@ router.post('/:id/generate-episode', async (req, res) => {
         targetWordCount = value;
         lengthSpecification = `approximately ${value} words`;
       }
-    } else {
-      // Default to 2 minutes if no length is specified
-      lengthSpecification = "approximately 2 minutes of spoken content (about 300 words)";
     }
 
     const prompt = `You are a story generator for a narrated podcast series titled "${podcast.title}". The series description is: "${podcastPrompt}".
