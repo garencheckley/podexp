@@ -1,6 +1,8 @@
 import { Podcast, Episode } from '../types';
 
-const API_URL = 'https://podcast-backend-827681017824.us-west1.run.app/api';
+// Use local backend for development
+const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'https://podcast-backend-827681017824.us-west1.run.app/api';
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
   const response = await fetch(`${API_URL}/podcasts`);
@@ -26,7 +28,7 @@ export async function getEpisodes(podcastId: string): Promise<Episode[]> {
   return response.json();
 }
 
-export async function createPodcast(podcast: Pick<Podcast, 'title' | 'description' | 'prompt'>): Promise<Podcast> {
+export async function createPodcast(podcast: Partial<Pick<Podcast, 'title' | 'description' | 'prompt'>> & Pick<Podcast, 'description' | 'prompt'>): Promise<Podcast> {
   const response = await fetch(`${API_URL}/podcasts`, {
     method: 'POST',
     headers: {

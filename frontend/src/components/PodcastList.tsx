@@ -13,6 +13,7 @@ const PodcastList = () => {
   const fetchPodcasts = async () => {
     try {
       const data = await getAllPodcasts();
+      console.log('Fetched podcasts:', data);
       setPodcasts(data);
       setError(null);
     } catch (err) {

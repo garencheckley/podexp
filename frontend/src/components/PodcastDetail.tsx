@@ -22,6 +22,7 @@ const PodcastDetail = () => {
         getPodcast(podcastId),
         getEpisodes(podcastId)
       ]);
+      console.log('Fetched podcast data:', podcastData);
       setPodcast(podcastData);
       setEpisodes(episodesData);
       setError(null);

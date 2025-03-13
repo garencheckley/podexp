@@ -3,7 +3,6 @@ import { createPodcast } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
-  const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,11 +12,6 @@ const CreatePodcastForm: React.FC = () => {
     e.preventDefault();
     
     // Form validation
-    if (!title.trim()) {
-      setError('Please enter a podcast title');
-      return;
-    }
-    
     if (!prompt.trim()) {
       setError('Please enter a prompt for your podcast');
       return;
@@ -35,12 +29,13 @@ const CreatePodcastForm: React.FC = () => {
       // Create description from the first 100 characters of the prompt
       const description = prompt.slice(0, 100) + (prompt.length > 100 ? '...' : '');
       
-      // Call API to create podcast
+      // Call API to create podcast - title will be generated on the backend
       const newPodcast = await createPodcast({
-        title,
         description,
         prompt // Store the full prompt for future episode generation
       });
+      
+      console.log('Created podcast:', newPodcast);
       
       // Redirect to the new podcast page
       navigate(`/podcasts/${newPodcast.id}`);
@@ -60,19 +55,6 @@ const CreatePodcastForm: React.FC = () => {
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="podcast-title">Podcast Title</label>
-          <input
-            id="podcast-title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter podcast title"
-            maxLength={100}
-            disabled={isSubmitting}
-          />
-        </div>
-        
-        <div className="form-group">
           <label htmlFor="podcast-prompt">
             Podcast Prompt <span className="character-count">{prompt.length}/1000</span>
           </label>
@@ -86,7 +68,7 @@ const CreatePodcastForm: React.FC = () => {
             disabled={isSubmitting}
           />
           <p className="form-help">
-            This prompt will be used to generate episodes. Be descriptive about the characters, setting, and style.
+            This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
             <br />
             <strong>Tip:</strong> You can specify episode length by including phrases like "episode length: 2 minutes" or "episode duration: 300 words" in your prompt. If not specified, episodes will default to 2 minutes in length.
           </p>
@@ -97,7 +79,7 @@ const CreatePodcastForm: React.FC = () => {
           disabled={isSubmitting}
           className="submit-button"
         >
-          {isSubmitting ? 'Creating...' : 'Create Podcast'}
+          {isSubmitting ? 'Creating podcast and generating title...' : 'Create Podcast'}
         </button>
       </form>
     </div>
