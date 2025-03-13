@@ -287,4 +287,155 @@ The system now supports customizable episode lengths:
 - **Flexible Options**: Supports both minute-based and word-based specifications
 - **User Guidance**: The podcast creation form includes tips on how to specify episode length
 
+This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences.
+
+## Deployment Process
+
+The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. The process is as follows:
+
+1. **Backend Deployment**:
+   - The backend code is packaged into a Docker container
+   - The container is pushed to Google Container Registry
+   - The container is deployed to Google Cloud Run
+   - Environment variables are configured for the service
+
+2. **Frontend Deployment**:
+   - The frontend code is built using Vite
+   - The built files are packaged into a Docker container with Nginx
+   - The container is pushed to Google Container Registry
+   - The container is deployed to Google Cloud Run
+
+3. **Configuration Updates**:
+   - The frontend is configured to use the production backend URL
+   - The backend is configured with the correct environment variables
+   - The backend uses the correct Google Cloud Project ID for storage buckets
+
+4. **Troubleshooting**:
+   - Logs can be viewed in Google Cloud Console
+   - The backend logs show details about audio generation and API calls
+   - The frontend logs show details about user interactions
+
+### Recent Updates
+- Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp-HD-F` for improved audio quality
+- Fixed an issue with the Google Cloud Storage bucket naming
+- Updated the frontend to use the production backend URL
+- Improved error handling for API calls
+
+## Configuration
+
+### Environment Variables
+The backend requires the following environment variables:
+- `PORT`: Server port (default: 8080)
+- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account key file
+- `GEMINI_API_KEY`: API key for Google Gemini
+
+### Service Account
+The application uses a service account with the following permissions:
+- Firestore: Read/Write
+- Cloud Storage: Admin
+- Text-to-Speech: Client
+
+## Technical Implementation Details
+
+### Text-to-Speech Implementation
+```typescript
+// Configure the request
+const request = {
+  input: { text },
+  voice: {
+    languageCode: 'en-US',
+    name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for high-quality, natural-sounding audio
+  },
+  audioConfig: { 
+    audioEncoding: 'MP3',
+    speakingRate: 1.0, // Natural speaking rate
+    pitch: 0.0,        // Default pitch
+    volumeGainDb: 0,    // Default volume
+    effectsProfileId: ['headphone-class-device'], // Optimize for headphones
+  },
+};
+```
+
+### Gemini Prompt Optimization
+The system uses an optimized prompt for the Gemini LLM to generate content specifically designed for audio narration. Key features:
+
+- Generates content with natural pacing and rhythm suitable for spoken delivery
+- Creates short, simple sentences that are easy to follow when listened to
+- Maintains continuity with previous episodes for a coherent listening experience
+- Optimizes for child-friendly content with appropriate vocabulary and themes
+- Structures content with clear beginnings and endings for better audio flow
+
+### Docker Configuration
+The application uses multi-stage Docker builds for both frontend and backend to minimize image size and improve security.
+
+#### Backend Dockerfile
+- Build stage: Compiles TypeScript to JavaScript
+- Production stage: Runs the compiled JavaScript with minimal dependencies
+- Includes service account key for authentication
+
+#### Frontend Dockerfile
+- Build stage: Builds the React application with Vite
+- Production stage: Serves the static files using Nginx
+- Custom Nginx configuration for SPA routing
+
+## Known Issues and Limitations
+
+1. The service account key is included in the Docker image, which is not ideal for production security. In a more secure setup, it would use Google Cloud Run's built-in service account integration.
+
+2. There's no rate limiting or quota management for the AI generation features, which could lead to excessive API usage.
+
+3. The audio generation process happens synchronously, which can cause timeouts for long episodes. A future improvement would be to implement asynchronous processing with webhooks.
+
+4. The frontend doesn't implement caching for API responses, which could improve performance.
+
+## Future Enhancements (Beyond Phase 5)
+
+1. Implement podcast RSS feed generation for compatibility with podcast platforms
+2. Add support for custom voice selection
+3. Implement batch processing for audio generation
+4. Add analytics for tracking podcast and episode popularity
+5. Implement social sharing features
+6. Add support for podcast artwork/images
+7. Implement premium features with payment integration
+
+## Recent Improvements
+
+### Audio Quality Enhancements
+The system has been upgraded to use Google's Chirp HD female voice model (en-US-Chirp-HD-F), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
+
+- More natural-sounding female narration with better intonation and rhythm
+- Higher definition audio quality for improved listening experience
+- Optimized speaking rate for better comprehension
+- Better handling of pauses and emphasis in the generated content
+- Enhanced clarity and expressiveness for a more engaging listening experience
+
+### Content Generation Optimization
+The Gemini prompt has been refined to generate content that is specifically optimized for audio narration:
+
+- Content is now structured with shorter, simpler sentences that are easier to follow when listened to
+- The prompt emphasizes natural pacing and rhythm suitable for spoken delivery
+- Generated content maintains better continuity with previous episodes
+- The system now produces more child-friendly content with appropriate vocabulary
+- Episode structure includes clear beginnings and endings for better audio flow
+
+### Delete Functionality
+The system now includes the ability to delete podcasts and episodes:
+
+- **Podcast Deletion**: Users can delete entire podcasts, which automatically removes all associated episodes and audio files from both the database and storage.
+- **Episode Deletion**: Individual episodes can be deleted, removing both the database entry and the associated audio file.
+- **User Interface**: Delete buttons are provided in both the podcast list and episode views, with confirmation dialogs to prevent accidental deletion.
+- **Cascading Deletes**: When a podcast is deleted, all its episodes and audio files are automatically removed to prevent orphaned data.
+
+These improvements provide users with complete control over their content, allowing them to manage their podcasts more effectively.
+
+### Episode Length Customization
+The system now supports customizable episode lengths:
+
+- **Prompt-Based Configuration**: Users can specify the desired episode length in the podcast prompt using phrases like "episode length: 3 minutes" or "episode duration: 300 words"
+- **Default Length**: If no length is specified, episodes default to 2 minutes (approximately 300 words)
+- **Word-Based Measurement**: The system now focuses on word count rather than character count for more natural-sounding episodes
+- **Flexible Options**: Supports both minute-based and word-based specifications
+- **User Guidance**: The podcast creation form includes tips on how to specify episode length
+
 This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences. 
