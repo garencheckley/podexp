@@ -8,7 +8,9 @@ const ttsClient = new textToSpeech.TextToSpeechClient();
 const storage = new Storage();
 
 // Define the bucket name for audio storage
-const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT}-podcast-audio`;
+// Use a default project ID if the environment variable is not set
+const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'gcpg-452703';
+const bucketName = `${projectId}-podcast-audio`;
 
 // Ensure the bucket exists
 async function ensureBucketExists(): Promise<void> {
