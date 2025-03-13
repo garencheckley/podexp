@@ -328,3 +328,37 @@ button:hover {
   align-items: center;
   margin-bottom: 1rem;
 }
+
+.episode-actions {
+  display: flex;
+  align-items: center;
+}
+
+.mp3-link {
+  color: #4a7aeb;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.mp3-link:hover {
+  text-decoration: underline;
+}
+
+.toggle-content-button {
+  background: none;
+  color: #4a7aeb;
+  border: 1px solid #4a7aeb;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.toggle-content-button:hover {
+  background-color: #f0f4ff;
+}
+
+.episode-content-container {
+  margin-bottom: 1rem;
+}

@@ -12,6 +12,7 @@ const PodcastDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [expandedEpisodes, setExpandedEpisodes] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -24,7 +25,13 @@ const PodcastDetail = () => {
       ]);
       console.log('Fetched podcast data:', podcastData);
       setPodcast(podcastData);
-      setEpisodes(episodesData);
+      
+      // Sort episodes by created_at in reverse chronological order
+      const sortedEpisodes = [...episodesData].sort((a, b) => {
+        return new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime();
+      });
+      
+      setEpisodes(sortedEpisodes);
       setError(null);
     } catch (err) {
       setError('Failed to fetch podcast data. Please try again later.');
@@ -73,6 +80,13 @@ const PodcastDetail = () => {
     }
   };
 
+  const toggleEpisodeContent = (episodeId: string) => {
+    setExpandedEpisodes(prev => ({
+      ...prev,
+      [episodeId]: !prev[episodeId]
+    }));
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -114,22 +128,51 @@ const PodcastDetail = () => {
             <div key={episode.id} className="episode-item">
               <div className="episode-header">
                 <h3 className="episode-title">{episode.title}</h3>
-                <button 
-                  onClick={() => episode.id && handleDeleteEpisode(episode.id)}
-                  disabled={deleting === episode.id}
-                  className="delete-button"
-                >
-                  {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
-                </button>
+                <div className="episode-actions">
+                  <button 
+                    onClick={() => episode.id && handleDeleteEpisode(episode.id)}
+                    disabled={deleting === episode.id}
+                    className="delete-button"
+                  >
+                    {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                  </button>
+                  {episode.audioUrl && (
+                    <a 
+                      href={episode.audioUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mp3-link"
+                      style={{ marginLeft: '10px' }}
+                    >
+                      MP3 File
+                    </a>
+                  )}
+                </div>
               </div>
               <p className="episode-description">{episode.description}</p>
-              <p className="episode-content">{episode.content}</p>
+              
+              <div className="episode-content-container">
+                <button 
+                  onClick={() => episode.id && toggleEpisodeContent(episode.id)}
+                  className="toggle-content-button"
+                  style={{ 
+                    background: 'none', 
+                    color: '#4a7aeb', 
+                    padding: '0.25rem 0.5rem',
+                    marginBottom: '0.5rem'
+                  }}
+                >
+                  {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
+                </button>
+                
+                {expandedEpisodes[episode.id!] && (
+                  <p className="episode-content">{episode.content}</p>
+                )}
+              </div>
+              
               {episode.audioUrl && (
                 <div className="episode-audio">
                   <AudioPlayer audioUrl={episode.audioUrl} title={episode.title} />
-                  <div className="audio-url">
-                    <p>Audio URL: <a href={episode.audioUrl} target="_blank" rel="noopener noreferrer">{episode.audioUrl}</a></p>
-                  </div>
                 </div>
               )}
               <div className="episode-meta">

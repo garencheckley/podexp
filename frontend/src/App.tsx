@@ -10,7 +10,7 @@ function App() {
     <Router>
       <div className="app">
         <header className="app-header">
-          <h1>Podcast Generator</h1>
+          <h1>Garen's Podcast Generator</h1>
         </header>
         <main className="app-content">
           <Routes>
@@ -19,9 +19,6 @@ function App() {
             <Route path="/create-podcast" element={<CreatePodcastForm />} />
           </Routes>
         </main>
-        <footer className="app-footer">
-          <p>&copy; {new Date().getFullYear()} Podcast Generator</p>
-        </footer>
       </div>
     </Router>
   );

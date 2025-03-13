@@ -58,8 +58,8 @@ const PodcastList = () => {
 
   return (
     <div className="container">
-      <div className="header">
-        <h1>Podcasts</h1>
+      <div className="header" style={{ padding: '1.5rem' }}>
+        <div></div>
         <button 
           onClick={handleCreatePodcast}
           className="create-button"
