@@ -114,6 +114,8 @@ The system uses Google Gemini API to generate podcast episode content. The imple
 - Uses previous episodes as context for generating new episodes
 - Maintains consistent characters and themes
 - Generates both episode content and metadata (title, description)
+- Supports customizable episode length through prompt specification (e.g., "episode length: 3 minutes")
+- Default episode length is 2 minutes (approximately 300 words) if not specified
 
 ### Audio Player
 The frontend includes a custom audio player component (`frontend/src/components/AudioPlayer.tsx`) that provides:
@@ -274,4 +276,15 @@ The system now includes the ability to delete podcasts and episodes:
 - **User Interface**: Delete buttons are provided in both the podcast list and episode views, with confirmation dialogs to prevent accidental deletion.
 - **Cascading Deletes**: When a podcast is deleted, all its episodes and audio files are automatically removed to prevent orphaned data.
 
-These improvements provide users with complete control over their content, allowing them to manage their podcasts more effectively. 
+These improvements provide users with complete control over their content, allowing them to manage their podcasts more effectively.
+
+### Episode Length Customization
+The system now supports customizable episode lengths:
+
+- **Prompt-Based Configuration**: Users can specify the desired episode length in the podcast prompt using phrases like "episode length: 3 minutes" or "episode duration: 300 words"
+- **Default Length**: If no length is specified, episodes default to 2 minutes (approximately 300 words)
+- **Word-Based Measurement**: The system now focuses on word count rather than character count for more natural-sounding episodes
+- **Flexible Options**: Supports both minute-based and word-based specifications
+- **User Guidance**: The podcast creation form includes tips on how to specify episode length
+
+This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences. 

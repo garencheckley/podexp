@@ -189,6 +189,31 @@ router.post('/:id/generate-episode', async (req, res) => {
 
     // Use the podcast prompt if available, otherwise use the description
     const podcastPrompt = podcast.prompt || podcast.description;
+    
+    // Parse the prompt to check for length specification
+    // Look for patterns like "episode length: X minutes" or "episode duration: X words"
+    let targetWordCount = 300; // Default to 2 minutes (approximately 300 words)
+    let lengthSpecification = "";
+    
+    const lengthRegex = /episode\s+(?:length|duration):\s*(\d+)\s*(minute|minutes|min|words|word)/i;
+    const match = podcastPrompt.match(lengthRegex);
+    
+    if (match) {
+      const value = parseInt(match[1]);
+      const unit = match[2].toLowerCase();
+      
+      if (unit.includes('minute') || unit === 'min') {
+        // Approximate 150 words per minute for spoken content
+        targetWordCount = value * 150;
+        lengthSpecification = `approximately ${value} minute${value !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
+      } else if (unit.includes('word')) {
+        targetWordCount = value;
+        lengthSpecification = `approximately ${value} words`;
+      }
+    } else {
+      // Default to 2 minutes if no length is specified
+      lengthSpecification = "approximately 2 minutes of spoken content (about 300 words)";
+    }
 
     const prompt = `You are a story generator for a narrated podcast series titled "${podcast.title}". The series description is: "${podcastPrompt}".
 
@@ -201,13 +226,13 @@ IMPORTANT: Your response must be a valid JSON object with exactly these fields:
 {
   "title": "The episode title (max 100 characters)",
   "description": "A brief description of the episode (max 150 characters)",
-  "content": "The story content - YOU MUST COUNT CHARACTERS AND ENSURE IT IS BETWEEN 100-200 CHARACTERS. Spaces and punctuation count as characters."
+  "content": "The story content with ${lengthSpecification}. Focus on word count rather than character count."
 }
 
 CRITICAL REQUIREMENTS:
-1. The content field MUST be BETWEEN 100-200 characters. Count every character including spaces and punctuation.
-2. Before returning your response, count the characters in your content field to verify it is between 100-200.
-3. If the content is not within this range, adjust it until it is.
+1. The content field should be ${lengthSpecification}.
+2. Before returning your response, count the words in your content field to verify it is approximately ${targetWordCount} words.
+3. If the content is significantly shorter or longer than requested, adjust it accordingly.
 4. Do not include any other text or formatting in your response.
 5. Only return the JSON object.
 6. Ensure the story maintains continuity with previous episodes.
@@ -217,7 +242,7 @@ CRITICAL REQUIREMENTS:
 10. Avoid complex words or phrases that might be difficult to pronounce.
 11. Write in a conversational style that flows naturally when spoken.
 
-Remember: This content will be converted to audio, so optimize for listening rather than reading. Count every single character in the content field, including spaces and punctuation, and ensure it is between 100-200 characters before returning.`;
+Remember: This content will be converted to audio, so optimize for listening rather than reading. The ideal length is ${lengthSpecification}.`;
     
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
@@ -230,10 +255,9 @@ Remember: This content will be converted to audio, so optimize for listening rat
       
       const generatedContent = JSON.parse(cleanedText);
       
-      // Validate content length
-      if (generatedContent.content.length < 100 || generatedContent.content.length > 200) {
-        throw new Error(`Content must be between 100-200 characters. Got ${generatedContent.content.length} characters.`);
-      }
+      // Count words instead of characters
+      const wordCount = generatedContent.content.split(/\s+/).length;
+      console.log(`Generated content word count: ${wordCount} words`);
       
       // Create the episode
       const episode = await createEpisode({
