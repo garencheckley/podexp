@@ -1,8 +1,9 @@
 import { Podcast, Episode } from '../types';
 
 // Use local backend for development
-const API_URL = 'http://localhost:8080/api';
-// const API_URL = 'https://podcast-backend-827681017824.us-west1.run.app/api';
+// const API_URL = 'http://localhost:8080/api';
+// Use production backend for deployment
+const API_URL = 'https://podcast-backend-827681017824.us-west1.run.app/api';
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
   const response = await fetch(`${API_URL}/podcasts`);
