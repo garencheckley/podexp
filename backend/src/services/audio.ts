@@ -42,17 +42,17 @@ export async function generateAndStoreAudio(
     // Ensure bucket exists
     await ensureBucketExists();
     
-    // Configure the request with Chirp3 HD voice as shown in the image and documentation
+    // Configure the request with Chirp HD voice
     const request = {
       input: { text },
       voice: {
         languageCode: 'en-US',
-        name: 'en-US-Chirp3-HD-Orus', // Using Chirp3 HD voice for more natural sound
+        name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for more natural sound
       },
       audioConfig: { 
         audioEncoding: 'MP3' as const,
-        speakingRate: 1.0,  // Normal speed as shown in the image
-        pitch: 0.0,         // Default pitch as shown in the image
+        speakingRate: 1.0,  // Normal speed
+        pitch: 0.0,         // Default pitch
         effectsProfileId: ['headphone-class-device'], // Optimize for headphones
       },
     };

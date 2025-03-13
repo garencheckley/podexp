@@ -195,7 +195,7 @@ const request = {
   input: { text },
   voice: {
     languageCode: 'en-US',
-    name: 'en-US-Chirp3-HD-Orus', // Using Chirp3 HD voice for high-quality, natural-sounding audio
+    name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for high-quality, natural-sounding audio
   },
   audioConfig: { 
     audioEncoding: 'MP3',
@@ -251,13 +251,13 @@ The application uses multi-stage Docker builds for both frontend and backend to 
 ## Recent Improvements
 
 ### Audio Quality Enhancements
-The system has been upgraded to use Google's Chirp3 HD voice model, which provides significantly improved audio quality compared to the previous Neural2 voice. Key improvements include:
+The system has been upgraded to use Google's Chirp HD female voice model (en-US-Chirp-HD-F), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
 
-- More natural-sounding narration with better intonation and rhythm
+- More natural-sounding female narration with better intonation and rhythm
 - Higher definition audio quality for improved listening experience
 - Optimized speaking rate for better comprehension
-- Removal of unnecessary SSML gender parameter for simplified configuration
 - Better handling of pauses and emphasis in the generated content
+- Enhanced clarity and expressiveness for a more engaging listening experience
 
 ### Content Generation Optimization
 The Gemini prompt has been refined to generate content that is specifically optimized for audio narration:
