@@ -68,31 +68,71 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title }) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Skip backward 15 seconds
+  const skipBackward = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const newTime = Math.max(0, audio.currentTime - 15);
+    audio.currentTime = newTime;
+  };
+
+  // Skip forward 15 seconds
+  const skipForward = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const newTime = Math.min(audio.duration, audio.currentTime + 15);
+    audio.currentTime = newTime;
+  };
+
   return (
-    <div className="audio-player">
+    <div className="sticky-player">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       
-      <div className="audio-controls">
-        <button 
-          onClick={togglePlayPause} 
-          className="play-pause-button"
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? '❚❚' : '▶'}
-        </button>
+      <div className="audio-player">
+        <div className="player-title">{title}</div>
         
-        <div className="progress-container">
-          <span className="time">{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            className="progress-bar"
-            value={progress}
-            onChange={handleProgressChange}
-            step="0.1"
-            min="0"
-            max="100"
-          />
-          <span className="time">{formatTime(duration)}</span>
+        <div className="audio-controls">
+          <div className="playback-controls">
+            <button 
+              onClick={skipBackward} 
+              className="control-button"
+              aria-label="Skip backward 15 seconds"
+            >
+              -15s
+            </button>
+            
+            <button 
+              onClick={togglePlayPause} 
+              className="control-button play-pause-button"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? '❚❚' : '▶'}
+            </button>
+            
+            <button 
+              onClick={skipForward} 
+              className="control-button"
+              aria-label="Skip forward 15 seconds"
+            >
+              +15s
+            </button>
+          </div>
+          
+          <div className="progress-container">
+            <span className="time">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              className="progress-bar"
+              value={progress}
+              onChange={handleProgressChange}
+              step="0.1"
+              min="0"
+              max="100"
+            />
+            <span className="time">{formatTime(duration)}</span>
+          </div>
         </div>
       </div>
     </div>

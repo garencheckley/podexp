@@ -8,6 +8,7 @@ const PodcastList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showDeleteMenu, setShowDeleteMenu] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   const fetchPodcasts = async () => {
@@ -44,51 +45,94 @@ const PodcastList = () => {
         console.error('Error deleting podcast:', err);
       } finally {
         setDeleting(null);
+        // Close the delete menu
+        setShowDeleteMenu(prev => ({
+          ...prev,
+          [podcastId]: false
+        }));
       }
     }
+  };
+  
+  const toggleDeleteMenu = (podcastId: string) => {
+    setShowDeleteMenu(prev => ({
+      ...prev,
+      [podcastId]: !prev[podcastId]
+    }));
   };
 
   if (loading) {
     return (
       <div className="container">
-        <p>Loading podcasts...</p>
+        <div className="loading">
+          <div className="loading-spinner"></div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="container">
-      <div className="header" style={{ padding: '1.5rem' }}>
-        <div></div>
+      <div className="header">
+        <h2>My Podcasts</h2>
         <button 
           onClick={handleCreatePodcast}
           className="create-button"
         >
-          Create New Podcast
+          + Create New Podcast
         </button>
       </div>
 
-      {error && <p className="error-message">{error}</p>}
+      {error && (
+        <div className="error-message">
+          {error}
+          <button 
+            onClick={() => setError(null)} 
+            className="error-dismiss"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {podcasts.length === 0 ? (
-        <p>No podcasts found. Create your first podcast!</p>
+        <div className="empty-state">
+          <h3>No podcasts yet</h3>
+          <p>Create your first podcast to get started!</p>
+          <button onClick={handleCreatePodcast} className="create-button">
+            Create Your First Podcast
+          </button>
+        </div>
       ) : (
         <div className="podcast-list">
           {podcasts.map(podcast => (
             <div key={podcast.id} className="podcast-card">
               <h2>{podcast.title}</h2>
               <p>{podcast.description}</p>
-              <div className="podcast-actions">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <Link to={`/podcasts/${podcast.id}`}>
                   <button>View Episodes</button>
                 </Link>
-                <button 
-                  onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
-                  disabled={deleting === podcast.id}
-                  className="delete-button"
-                >
-                  {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
-                </button>
+                
+                <div className="more-actions">
+                  <button 
+                    onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
+                    className="more-button"
+                    aria-label="Show delete option"
+                  >
+                    ⋮
+                  </button>
+                  
+                  <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
+                    <div 
+                      className="menu-item delete"
+                      onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
+                    >
+                      {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ))}

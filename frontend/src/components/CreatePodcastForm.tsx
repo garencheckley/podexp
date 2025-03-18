@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPodcast } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -48,40 +48,57 @@ const CreatePodcastForm: React.FC = () => {
   };
   
   return (
-    <div className="create-podcast-form">
-      <h2>Create New Podcast</h2>
+    <div className="container">
+      <Link to="/" className="back-button">
+        ← Back to Podcasts
+      </Link>
       
-      {error && <div className="error-message">{error}</div>}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="podcast-prompt">
-            Podcast Prompt <span className="character-count">{prompt.length}/1000</span>
-          </label>
-          <textarea
-            id="podcast-prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your podcast concept in detail (up to 1000 characters)"
-            rows={6}
-            maxLength={1000}
-            disabled={isSubmitting}
-          />
-          <p className="form-help">
-            This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
-            <br />
-            <strong>Tip:</strong> You can specify episode length by including phrases like "episode length: 2 minutes" or "episode duration: 300 words" in your prompt. If not specified, episodes will default to 2 minutes in length.
-          </p>
-        </div>
+      <div className="create-podcast-form">
+        <h2>Create New Podcast</h2>
         
-        <button 
-          type="submit" 
-          disabled={isSubmitting}
-          className="submit-button"
-        >
-          {isSubmitting ? 'Creating podcast and generating title...' : 'Create Podcast'}
-        </button>
-      </form>
+        {error && (
+          <div className="error-message">
+            {error}
+            <button 
+              onClick={() => setError(null)} 
+              className="error-dismiss"
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="podcast-prompt">
+              Podcast Prompt <span className="character-count">{prompt.length}/1000</span>
+            </label>
+            <textarea
+              id="podcast-prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe your podcast concept in detail (up to 1000 characters)"
+              rows={6}
+              maxLength={1000}
+              disabled={isSubmitting}
+            />
+            <p className="form-help">
+              This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
+              <br /><br />
+              <strong>Tip:</strong> You can specify episode length by including phrases like "episode length: 2 minutes" or "episode duration: 300 words" in your prompt. If not specified, episodes will default to 2 minutes in length.
+            </p>
+          </div>
+          
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="submit-button"
+          >
+            {isSubmitting ? 'Creating podcast...' : 'Create Podcast'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

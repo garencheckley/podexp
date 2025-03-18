@@ -13,6 +13,8 @@ const PodcastDetail = () => {
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [expandedEpisodes, setExpandedEpisodes] = useState<Record<string, boolean>>({});
+  const [currentAudio, setCurrentAudio] = useState<{url: string, title: string} | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -73,12 +75,20 @@ const PodcastDetail = () => {
         await deleteEpisode(podcastId, episodeId);
         // Remove the episode from the state
         setEpisodes(prevEpisodes => prevEpisodes.filter(episode => episode.id !== episodeId));
+        
+        // If the deleted episode was playing, stop playback
+        if (currentAudio && episodes.find(ep => ep.id === episodeId)?.audioUrl === currentAudio.url) {
+          setCurrentAudio(null);
+        }
+        
         setError(null);
       } catch (err) {
         setError('Failed to delete episode. Please try again later.');
         console.error('Error deleting episode:', err);
       } finally {
         setDeleting(null);
+        // Close menu after deletion
+        setOpenMenuId(null);
       }
     }
   };
@@ -88,12 +98,29 @@ const PodcastDetail = () => {
       ...prev,
       [episodeId]: !prev[episodeId]
     }));
+    // Close menu after action
+    setOpenMenuId(null);
+  };
+  
+  const playEpisode = (episode: Episode) => {
+    if (episode.audioUrl) {
+      setCurrentAudio({
+        url: episode.audioUrl,
+        title: episode.title
+      });
+    }
+  };
+  
+  const toggleMenu = (episodeId: string) => {
+    setOpenMenuId(openMenuId === episodeId ? null : episodeId);
   };
 
   if (loading) {
     return (
       <div className="container">
-        <p>Loading podcast...</p>
+        <div className="loading">
+          <div className="loading-spinner"></div>
+        </div>
       </div>
     );
   }
@@ -102,8 +129,8 @@ const PodcastDetail = () => {
     return (
       <div className="container">
         <h2>{error || 'Podcast not found'}</h2>
-        <Link to="/">
-          <button>Back to Home</button>
+        <Link to="/" className="back-button">
+          ← Back to Home
         </Link>
       </div>
     );
@@ -111,99 +138,107 @@ const PodcastDetail = () => {
 
   return (
     <div className="container">
+      <Link to="/" className="back-button">
+        ← Back to Podcasts
+      </Link>
+      
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
         <p>{podcast.description}</p>
+        
         {error && (
-          <div className="error-message" style={{ 
-            backgroundColor: '#ffeded', 
-            color: '#d32f2f', 
-            padding: '0.75rem 1rem', 
-            borderRadius: '4px', 
-            marginTop: '1rem',
-            marginBottom: '1rem'
-          }}>
+          <div className="error-message">
             {error}
             <button 
               onClick={() => setError(null)} 
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: '#d32f2f', 
-                marginLeft: '0.5rem',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
+              className="error-dismiss"
               aria-label="Dismiss error"
             >
               ×
             </button>
           </div>
         )}
+        
         <button 
           onClick={handleGenerateEpisode} 
           disabled={generating}
           style={{ marginTop: '1rem' }}
         >
-          {generating ? 'Generating...' : 'Generate New Episode'}
+          {generating ? 'Generating Episode...' : 'Generate New Episode'}
         </button>
       </div>
       
       <div className="episode-list">
         {episodes.length === 0 ? (
-          <p>No episodes found.</p>
+          <div className="empty-state">
+            <h3>No episodes yet</h3>
+            <p>Generate your first episode to get started!</p>
+          </div>
         ) : (
           episodes.map(episode => (
             <div key={episode.id} className="episode-item">
               <div className="episode-header">
                 <h3 className="episode-title">{episode.title}</h3>
+                
                 <div className="episode-actions">
-                  <button 
-                    onClick={() => episode.id && handleDeleteEpisode(episode.id)}
-                    disabled={deleting === episode.id}
-                    className="delete-button"
-                  >
-                    {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
-                  </button>
                   {episode.audioUrl && (
-                    <a 
-                      href={episode.audioUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="mp3-link"
-                      style={{ marginLeft: '10px' }}
+                    <button 
+                      onClick={() => playEpisode(episode)}
+                      className="play-episode-button"
+                      aria-label="Play Episode"
                     >
-                      MP3 File
-                    </a>
+                      <span className="play-icon">▶</span>
+                      Play Episode
+                    </button>
                   )}
+                  
+                  <div className="more-actions">
+                    <button 
+                      onClick={() => episode.id && toggleMenu(episode.id)}
+                      className="more-button"
+                      aria-label="More actions"
+                    >
+                      ⋮
+                    </button>
+                    
+                    <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
+                      <div 
+                        className="menu-item"
+                        onClick={() => episode.id && toggleEpisodeContent(episode.id)}
+                      >
+                        {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
+                      </div>
+                      
+                      {episode.audioUrl && (
+                        <a 
+                          href={episode.audioUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="menu-item"
+                        >
+                          Download MP3
+                        </a>
+                      )}
+                      
+                      <div 
+                        className="menu-item delete"
+                        onClick={() => episode.id && handleDeleteEpisode(episode.id)}
+                      >
+                        {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+              
               <p className="episode-description">{episode.description}</p>
               
-              <div className="episode-content-container">
-                <button 
-                  onClick={() => episode.id && toggleEpisodeContent(episode.id)}
-                  className="toggle-content-button"
-                  style={{ 
-                    background: 'none', 
-                    color: '#4a7aeb', 
-                    padding: '0.25rem 0.5rem',
-                    marginBottom: '0.5rem'
-                  }}
-                >
-                  {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
-                </button>
-                
-                {expandedEpisodes[episode.id!] && (
+              {expandedEpisodes[episode.id!] && (
+                <div className="episode-content-container">
                   <p className="episode-content">{episode.content}</p>
-                )}
-              </div>
-              
-              {episode.audioUrl && (
-                <div className="episode-audio">
-                  <AudioPlayer audioUrl={episode.audioUrl} title={episode.title} />
                 </div>
               )}
+              
               <div className="episode-meta">
                 Created: {new Date(episode.created_at!).toLocaleDateString()}
               </div>
@@ -211,12 +246,13 @@ const PodcastDetail = () => {
           ))
         )}
       </div>
-
-      <div style={{ marginTop: '2rem' }}>
-        <Link to="/">
-          <button>Back to Home</button>
-        </Link>
-      </div>
+      
+      {currentAudio && (
+        <AudioPlayer 
+          audioUrl={currentAudio.url} 
+          title={currentAudio.title} 
+        />
+      )}
     </div>
   );
 };
