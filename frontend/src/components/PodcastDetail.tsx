@@ -48,13 +48,16 @@ const PodcastDetail = () => {
   const handleGenerateEpisode = async () => {
     if (!podcastId) return;
     
+    // Clear any previous error before generating
+    setError(null);
     setGenerating(true);
     try {
       const newEpisode = await generateEpisode(podcastId);
       setEpisodes(prevEpisodes => [newEpisode, ...prevEpisodes]);
-      setError(null);
     } catch (err) {
-      setError('Failed to generate episode. Please try again later.');
+      // Show the detailed error message from the API
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate episode. Please try again later.';
+      setError(errorMessage);
       console.error('Error generating episode:', err);
     } finally {
       setGenerating(false);
@@ -111,6 +114,32 @@ const PodcastDetail = () => {
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
         <p>{podcast.description}</p>
+        {error && (
+          <div className="error-message" style={{ 
+            backgroundColor: '#ffeded', 
+            color: '#d32f2f', 
+            padding: '0.75rem 1rem', 
+            borderRadius: '4px', 
+            marginTop: '1rem',
+            marginBottom: '1rem'
+          }}>
+            {error}
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#d32f2f', 
+                marginLeft: '0.5rem',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <button 
           onClick={handleGenerateEpisode} 
           disabled={generating}

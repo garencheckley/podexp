@@ -49,7 +49,7 @@ export async function generateAndStoreAudio(
       input: { text },
       voice: {
         languageCode: 'en-US',
-        name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for more natural sound
+        name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
       },
       audioConfig: { 
         audioEncoding: 'MP3' as const,

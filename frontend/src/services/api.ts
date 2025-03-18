@@ -67,9 +67,18 @@ export async function generateEpisode(podcastId: string): Promise<Episode> {
       'Content-Type': 'application/json',
     },
   });
+  
   if (!response.ok) {
-    throw new Error('Failed to generate episode');
+    // Try to extract the detailed error message from the response
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to generate episode');
+    } catch (parseError) {
+      // If we can't parse the response as JSON, use the status text
+      throw new Error(`Failed to generate episode: ${response.statusText}`);
+    }
   }
+  
   return response.json();
 }
 

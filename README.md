@@ -195,7 +195,7 @@ const request = {
   input: { text },
   voice: {
     languageCode: 'en-US',
-    name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for high-quality, natural-sounding audio
+    name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
   },
   audioConfig: { 
     audioEncoding: 'MP3',
@@ -209,11 +209,13 @@ const request = {
 
 ### Gemini Prompt Optimization
 The system uses an optimized prompt for the Gemini LLM to generate content specifically designed for audio narration. Key features:
+
 - Generates content with natural pacing and rhythm suitable for spoken delivery
 - Creates short, simple sentences that are easy to follow when listened to
 - Maintains continuity with previous episodes for a coherent listening experience
 - Optimizes for child-friendly content with appropriate vocabulary and themes
 - Structures content with clear beginnings and endings for better audio flow
+- Strategic use of punctuation (periods, ellipses, commas, and hyphens) to enhance dramatic effect and create natural pauses
 
 ### Docker Configuration
 The application uses multi-stage Docker builds for both frontend and backend to minimize image size and improve security.
@@ -251,9 +253,9 @@ The application uses multi-stage Docker builds for both frontend and backend to 
 ## Recent Improvements
 
 ### Audio Quality Enhancements
-The system has been upgraded to use Google's Chirp HD female voice model (en-US-Chirp-HD-F), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
+The system has been upgraded to use Google's newest Chirp3 HD Leda voice model (en-US-Chirp3-HD-Leda), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
 
-- More natural-sounding female narration with better intonation and rhythm
+- More natural-sounding narration with better intonation and rhythm
 - Higher definition audio quality for improved listening experience
 - Optimized speaking rate for better comprehension
 - Better handling of pauses and emphasis in the generated content
@@ -265,6 +267,11 @@ The Gemini prompt has been refined to generate content that is specifically opti
 - Content is now structured with shorter, simpler sentences that are easier to follow when listened to
 - The prompt emphasizes natural pacing and rhythm suitable for spoken delivery
 - Generated content maintains better continuity with previous episodes
+- Enhanced use of punctuation for dramatic storytelling effects:
+  - Strategic use of periods (.) for definitive stops that create impact
+  - Use of ellipses (...) for suspense, trailing thoughts, or to indicate pauses
+  - Proper use of commas (,) to control pacing and create natural speech rhythms
+  - Use of hyphens (-) to indicate interruptions or sudden changes
 - The system now produces more child-friendly content with appropriate vocabulary
 - Episode structure includes clear beginnings and endings for better audio flow
 
@@ -316,7 +323,7 @@ The deployment process involves building and deploying both the backend and fron
    - The frontend logs show details about user interactions
 
 ### Recent Updates
-- Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp-HD-F` for improved audio quality
+- Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp3-HD-Leda` for improved audio quality
 - Fixed an issue with the Google Cloud Storage bucket naming
 - Updated the frontend to use the production backend URL
 - Improved error handling for API calls
@@ -345,7 +352,7 @@ const request = {
   input: { text },
   voice: {
     languageCode: 'en-US',
-    name: 'en-US-Chirp-HD-F', // Using Chirp HD female voice for high-quality, natural-sounding audio
+    name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
   },
   audioConfig: { 
     audioEncoding: 'MP3',
@@ -365,6 +372,7 @@ The system uses an optimized prompt for the Gemini LLM to generate content speci
 - Maintains continuity with previous episodes for a coherent listening experience
 - Optimizes for child-friendly content with appropriate vocabulary and themes
 - Structures content with clear beginnings and endings for better audio flow
+- Strategic use of punctuation (periods, ellipses, commas, and hyphens) to enhance dramatic effect and create natural pauses
 
 ### Docker Configuration
 The application uses multi-stage Docker builds for both frontend and backend to minimize image size and improve security.
@@ -402,9 +410,9 @@ The application uses multi-stage Docker builds for both frontend and backend to 
 ## Recent Improvements
 
 ### Audio Quality Enhancements
-The system has been upgraded to use Google's Chirp HD female voice model (en-US-Chirp-HD-F), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
+The system has been upgraded to use Google's newest Chirp3 HD Leda voice model (en-US-Chirp3-HD-Leda), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
 
-- More natural-sounding female narration with better intonation and rhythm
+- More natural-sounding narration with better intonation and rhythm
 - Higher definition audio quality for improved listening experience
 - Optimized speaking rate for better comprehension
 - Better handling of pauses and emphasis in the generated content
@@ -416,6 +424,11 @@ The Gemini prompt has been refined to generate content that is specifically opti
 - Content is now structured with shorter, simpler sentences that are easier to follow when listened to
 - The prompt emphasizes natural pacing and rhythm suitable for spoken delivery
 - Generated content maintains better continuity with previous episodes
+- Enhanced use of punctuation for dramatic storytelling effects:
+  - Strategic use of periods (.) for definitive stops that create impact
+  - Use of ellipses (...) for suspense, trailing thoughts, or to indicate pauses
+  - Proper use of commas (,) to control pacing and create natural speech rhythms
+  - Use of hyphens (-) to indicate interruptions or sudden changes
 - The system now produces more child-friendly content with appropriate vocabulary
 - Episode structure includes clear beginnings and endings for better audio flow
 
