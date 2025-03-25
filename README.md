@@ -69,6 +69,7 @@ interface Podcast {
   title: string;
   description: string;
   prompt?: string;
+  useWebSearch?: boolean;
   created_at: string;
 }
 ```
@@ -82,6 +83,7 @@ interface Episode {
   description: string;
   content: string;
   audioUrl?: string;
+  sources?: string[];
   created_at: string;
 }
 ```
@@ -116,6 +118,17 @@ The system uses Google Gemini API to generate podcast episode content. The imple
 - Generates both episode content and metadata (title, description)
 - Supports customizable episode length through prompt specification (e.g., "episode length: 3 minutes")
 - Default episode length is 2 minutes (approximately 300 words) if not specified
+
+### Web Search Integration
+The system uses Gemini API's grounding with Google Search capability to incorporate real-time information from the web. The implementation is in `backend/src/services/search.ts`. Key features:
+- Three-stage search process for intelligent information retrieval:
+  1. Initial query generation based on podcast prompt
+  2. Search execution and relevance evaluation
+  3. In-depth research on high-relevance stories
+- Optional toggle at podcast creation to enable/disable web search
+- Automatic attribution of sources in episode content
+- Display of sources with clickable links in the episode transcript
+- Particularly useful for news, current events, and informational podcasts
 
 ### Audio Player
 The frontend includes a custom audio player component (`frontend/src/components/AudioPlayer.tsx`) that provides:
@@ -164,7 +177,14 @@ cd /Users/garen/Desktop/GCPG/frontend && gcloud builds submit --tag gcr.io/gcpg-
 - Optimize voice configuration using Chirp3 HD voice for natural-sounding narration
 - Enhance Gemini prompts for better audio content generation
 
-### Phase 5 (Planned)
+### Phase 5 (Completed)
+- Integrate web search functionality using Gemini API's grounding capability
+- Add toggle for enabling/disabling web search at podcast creation
+- Implement intelligent three-stage search process for relevant information retrieval
+- Display and attribution of sources for web search enabled episodes
+- Enhanced prompt engineering for integrating search results into episode content
+
+### Phase 6 (Planned)
 - Introduce user authentication using Google Account login
 - Restrict podcast visibility to creators
 - Complete user flow: Authentication → Podcasts List → Episodes
@@ -295,6 +315,30 @@ The system now supports customizable episode lengths:
 - **User Guidance**: The podcast creation form includes tips on how to specify episode length
 
 This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences.
+
+### TTS Compatibility Improvements
+The system now features enhanced compatibility with Text-to-Speech (TTS) technology:
+
+- **Clean Transcript Generation**: Removed speech instructions like "(pause)", "(slightly faster pace)", and "(upbeat intro music)" from generated transcripts, which were causing issues with TTS processing
+- **Formatting Removal**: Eliminated formatting markers such as "**Host:**" and other markdown/formatting elements that interfered with natural speech flow
+- **Metadata Separation**: Sources are now stored as metadata only and no longer appended to the transcript content, making the audio cleaner and more focused
+- **Prompt Engineering**: Updated the Gemini prompts to explicitly instruct the AI to avoid speech directions and formatting, using only standard punctuation
+- **Plain Text Emphasis**: The system now generates plain text with standard punctuation only (periods, commas, question marks, etc.) for optimal TTS processing
+- **Improved Audio Quality**: These changes result in more natural-sounding podcast audio without artificial pauses or formatting artifacts
+
+These improvements significantly enhance the listening experience by ensuring that the Text-to-Speech engine receives clean, properly formatted text that can be converted accurately to speech without unexpected artifacts or interruptions.
+
+## Development Workflow
+
+The development process follows these steps:
+
+1. **Code Changes**: Make changes to the codebase on the local development machine
+2. **Local Testing**: Test changes using local development servers
+3. **Docker Build**: Build Docker containers for the updated services
+4. **Cloud Deployment**: Deploy the containers to Google Cloud Run
+5. **Verification**: Verify the changes in the production environment
+6. **Documentation**: Update the README.md with details of the changes
+7. **Version Control**: Commit changes to Git repository
 
 ## Deployment Process
 

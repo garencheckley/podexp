@@ -15,6 +15,7 @@ import {
   getEpisode
 } from '../services/database';
 import { generateAndStoreAudio, deleteAudio } from '../services/audio';
+import { conductThreeStageSearch } from '../services/search';
 
 const router = express.Router();
 
@@ -226,14 +227,15 @@ router.post('/:podcastId/episodes', async (req, res) => {
     
     // Generate audio for the episode
     try {
+      // TypeScript non-null assertions for properties we know exist at this point
       const audioUrl = await generateAndStoreAudio(
-        episode.content,
-        episode.podcastId,
-        episode.id
+        episode.content!, 
+        episode.podcastId!, 
+        episode.id!
       );
       
       // Update the episode with the audio URL
-      await updateEpisodeAudio(episode.id, audioUrl);
+      await updateEpisodeAudio(episode.id!, audioUrl);
       
       // Return the episode with the audio URL
       res.status(201).json({
@@ -292,44 +294,87 @@ router.post('/:id/generate-episode', async (req, res) => {
       }
     }
 
-    const prompt = `You are a story generator for a series titled "${podcast.title}". The series description is: "${podcastPrompt}".
+    let webSearchContext = '';
+    let searchSources: string[] = [];
 
-Previous content for context:
-${episodeContext}
+    // Check if this podcast uses web search
+    if (podcast.useWebSearch) {
+      console.log('This podcast uses web search. Conducting search...');
+      try {
+        // Conduct the three-stage search process
+        const { rawSearchData, searchResults } = await conductThreeStageSearch(
+          podcastPrompt,
+          previousEpisodes.length
+        );
+        
+        webSearchContext = rawSearchData;
+        searchSources = searchResults.sources || [];
+        
+        console.log('Web search completed successfully');
+        console.log(`Found ${searchSources.length} sources`);
+      } catch (searchError) {
+        console.error('Error conducting web search:', searchError);
+        // Continue with generation even if search fails
+        webSearchContext = 'Web search failed. Proceeding with generation without search data.';
+      }
+    }
 
-Based on the series theme and previous content, create a new engaging story that maintains continuity with the existing content.
+    // Build the prompt based on whether this podcast uses web search
+    let prompt;
+    if (podcast.useWebSearch) {
+      prompt = `You are a story generator for a podcast titled "${podcast.title}". The podcast description is: "${podcastPrompt}".
 
-IMPORTANT: Your response must be a valid JSON object with exactly these fields:
+I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to create an engaging, informative podcast episode that incorporates the most relevant information.
+
+${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
+
+SEARCH RESULTS (CURRENT INFORMATION):
+${webSearchContext}
+
+REQUIREMENTS:
+1. Focus on covering topics and information from the search results that are most relevant to the podcast's theme
+2. Avoid repeating information or stories covered in previous episodes
+3. Create content that is engaging, informative, and conversational in style
+4. Prioritize key stories based on relevance to the podcast theme
+5. Include attribution to sources where appropriate (e.g., "According to The Washington Post...")
+6. The content should be ${lengthSpecification}
+7. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
+8. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation
+9. Format your response as valid JSON with the following structure:
 {
-  "title": "A title for this part of the story (max 100 characters)",
-  "description": "A brief description of this part (max 150 characters)",
-  "content": "The story content with ${lengthSpecification}. Focus on word count rather than character count."
+  "title": "Catchy, Specific Episode Title",
+  "description": "Brief description of the episode (1-2 sentences)",
+  "content": "The full podcast script in plain text with only standard punctuation"
 }
 
-CRITICAL REQUIREMENTS:
-1. The content field should be ${lengthSpecification}.
-2. Before returning your response, count the words in your content field to verify it is approximately ${targetWordCount} words.
-3. If the content is significantly shorter or longer than requested, adjust it accordingly.
-4. Do not include any other text or formatting in your response.
-5. Only return the JSON object.
-6. Ensure the story maintains continuity with previous content.
-7. Focus on creating content that will sound natural when read aloud by a text-to-speech system.
-8. Use natural pacing with short sentences and appropriate pauses (using punctuation).
-9. Include some variation in tone through exclamations or questions where appropriate.
-10. Avoid complex words or phrases that might be difficult to pronounce.
-11. Write in a conversational style that flows naturally when spoken.
-12. DO NOT use phrases like "in this episode" or refer to the content as "episodes" unless the podcast theme is explicitly about a TV show or similar media.
-13. DO NOT mention "finding out in the next episode" or similar phrases that break the fourth wall.
-14. Stay true to the theme and style established in the previous content.
-15. If the previous content is about a workplace, keep it about a workplace. If it's about fantasy, keep it about fantasy, etc.
-16. Make strategic use of punctuation to enhance the dramatic effect of the narration:
-   - Use periods (.) for definitive stops that create impact
-   - Use ellipses (...) for suspense, trailing thoughts, or to indicate a pause
-   - Use commas (,) to control pacing and create natural speech rhythms
-   - Use hyphens (-) to indicate interruptions or sudden changes
-   - Match punctuation to the content's tone - more dramatic for adventure/suspense stories, more measured for informational content
+Generate a compelling, informative episode that feels like a natural extension of this podcast series while incorporating the most relevant current information.`;
+    } else {
+      // Original prompt for non-web-search podcasts
+      prompt = `You are a story generator for a series titled "${podcast.title}". The series description is: "${podcastPrompt}".
 
-Remember: This content will be converted to audio, so optimize for listening rather than reading. The ideal length is ${lengthSpecification}.`;
+${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
+
+Create a new episode for this series. The content should be ${lengthSpecification}.
+
+Format your response as valid JSON with the following structure:
+{
+  "title": "Catchy, Specific Episode Title",
+  "description": "Brief description of the episode (1-2 sentences)",
+  "content": "The full episode content in plain text with only standard punctuation"
+}
+
+Your content should:
+1. Match the style and voice established by the podcast description
+2. Maintain continuity with previous episodes (if they exist)
+3. Be original and not repeat storylines from previous episodes
+4. Include natural dialogue and narrative appropriate for audio
+5. Use proper pacing with standard punctuation only (periods, commas, question marks, etc.)
+6. Be engaging and hold the listener's interest
+7. Have a clear beginning, middle, and end
+8. Be child-friendly and appropriate for all audiences
+9. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
+10. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation`;
+    }
 
     try {
       // Try to generate content using Gemini API
@@ -372,6 +417,8 @@ Remember: This content will be converted to audio, so optimize for listening rat
       // Count words instead of characters
       const wordCount = generatedContent.content.split(/\s+/).length;
       console.log(`Generated content word count: ${wordCount} words`);
+
+      // Sources are now stored as metadata but not added to the transcript
       
       // Create the episode
       const episode = await createEpisode({
@@ -379,19 +426,21 @@ Remember: This content will be converted to audio, so optimize for listening rat
         title: generatedContent.title.slice(0, 100),
         description: generatedContent.description.slice(0, 150),
         content: generatedContent.content,
+        sources: podcast.useWebSearch ? searchSources : undefined,
         created_at: new Date().toISOString()
       });
       
       // Generate audio for the episode
       try {
+        // TypeScript non-null assertions for properties we know exist at this point
         const audioUrl = await generateAndStoreAudio(
-          episode.content,
-          episode.podcastId,
-          episode.id
+          episode.content!, 
+          podcast.id!, 
+          episode.id!
         );
         
         // Update the episode with the audio URL
-        await updateEpisodeAudio(episode.id, audioUrl);
+        await updateEpisodeAudio(episode.id!, audioUrl);
         
         // Return the episode with the audio URL
         res.json({
