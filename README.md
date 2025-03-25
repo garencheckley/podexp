@@ -355,6 +355,20 @@ Web search-driven episodes now include temporal context for better relevance:
 
 These improvements collectively enhance the podcast generation system's ability to create longer, higher-quality, format-respecting content with clear temporal context and reliable audio generation for all episode lengths.
 
+### Adaptive Multi-Stage Research
+The system now features an intelligent follow-up search capability that enhances the depth and quality of podcast content:
+
+- **Intelligent Research Analysis**: Automatically analyzes initial search results to identify topics needing deeper investigation
+- **Targeted Follow-up Searches**: Conducts specific, focused follow-up searches on identified topics
+- **Prioritized Research Topics**: Uses AI to prioritize which aspects of a topic need the most additional context
+- **Parallel Processing**: Executes multiple follow-up searches simultaneously for efficiency
+- **Comprehensive Consolidation**: Intelligently combines findings from all searches into a cohesive research document
+- **Enhanced Source Diversity**: Gathers sources from multiple searches, providing a wider range of references
+- **Gap Identification**: Specifically looks for information gaps, outdated data, or areas needing verification
+- **Self-Directed Research**: The system determines on its own when and what follow-up searches are necessary
+
+This improvement transforms the podcast generation process from a single-query approach to a multi-stage research project, resulting in significantly more comprehensive, nuanced, and well-sourced podcast episodes.
+
 ### TTS Compatibility Improvements
 The system now features enhanced compatibility with Text-to-Speech (TTS) technology:
 

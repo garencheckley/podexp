@@ -328,7 +328,15 @@ I'll provide you with real-time information from web searches related to this to
 
 ${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
 
-SEARCH RESULTS (CURRENT INFORMATION):
+COMPREHENSIVE RESEARCH RESULTS:
+The following information is the result of adaptive multi-stage research on your topic. This research process:
+1. Began with a broad search on the topic
+2. Automatically identified specific aspects that needed deeper investigation
+3. Conducted targeted follow-up searches on those aspects
+4. Consolidated all findings into a comprehensive research document
+
+The information below represents multiple search queries and sources, providing in-depth context and detailed facts:
+
 ${webSearchContext}
 
 REQUIREMENTS:

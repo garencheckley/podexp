@@ -35,6 +35,35 @@ export interface SearchResults {
 }
 
 /**
+ * Represents a research topic identified for follow-up
+ */
+export interface ResearchTopic {
+  topic: string;
+  query: string;
+  priority: number; // 1-10 scale where 10 is highest priority
+  reason: string;   // Why this topic needs more research
+}
+
+/**
+ * Structured results from an adaptive multi-stage research process
+ */
+export interface AdaptiveResearchResults {
+  initialSearch: {
+    content: string;
+    sources: string[];
+  };
+  followupTopics: ResearchTopic[];
+  followupResults: {
+    [topic: string]: {
+      content: string;
+      sources: string[];
+    }
+  };
+  consolidatedContent: string; // Final consolidated research
+  allSources: string[];        // All unique sources
+}
+
+/**
  * Executes a search query using Gemini API with Google Search grounding
  * @param query The search query
  * @returns Information retrieved from the search
@@ -170,35 +199,206 @@ function getCurrentMonthYear(): string {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/**
+ * Analyzes search results to identify topics that need more research
+ * 
+ * @param searchContent The content from the initial search
+ * @param podcastPrompt The original podcast prompt
+ * @returns An array of topics that need further research
+ */
+async function identifyResearchTopics(
+  searchContent: string,
+  podcastPrompt: string
+): Promise<ResearchTopic[]> {
+  try {
+    console.log('Analyzing search results to identify follow-up research topics');
+
+    const analysisPrompt = `You are a professional research analyst helping to prepare a news podcast on this topic: "${podcastPrompt}"
+
+I've conducted an initial search and found the following information:
+
+${searchContent}
+
+Please analyze this information and identify 2-4 specific topics that need deeper research to create a comprehensive, factual podcast episode. For each topic:
+1. Identify gaps, outdated information, or areas needing verification
+2. Create a specific search query that would yield the most useful additional context
+3. Assign a priority (1-10) where 10 is highest priority
+4. Explain briefly why this topic needs more research
+
+Response format:
+[
+  {
+    "topic": "Specific topic needing more research",
+    "query": "Precise search query to find this information",
+    "priority": priority_number,
+    "reason": "Brief explanation of why this needs more research"
+  },
+  {...}
+]`;
+
+    const result = await model.generateContent(analysisPrompt);
+    const responseText = result.response.text();
+    
+    // Clean the response and parse the JSON
+    const cleanedText = responseText.replace(/```json|```|\n/g, '');
+    let researchTopics: ResearchTopic[] = [];
+    
+    try {
+      researchTopics = JSON.parse(cleanedText);
+      // Ensure we have valid topics (at most 4)
+      researchTopics = researchTopics
+        .filter(topic => topic.topic && topic.query && topic.priority)
+        .slice(0, 4);
+      
+      // Sort by priority (highest first)
+      researchTopics.sort((a, b) => b.priority - a.priority);
+      
+      console.log(`Identified ${researchTopics.length} topics for follow-up research`);
+    } catch (parseError) {
+      console.error('Error parsing research topics:', parseError);
+      // Create a fallback topic based on the original prompt
+      researchTopics = [{
+        topic: `More details on ${podcastPrompt}`,
+        query: `latest developments ${podcastPrompt} ${getCurrentMonthYear()} detailed analysis`,
+        priority: 10,
+        reason: "Need more detailed information on the main topic"
+      }];
+    }
+    
+    return researchTopics;
+  } catch (error) {
+    console.error('Error identifying research topics:', error);
+    return [];
+  }
+}
+
+/**
+ * Conducts adaptive research with intelligent follow-up searches
+ * This analyzes initial results and performs targeted follow-up searches
+ * 
+ * @param prompt The podcast prompt
+ * @returns Comprehensive research results with all follow-up information
+ */
+export async function conductAdaptiveResearch(
+  prompt: string
+): Promise<AdaptiveResearchResults> {
+  console.log('Starting adaptive research process for prompt:', prompt);
+  
+  try {
+    // Step 1: Initial broad search to understand the topic
+    console.log('Conducting initial search...');
+    const initialSearch = await conductSimpleSearch(prompt);
+    
+    // Step 2: Analyze results to identify topics that need more research
+    console.log('Analyzing initial results to identify follow-up topics...');
+    const researchTopics = await identifyResearchTopics(initialSearch.content, prompt);
+    
+    // Step 3: Conduct follow-up searches on identified topics
+    console.log(`Conducting ${researchTopics.length} follow-up searches...`);
+    const followupResults: {[topic: string]: {content: string, sources: string[]}} = {};
+    
+    // Execute follow-up searches in parallel to save time
+    await Promise.all(researchTopics.map(async (topic) => {
+      console.log(`Researching topic: "${topic.topic}" with query: "${topic.query}"`);
+      const result = await executeWebSearch(topic.query);
+      followupResults[topic.topic] = result;
+    }));
+    
+    // Step 4: Consolidate all findings into a cohesive research document
+    console.log('Consolidating all research findings...');
+    
+    const consolidationPrompt = `You are a professional journalist preparing a comprehensive research document. 
+    
+Please consolidate the following research into a well-organized document that covers all key information, focusing on facts, 
+quotes, statistics, and recent developments. Remove any redundancy and organize information logically.
+
+INITIAL RESEARCH:
+${initialSearch.content}
+
+${Object.entries(followupResults).map(([topic, data]) => `
+FOLLOW-UP RESEARCH ON "${topic}":
+${data.content}
+`).join('\n')}
+
+Create a comprehensive document organized by topic that a journalist could use to write a detailed, factual news podcast.
+Focus on including specific dates, quotes with attribution, and factual information. Do NOT summarize the information - 
+preserve all important details, quotes, and context.`;
+
+    const consolidationResult = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: consolidationPrompt }] }],
+      generationConfig: {
+        temperature: 0,
+        maxOutputTokens: 4000,
+      }
+    });
+    
+    const consolidatedContent = consolidationResult.response.text();
+    
+    // Collect all unique sources
+    const allSources = [...initialSearch.sources];
+    Object.values(followupResults).forEach(result => {
+      result.sources.forEach(source => {
+        if (!allSources.includes(source)) {
+          allSources.push(source);
+        }
+      });
+    });
+    
+    console.log('Adaptive research completed successfully');
+    console.log(`Found ${allSources.length} total unique sources`);
+    
+    return {
+      initialSearch,
+      followupTopics: researchTopics,
+      followupResults,
+      consolidatedContent,
+      allSources
+    };
+  } catch (error) {
+    console.error('Error in adaptive research process:', error);
+    // Return a minimal result if anything fails
+    return {
+      initialSearch: {
+        content: 'Initial search failed.',
+        sources: []
+      },
+      followupTopics: [],
+      followupResults: {},
+      consolidatedContent: 'Research process failed. Please try again.',
+      allSources: []
+    };
+  }
+}
+
 // For backward compatibility, we'll keep this function but it will now use the simplified approach
 export async function conductThreeStageSearch(
   prompt: string,
   episodeCount: number
 ): Promise<{searchResults: SearchResults, rawSearchData: string}> {
   try {
-    console.log('Using simplified search instead of three-stage search for prompt:', prompt);
+    console.log('Using adaptive research instead of three-stage search for prompt:', prompt);
     
-    // Use the simplified search approach
-    const simpleResult = await conductSimpleSearch(prompt);
+    // Use the new adaptive research approach
+    const adaptiveResults = await conductAdaptiveResearch(prompt);
     
     // Format the results to match the expected output structure
-    const simpleSearchResults: SearchResults = {
+    const searchResults: SearchResults = {
       stories: {
         "Latest News": {
           mainStory: {
-            title: "Current Information",
-            snippet: simpleResult.content,
-            url: simpleResult.sources[0] || ""
+            title: "Comprehensive Research",
+            snippet: adaptiveResults.consolidatedContent,
+            url: adaptiveResults.allSources[0] || ""
           },
           additionalContext: []
         }
       },
-      sources: simpleResult.sources
+      sources: adaptiveResults.allSources
     };
     
     return {
-      searchResults: simpleSearchResults,
-      rawSearchData: simpleResult.content
+      searchResults: searchResults,
+      rawSearchData: adaptiveResults.consolidatedContent
     };
   } catch (error) {
     console.error('Error in search process:', error);
