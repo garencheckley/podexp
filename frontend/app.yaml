@@ -1,0 +1,16 @@
+runtime: nodejs20
+service: default
+
+handlers:
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
+
+env_variables:
+  NODE_ENV: production
+  
+# Set auto scaling to minimum instances to reduce costs
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1 

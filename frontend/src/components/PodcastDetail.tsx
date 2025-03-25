@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 
 const PodcastDetail = () => {
@@ -12,6 +12,7 @@ const PodcastDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [regeneratingAudio, setRegeneratingAudio] = useState<string | null>(null);
   const [expandedEpisodes, setExpandedEpisodes] = useState<Record<string, boolean>>({});
   const [currentAudio, setCurrentAudio] = useState<{url: string, title: string} | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -90,6 +91,33 @@ const PodcastDetail = () => {
         // Close menu after deletion
         setOpenMenuId(null);
       }
+    }
+  };
+
+  const handleRegenerateAudio = async (episodeId: string) => {
+    if (!podcastId) return;
+    
+    setRegeneratingAudio(episodeId);
+    setError(null);
+    
+    try {
+      const updatedEpisode = await regenerateAudio(podcastId, episodeId);
+      
+      // Update the episode in the state with the new audio URL
+      setEpisodes(prevEpisodes => 
+        prevEpisodes.map(ep => 
+          ep.id === episodeId ? updatedEpisode : ep
+        )
+      );
+      
+      // Close menu after action
+      setOpenMenuId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate audio';
+      setError(errorMessage);
+      console.error('Error regenerating audio:', err);
+    } finally {
+      setRegeneratingAudio(null);
     }
   };
 
@@ -221,6 +249,13 @@ const PodcastDetail = () => {
                       )}
                       
                       <div 
+                        className="menu-item"
+                        onClick={() => episode.id && handleRegenerateAudio(episode.id)}
+                      >
+                        {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
+                      </div>
+                      
+                      <div 
                         className="menu-item delete"
                         onClick={() => episode.id && handleDeleteEpisode(episode.id)}
                       >
@@ -233,11 +268,29 @@ const PodcastDetail = () => {
               
               <p className="episode-description">{episode.description}</p>
               
-              {expandedEpisodes[episode.id!] && (
-                <div className="episode-content-container">
-                  <p className="episode-content">{episode.content}</p>
-                </div>
-              )}
+              <div className="episode-content" style={{ display: expandedEpisodes[episode.id!] ? 'block' : 'none' }}>
+                {episode.content.split('\n').map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+                
+                {episode.sources && episode.sources.length > 0 && (
+                  <div className="episode-sources">
+                    <h4>Sources:</h4>
+                    <ul>
+                      {episode.sources.slice(0, 5).map((source, index) => (
+                        <li key={index}>
+                          <a href={source} target="_blank" rel="noopener noreferrer">
+                            {new URL(source).hostname}
+                          </a>
+                        </li>
+                      ))}
+                      {episode.sources.length > 5 && (
+                        <li>And {episode.sources.length - 5} more sources</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
               
               <div className="episode-meta">
                 Created: {new Date(episode.created_at!).toLocaleDateString()}

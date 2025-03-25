@@ -82,6 +82,26 @@ export async function generateEpisode(podcastId: string): Promise<Episode> {
   return response.json();
 }
 
+export async function regenerateAudio(podcastId: string, episodeId: string): Promise<Episode> {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to regenerate audio');
+    } catch (parseError) {
+      throw new Error(`Failed to regenerate audio: ${response.statusText}`);
+    }
+  }
+  
+  return response.json();
+}
+
 export async function deleteEpisode(podcastId: string, episodeId: string): Promise<void> {
   const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}`, {
     method: 'DELETE',

@@ -4,22 +4,24 @@ import { Firestore } from '@google-cloud/firestore';
 let db: Firestore | null = null;
 
 export interface Podcast {
-  id: string;
+  id?: string;
   title: string;
   description: string;
   prompt?: string;
+  useWebSearch?: boolean;
+  created_at?: string;
   episodes: Episode[];
 }
 
 export interface Episode {
-  id: string;
+  id?: string;
   podcastId: string;
   title: string;
   description: string;
   content: string;
-  summary?: string;
   audioUrl?: string;
-  created_at: string;
+  sources?: string[];
+  created_at?: string;
 }
 
 export function initializeFirebase() {
@@ -119,4 +121,19 @@ export async function getEpisode(episodeId: string): Promise<Episode | null> {
   const doc = await getDb().collection('episodes').doc(episodeId).get();
   if (!doc.exists) return null;
   return { id: doc.id, ...doc.data() } as Episode;
+}
+
+/**
+ * Updates the audio URL for an episode
+ * @param episodeId The ID of the episode to update
+ * @param audioUrl The URL of the generated audio
+ */
+export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl: string): Promise<void> {
+  if (!episodeId) {
+    console.error('Unable to update episode audio: Episode ID is undefined');
+    return;
+  }
+  
+  console.log(`Updating episode ${episodeId} with audio URL: ${audioUrl}`);
+  await getDb().collection('episodes').doc(episodeId).update({ audioUrl });
 } 

@@ -10,7 +10,7 @@ async function migrateData() {
 
   // Create episodes for first podcast
   await createEpisode({
-    podcastId: podcast1.id,
+    podcastId: podcast1.id || '',
     title: 'The Future of AI',
     description: 'Exploring the latest developments in artificial intelligence',
     content: 'Exploring the latest developments in artificial intelligence',
@@ -18,7 +18,7 @@ async function migrateData() {
   });
 
   await createEpisode({
-    podcastId: podcast1.id,
+    podcastId: podcast1.id || '',
     title: 'Cloud Computing Trends',
     description: 'Discussion about modern cloud architecture and trends',
     content: 'Discussion about modern cloud architecture and trends',
@@ -34,7 +34,7 @@ async function migrateData() {
 
   // Create episodes for second podcast
   await createEpisode({
-    podcastId: podcast2.id,
+    podcastId: podcast2.id || '',
     title: 'My Journey into Tech',
     description: 'A developer shares their career journey',
     content: 'A developer shares their career journey',
@@ -42,7 +42,7 @@ async function migrateData() {
   });
 
   await createEpisode({
-    podcastId: podcast2.id,
+    podcastId: podcast2.id || '',
     title: 'Building Scalable Systems',
     description: 'Lessons learned from scaling applications',
     content: 'Lessons learned from scaling applications',

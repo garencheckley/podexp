@@ -36,44 +36,119 @@ async function ensureBucketExists(): Promise<void> {
 
 // Generate audio for text and store it in GCS
 export async function generateAndStoreAudio(
-  text: string,
-  podcastId: string,
-  episodeId: string
+  text: string | undefined,
+  podcastId: string | undefined,
+  episodeId: string | undefined
 ): Promise<string> {
+  // Ensure all parameters are strings
+  const textContent = text || '';
+  const podcast = podcastId || 'unknown';
+  const episode = episodeId || 'unknown';
+  
   try {
     // Ensure bucket exists
     await ensureBucketExists();
     
-    // Configure the request with Chirp HD voice
-    const request = {
-      input: { text },
-      voice: {
-        languageCode: 'en-US',
-        name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
-      },
-      audioConfig: { 
-        audioEncoding: 'MP3' as const,
-        speakingRate: 1.0,  // Normal speed
-        pitch: 0.0,         // Default pitch
-        effectsProfileId: ['headphone-class-device'], // Optimize for headphones
-      },
-    };
-
-    // Generate audio
-    console.log(`Generating audio for episode ${episodeId}`);
-    const [response] = await ttsClient.synthesizeSpeech(request);
+    // Check if the text exceeds the TTS API limit (5000 bytes)
+    const textBytes = Buffer.from(textContent).length;
+    console.log(`Text length for episode ${episode}: ${textBytes} bytes`);
     
-    if (!response.audioContent) {
-      throw new Error('No audio content returned from Text-to-Speech API');
+    let audioContent: Buffer;
+    
+    if (textBytes <= 4800) {
+      // If text is within limits, make a single API call
+      const request = {
+        input: { text: textContent },
+        voice: {
+          languageCode: 'en-US',
+          name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
+        },
+        audioConfig: { 
+          audioEncoding: 'MP3' as const,
+          speakingRate: 1.0,  // Normal speed
+          pitch: 0.0,         // Default pitch
+          effectsProfileId: ['headphone-class-device'], // Optimize for headphones
+        },
+      };
+
+      // Generate audio
+      console.log(`Generating audio for episode ${episode} in a single request`);
+      const [response] = await ttsClient.synthesizeSpeech(request);
+      
+      if (!response.audioContent) {
+        throw new Error('No audio content returned from Text-to-Speech API');
+      }
+      
+      audioContent = response.audioContent as Buffer;
+    } else {
+      // If text exceeds the limit, split it into smaller chunks
+      console.log(`Text exceeds TTS API limit. Splitting into chunks for episode ${episode}`);
+      
+      // Split into sentences and then group them into chunks
+      const sentences = textContent.match(/[^.!?]+[.!?]+/g) || [textContent];
+      const chunks: string[] = [];
+      let currentChunk = '';
+      
+      for (const sentence of sentences) {
+        // Check if adding this sentence would exceed our safe limit
+        if (Buffer.from(currentChunk + sentence).length > 4500 && currentChunk.length > 0) {
+          chunks.push(currentChunk);
+          currentChunk = sentence;
+        } else {
+          currentChunk += sentence;
+        }
+      }
+      
+      // Add the last chunk if it's not empty
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
+      }
+      
+      console.log(`Split text into ${chunks.length} chunks`);
+      
+      // Process each chunk and collect the audio content
+      const audioChunks: Buffer[] = [];
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkBytes = Buffer.from(chunk).length;
+        console.log(`Processing chunk ${i+1}/${chunks.length} (${chunkBytes} bytes)`);
+        
+        const request = {
+          input: { text: chunk },
+          voice: {
+            languageCode: 'en-US',
+            name: 'en-US-Chirp3-HD-Leda',
+          },
+          audioConfig: { 
+            audioEncoding: 'MP3' as const,
+            speakingRate: 1.0,
+            pitch: 0.0,
+            effectsProfileId: ['headphone-class-device'],
+          },
+        };
+        
+        const [response] = await ttsClient.synthesizeSpeech(request);
+        
+        if (!response.audioContent) {
+          throw new Error(`No audio content returned for chunk ${i+1}`);
+        }
+        
+        audioChunks.push(response.audioContent as Buffer);
+      }
+      
+      // Combine the audio chunks
+      audioContent = Buffer.concat(audioChunks);
+      console.log(`Combined ${audioChunks.length} audio chunks`);
     }
 
     // Define the file path in the bucket
-    const filePath = `podcasts/${podcastId}/episodes/${episodeId}.mp3`;
+    const filePath = `podcasts/${podcast}/episodes/${episode}.mp3`;
     const file = storage.bucket(bucketName).file(filePath);
     
     // Upload the audio content to GCS
     console.log(`Uploading audio to ${filePath}`);
-    await file.save(response.audioContent as Buffer, {
+    await file.save(audioContent, {
       metadata: {
         contentType: 'audio/mp3',
         cacheControl: 'public, max-age=31536000', // Cache for 1 year

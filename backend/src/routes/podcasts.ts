@@ -322,9 +322,9 @@ router.post('/:id/generate-episode', async (req, res) => {
     // Build the prompt based on whether this podcast uses web search
     let prompt;
     if (podcast.useWebSearch) {
-      prompt = `You are a story generator for a podcast titled "${podcast.title}". The podcast description is: "${podcastPrompt}".
+      prompt = `You are a news reporter creating content for a podcast titled "${podcast.title}". The podcast topic is: "${podcastPrompt}".
 
-I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to create an engaging, informative podcast episode that incorporates the most relevant information.
+I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to create a direct, factual podcast episode that reports on the most relevant information in a journalistic style.
 
 ${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
 
@@ -332,22 +332,36 @@ SEARCH RESULTS (CURRENT INFORMATION):
 ${webSearchContext}
 
 REQUIREMENTS:
-1. Focus on covering topics and information from the search results that are most relevant to the podcast's theme
-2. Avoid repeating information or stories covered in previous episodes
-3. Create content that is engaging, informative, and conversational in style
-4. Prioritize key stories based on relevance to the podcast theme
-5. Include attribution to sources where appropriate (e.g., "According to The Washington Post...")
-6. The content should be ${lengthSpecification}
-7. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
-8. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation
-9. Format your response as valid JSON with the following structure:
+1. CRITICALLY IMPORTANT: Strictly adhere to the format and structure specified in the podcast prompt "${podcastPrompt}" - pay special attention to any specified number of topics, episode structure, or format requirements
+2. Write in a clear, direct journalistic style - factual, concise, and straightforward
+3. Provide in-depth coverage of topics rather than shallow coverage of many topics
+4. Do NOT include any personal commentary, opinions, or chatty remarks
+5. Avoid repeating information or stories covered in previous episodes
+6. IMPORTANT: Include publication dates whenever possible:
+   - Look for publication dates of articles/sources in the search results
+   - Include specific dates in your reporting (e.g., "On March 20th, the SF Chronicle reported...")
+   - Prioritize recent sources and clearly indicate when information is from older publications
+   - Use temporal markers like "yesterday," "last week," or "earlier this month" to give listeners context
+7. Include direct quotes from sources with specific, detailed attribution to build listener trust:
+   - Use the format: "[Publication Name] reported on [DATE] that [Person/Organization] said, '[Direct quote]'"
+   - Example: "The San Francisco Chronicle reported on March 22nd that Mayor London Breed said, 'We are addressing the housing crisis with new initiatives.'"
+   - Always specify both the publication and the original speaker when available
+   - Quotes should be word-for-word from the sources when possible
+8. Make it clear to listeners that information comes from credible sources by frequently mentioning source names
+9. Use at least 3-5 direct quotes with attribution in each episode to demonstrate credibility
+10. Structure content like a news report with the most important information first
+11. The content should be ${lengthSpecification}
+12. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
+13. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation
+14. DO NOT include a section at the end listing news sources or podcasts - focus only on substantive news content
+15. Format your response as valid JSON with the following structure:
 {
-  "title": "Catchy, Specific Episode Title",
-  "description": "Brief description of the episode (1-2 sentences)",
+  "title": "Clear, Direct News-Style Title",
+  "description": "Brief factual description of the episode (1-2 sentences)",
   "content": "The full podcast script in plain text with only standard punctuation"
 }
 
-Generate a compelling, informative episode that feels like a natural extension of this podcast series while incorporating the most relevant current information.`;
+Generate a factual, informative episode that strictly follows the podcast format as specified in the podcast prompt, delivered in a direct journalistic style with extensive use of properly attributed quotes and publication dates to build listener trust.`;
     } else {
       // Original prompt for non-web-search podcasts
       prompt = `You are a story generator for a series titled "${podcast.title}". The series description is: "${podcastPrompt}".
@@ -379,10 +393,10 @@ Your content should:
     try {
       // Try to generate content using Gemini API
       console.log('Sending episode generation prompt to Gemini');
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
-      console.log('Generated content:', responseText);
-      
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    console.log('Generated content:', responseText);
+    
       // Process the generated content
       // Remove any code block markers from the response
       let cleanedText = responseText.replace(/^```json\s*|\s*```$/g, '');
@@ -477,5 +491,48 @@ async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<
     throw error;
   }
 }
+
+// Regenerate audio for an existing episode
+router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res) => {
+  try {
+    const { podcastId, episodeId } = req.params;
+    console.log(`POST /api/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`);
+    
+    // Get the episode
+    const episode = await getEpisode(episodeId);
+    if (!episode) {
+      return res.status(404).json({ error: 'Episode not found' });
+    }
+    
+    // Check if the episode has content
+    if (!episode.content) {
+      return res.status(400).json({ error: 'Episode has no content to generate audio for' });
+    }
+    
+    try {
+      // Generate audio for the episode
+      const audioUrl = await generateAndStoreAudio(
+        episode.content, 
+        podcastId, 
+        episodeId
+      );
+      
+      // Update the episode with the audio URL
+      await updateEpisodeAudio(episodeId, audioUrl);
+      
+      // Return the updated episode
+      res.json({
+        ...episode,
+        audioUrl
+      });
+    } catch (audioError) {
+      console.error('Error regenerating audio:', audioError);
+      res.status(500).json({ error: 'Failed to regenerate audio' });
+    }
+  } catch (error) {
+    console.error('Error regenerating audio for episode:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
 
 export default router; 

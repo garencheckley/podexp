@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
   const [prompt, setPrompt] = useState('');
+  const [useWebSearch, setUseWebSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -32,7 +33,8 @@ const CreatePodcastForm: React.FC = () => {
       // Call API to create podcast - title will be generated on the backend
       const newPodcast = await createPodcast({
         description,
-        prompt // Store the full prompt for future episode generation
+        prompt, // Store the full prompt for future episode generation
+        useWebSearch // Add the useWebSearch flag
       });
       
       console.log('Created podcast:', newPodcast);
@@ -87,6 +89,28 @@ const CreatePodcastForm: React.FC = () => {
               This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
               <br /><br />
               <strong>Tip:</strong> You can specify episode length by including phrases like "episode length: 2 minutes" or "episode duration: 300 words" in your prompt. If not specified, episodes will default to 2 minutes in length.
+            </p>
+          </div>
+          
+          <div className="form-group">
+            <div className="web-search-toggle">
+              <input
+                type="checkbox"
+                id="use-web-search"
+                checked={useWebSearch}
+                onChange={(e) => setUseWebSearch(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              <label htmlFor="use-web-search">
+                Use real-time web information
+              </label>
+            </div>
+            <p className="form-help web-search-help">
+              When enabled, the podcast will use current information from the web to generate up-to-date content.
+              <br />
+              Recommended for news, current events, and other topics that benefit from the latest information.
+              <br />
+              Not recommended for fictional stories or historical content.
             </p>
           </div>
           
