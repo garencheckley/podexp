@@ -204,14 +204,38 @@ function getCurrentMonthYear(): string {
  * 
  * @param searchContent The content from the initial search
  * @param podcastPrompt The original podcast prompt
+ * @param targetWordCount The target word count for the podcast episode
  * @returns An array of topics that need further research
  */
 async function identifyResearchTopics(
   searchContent: string,
-  podcastPrompt: string
+  podcastPrompt: string,
+  targetWordCount: number = 300
 ): Promise<ResearchTopic[]> {
   try {
     console.log('Analyzing search results to identify follow-up research topics');
+
+    // Calculate the appropriate number of research topics based on podcast length
+    // Scale from 1-2 topics for short podcasts to 5-7 for long podcasts
+    let minTopics = 1;
+    let maxTopics = 2;
+    
+    if (targetWordCount > 300) { // > 2 minutes
+      minTopics = 2;
+      maxTopics = 4;
+    }
+    
+    if (targetWordCount > 750) { // > 5 minutes
+      minTopics = 3;
+      maxTopics = 5;
+    }
+    
+    if (targetWordCount > 1500) { // > 10 minutes
+      minTopics = 4;
+      maxTopics = 7;
+    }
+    
+    console.log(`Podcast length: ${targetWordCount} words. Identifying ${minTopics}-${maxTopics} research topics`);
 
     const analysisPrompt = `You are a professional research analyst helping to prepare a news podcast on this topic: "${podcastPrompt}"
 
@@ -219,7 +243,7 @@ I've conducted an initial search and found the following information:
 
 ${searchContent}
 
-Please analyze this information and identify 2-4 specific topics that need deeper research to create a comprehensive, factual podcast episode. For each topic:
+Please analyze this information and identify ${minTopics}-${maxTopics} specific topics that need deeper research to create a comprehensive, factual podcast episode. For each topic:
 1. Identify gaps, outdated information, or areas needing verification
 2. Create a specific search query that would yield the most useful additional context
 3. Assign a priority (1-10) where 10 is highest priority
@@ -245,10 +269,10 @@ Response format:
     
     try {
       researchTopics = JSON.parse(cleanedText);
-      // Ensure we have valid topics (at most 4)
+      // Ensure we have valid topics (at most maxTopics)
       researchTopics = researchTopics
         .filter(topic => topic.topic && topic.query && topic.priority)
-        .slice(0, 4);
+        .slice(0, maxTopics);
       
       // Sort by priority (highest first)
       researchTopics.sort((a, b) => b.priority - a.priority);
@@ -277,12 +301,14 @@ Response format:
  * This analyzes initial results and performs targeted follow-up searches
  * 
  * @param prompt The podcast prompt
+ * @param targetWordCount The target word count for the podcast episode
  * @returns Comprehensive research results with all follow-up information
  */
 export async function conductAdaptiveResearch(
-  prompt: string
+  prompt: string,
+  targetWordCount: number = 300
 ): Promise<AdaptiveResearchResults> {
-  console.log('Starting adaptive research process for prompt:', prompt);
+  console.log(`Starting adaptive research process for prompt: "${prompt}" with target length: ${targetWordCount} words`);
   
   try {
     // Step 1: Initial broad search to understand the topic
@@ -291,7 +317,7 @@ export async function conductAdaptiveResearch(
     
     // Step 2: Analyze results to identify topics that need more research
     console.log('Analyzing initial results to identify follow-up topics...');
-    const researchTopics = await identifyResearchTopics(initialSearch.content, prompt);
+    const researchTopics = await identifyResearchTopics(initialSearch.content, prompt, targetWordCount);
     
     // Step 3: Conduct follow-up searches on identified topics
     console.log(`Conducting ${researchTopics.length} follow-up searches...`);
@@ -307,10 +333,16 @@ export async function conductAdaptiveResearch(
     // Step 4: Consolidate all findings into a cohesive research document
     console.log('Consolidating all research findings...');
     
-    const consolidationPrompt = `You are a professional journalist preparing a comprehensive research document. 
+    // Adjust consolidation prompt based on target length
+    // For longer podcasts, we want to preserve more details
+    const detailLevel = targetWordCount > 750 ? 
+      "extremely detailed and comprehensive" : 
+      "factual but concise";
+    
+    const consolidationPrompt = `You are a professional journalist preparing a ${detailLevel} research document for a podcast that will be about ${targetWordCount} words long. 
     
 Please consolidate the following research into a well-organized document that covers all key information, focusing on facts, 
-quotes, statistics, and recent developments. Remove any redundancy and organize information logically.
+quotes, statistics, and recent developments. ${targetWordCount > 750 ? "Preserve as many details as possible." : "Focus on the most important points while maintaining accuracy."} Remove any redundancy and organize information logically.
 
 INITIAL RESEARCH:
 ${initialSearch.content}
@@ -324,11 +356,14 @@ Create a comprehensive document organized by topic that a journalist could use t
 Focus on including specific dates, quotes with attribution, and factual information. Do NOT summarize the information - 
 preserve all important details, quotes, and context.`;
 
+    const maxOutputTokens = Math.min(8000, Math.max(4000, targetWordCount * 4));
+    console.log(`Using max output tokens: ${maxOutputTokens} for consolidation`);
+
     const consolidationResult = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: consolidationPrompt }] }],
       generationConfig: {
         temperature: 0,
-        maxOutputTokens: 4000,
+        maxOutputTokens: maxOutputTokens,
       }
     });
     
@@ -373,13 +408,14 @@ preserve all important details, quotes, and context.`;
 // For backward compatibility, we'll keep this function but it will now use the simplified approach
 export async function conductThreeStageSearch(
   prompt: string,
-  episodeCount: number
+  episodeCount: number,
+  targetWordCount: number = 300
 ): Promise<{searchResults: SearchResults, rawSearchData: string}> {
   try {
-    console.log('Using adaptive research instead of three-stage search for prompt:', prompt);
+    console.log(`Using adaptive research for prompt: "${prompt}" with target length: ${targetWordCount} words`);
     
     // Use the new adaptive research approach
-    const adaptiveResults = await conductAdaptiveResearch(prompt);
+    const adaptiveResults = await conductAdaptiveResearch(prompt, targetWordCount);
     
     // Format the results to match the expected output structure
     const searchResults: SearchResults = {

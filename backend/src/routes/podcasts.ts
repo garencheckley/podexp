@@ -304,7 +304,8 @@ router.post('/:id/generate-episode', async (req, res) => {
         // Conduct the three-stage search process
         const { rawSearchData, searchResults } = await conductThreeStageSearch(
           podcastPrompt,
-          previousEpisodes.length
+          previousEpisodes.length,
+          targetWordCount  // Pass the target word count to scale research depth
         );
         
         webSearchContext = rawSearchData;

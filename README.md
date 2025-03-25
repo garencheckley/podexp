@@ -361,13 +361,14 @@ The system now features an intelligent follow-up search capability that enhances
 - **Intelligent Research Analysis**: Automatically analyzes initial search results to identify topics needing deeper investigation
 - **Targeted Follow-up Searches**: Conducts specific, focused follow-up searches on identified topics
 - **Prioritized Research Topics**: Uses AI to prioritize which aspects of a topic need the most additional context
+- **Length-Based Research Scaling**: Automatically adjusts the depth and breadth of research based on podcast length
 - **Parallel Processing**: Executes multiple follow-up searches simultaneously for efficiency
 - **Comprehensive Consolidation**: Intelligently combines findings from all searches into a cohesive research document
 - **Enhanced Source Diversity**: Gathers sources from multiple searches, providing a wider range of references
 - **Gap Identification**: Specifically looks for information gaps, outdated data, or areas needing verification
 - **Self-Directed Research**: The system determines on its own when and what follow-up searches are necessary
 
-This improvement transforms the podcast generation process from a single-query approach to a multi-stage research project, resulting in significantly more comprehensive, nuanced, and well-sourced podcast episodes.
+This improvement transforms the podcast generation process from a single-query approach to a multi-stage research project, resulting in significantly more comprehensive, nuanced, and well-sourced podcast episodes. Shorter podcasts (1-2 minutes) receive focused research with fewer follow-up queries, while longer episodes (5-10 minutes) trigger more extensive research with additional follow-up searches to ensure appropriate depth of coverage.
 
 ### TTS Compatibility Improvements
 The system now features enhanced compatibility with Text-to-Speech (TTS) technology:
