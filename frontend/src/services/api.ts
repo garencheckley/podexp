@@ -118,4 +118,23 @@ export async function deletePodcast(podcastId: string): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete podcast');
   }
+}
+
+export async function updatePodcast(
+  podcastId: string,
+  updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'useWebSearch'>>
+): Promise<Podcast> {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update podcast');
+  }
+  
+  return response.json();
 } 

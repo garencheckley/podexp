@@ -12,7 +12,8 @@ import {
   type Episode,
   deleteEpisode,
   deletePodcast,
-  getEpisode
+  getEpisode,
+  updatePodcast
 } from '../services/database';
 import { generateAndStoreAudio, deleteAudio } from '../services/audio';
 import { conductThreeStageSearch } from '../services/search';
@@ -541,6 +542,41 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res)
   } catch (error) {
     console.error('Error regenerating audio for episode:', error);
     res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// Update podcast details
+router.patch('/:id', async (req, res) => {
+  try {
+    console.log(`PATCH /api/podcasts/${req.params.id}`, req.body);
+    
+    const podcast = await getPodcast(req.params.id);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+
+    // Only allow updating certain fields
+    const allowedFields = ['title', 'description', 'prompt', 'useWebSearch'];
+    const updates: Record<string, any> = {};
+    
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+    
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    await updatePodcast(req.params.id, updates);
+    
+    // Get the updated podcast
+    const updatedPodcast = await getPodcast(req.params.id);
+    res.json(updatedPodcast);
+  } catch (error) {
+    console.error('Error updating podcast:', error);
+    res.status(500).json({ error: 'Failed to update podcast' });
   }
 });
 

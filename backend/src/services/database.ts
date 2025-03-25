@@ -136,4 +136,18 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
   
   console.log(`Updating episode ${episodeId} with audio URL: ${audioUrl}`);
   await getDb().collection('episodes').doc(episodeId).update({ audioUrl });
+}
+
+/**
+ * Updates a podcast's details
+ * @param podcastId The ID of the podcast to update
+ * @param details The podcast details to update
+ * @returns The updated podcast
+ */
+export async function updatePodcast(
+  podcastId: string, 
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'useWebSearch'>>
+): Promise<void> {
+  console.log(`Updating podcast ${podcastId}:`, details);
+  await getDb().collection('podcasts').doc(podcastId).update(details);
 } 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 
 const PodcastDetail = () => {
@@ -16,6 +16,9 @@ const PodcastDetail = () => {
   const [expandedEpisodes, setExpandedEpisodes] = useState<Record<string, boolean>>({});
   const [currentAudio, setCurrentAudio] = useState<{url: string, title: string} | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptValue, setPromptValue] = useState('');
+  const [savingPrompt, setSavingPrompt] = useState(false);
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -47,6 +50,13 @@ const PodcastDetail = () => {
   useEffect(() => {
     fetchData();
   }, [podcastId]);
+
+  useEffect(() => {
+    // Update promptValue when podcast data is loaded
+    if (podcast?.prompt) {
+      setPromptValue(podcast.prompt);
+    }
+  }, [podcast]);
 
   const handleGenerateEpisode = async () => {
     if (!podcastId) return;
@@ -143,6 +153,33 @@ const PodcastDetail = () => {
     setOpenMenuId(openMenuId === episodeId ? null : episodeId);
   };
 
+  const handleEditPrompt = () => {
+    setEditingPrompt(true);
+  };
+
+  const handleSavePrompt = async () => {
+    if (!podcastId || !podcast) return;
+    
+    setSavingPrompt(true);
+    setError(null);
+    
+    try {
+      const updatedPodcast = await updatePodcast(podcastId, { prompt: promptValue });
+      setPodcast(updatedPodcast);
+      setEditingPrompt(false);
+    } catch (err) {
+      setError('Failed to update podcast prompt. Please try again.');
+      console.error('Error updating podcast prompt:', err);
+    } finally {
+      setSavingPrompt(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setPromptValue(podcast?.prompt || '');
+    setEditingPrompt(false);
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -173,6 +210,51 @@ const PodcastDetail = () => {
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
         <p>{podcast.description}</p>
+        
+        <div className="podcast-prompt-section">
+          <div className="prompt-header">
+            <h3>Podcast Prompt</h3>
+            {!editingPrompt && (
+              <button 
+                onClick={handleEditPrompt} 
+                className="edit-button"
+                aria-label="Edit prompt"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          
+          {editingPrompt ? (
+            <div className="prompt-editor">
+              <textarea
+                value={promptValue}
+                onChange={(e) => setPromptValue(e.target.value)}
+                rows={6}
+                placeholder="Enter podcast prompt..."
+                disabled={savingPrompt}
+              />
+              <div className="editor-actions">
+                <button 
+                  onClick={handleCancelEdit}
+                  className="cancel-button"
+                  disabled={savingPrompt}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSavePrompt}
+                  className="save-button"
+                  disabled={savingPrompt || !promptValue.trim()}
+                >
+                  {savingPrompt ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="podcast-prompt">{podcast.prompt}</p>
+          )}
+        </div>
         
         {error && (
           <div className="error-message">

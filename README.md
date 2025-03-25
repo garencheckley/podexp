@@ -370,6 +370,18 @@ The system now features an intelligent follow-up search capability that enhances
 
 This improvement transforms the podcast generation process from a single-query approach to a multi-stage research project, resulting in significantly more comprehensive, nuanced, and well-sourced podcast episodes. Shorter podcasts (1-2 minutes) receive focused research with fewer follow-up queries, while longer episodes (5-10 minutes) trigger more extensive research with additional follow-up searches to ensure appropriate depth of coverage.
 
+### In-Place Prompt Editing
+The system now allows users to edit podcast prompts directly from the podcast detail page:
+
+- **Intuitive Editing Interface**: Edit prompts directly from the podcast detail page without navigating away
+- **Real-time Updates**: Changes to prompts are immediately reflected in the system
+- **Improved Workflow**: Simplifies the process of refining podcast generation instructions
+- **Error Handling**: Robust error management ensures prompt updates are reliable
+- **User-Friendly Controls**: Clear editing interface with save and cancel options
+- **Responsive Design**: Works well on both desktop and mobile devices
+
+This feature enhances the user experience by making it easier to iterate on podcast prompts until they generate the desired content. Users can now make quick adjustments to prompts after seeing the results of previous episodes, allowing for a more efficient creative process without leaving the podcast detail view.
+
 ### TTS Compatibility Improvements
 The system now features enhanced compatibility with Text-to-Speech (TTS) technology:
 
