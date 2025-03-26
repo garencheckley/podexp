@@ -721,24 +721,43 @@ a:hover {
   margin-top: 0;
   margin-bottom: 10px;
   color: #333;
+  font-size: 1.1rem;
 }
 
 .episode-sources ul {
   margin: 0;
   padding-left: 20px;
+  list-style-type: none;
 }
 
 .episode-sources li {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  position: relative;
+  padding-left: 15px;
+  line-height: 1.4;
+}
+
+.episode-sources li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #0066cc;
+  font-weight: bold;
 }
 
 .episode-sources a {
   color: #0066cc;
   text-decoration: none;
+  display: inline-block;
+  border-bottom: 1px dashed #ccc;
+  padding-bottom: 2px;
+  transition: all 0.2s ease;
 }
 
 .episode-sources a:hover {
-  text-decoration: underline;
+  text-decoration: none;
+  border-bottom-color: #0066cc;
+  color: #004c99;
 }
 
 /* Podcast type badge styles */

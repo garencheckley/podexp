@@ -418,7 +418,20 @@ const PodcastDetail = () => {
                       {episode.sources.slice(0, 5).map((source, index) => (
                         <li key={index}>
                           <a href={source} target="_blank" rel="noopener noreferrer">
-                            {new URL(source).hostname}
+                            {(() => {
+                              try {
+                                const url = new URL(source);
+                                // Check if it's a vertexaisearch URL (which isn't very useful to display)
+                                if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
+                                  return `Reference ${index + 1}`;
+                                }
+                                // For normal URLs, show the hostname with protocol stripped
+                                return url.hostname;
+                              } catch (e) {
+                                // If URL parsing fails, just show the source directly
+                                return source;
+                              }
+                            })()}
                           </a>
                         </li>
                       ))}
