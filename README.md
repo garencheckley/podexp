@@ -399,6 +399,17 @@ The system now features enhanced compatibility with Text-to-Speech (TTS) technol
 
 These improvements significantly enhance the listening experience by ensuring that the Text-to-Speech engine receives clean, properly formatted text that can be converted accurately to speech without unexpected artifacts or interruptions.
 
+### Improved Source Attribution Display
+The system now features an enhanced display for source attribution in news-based podcasts:
+
+- **User-Friendly References**: API search URLs are now displayed as "Reference 1", "Reference 2", etc. instead of raw URLs
+- **Enhanced Visual Design**: Sources section uses a cleaner, more attractive styling with bullet points and subtle hover effects
+- **Flexible URL Handling**: System intelligently detects and formats different types of source URLs
+- **Error Handling**: Robust error handling for malformed or unexpected URL formats
+- **Mobile Responsive**: Source attribution section is fully responsive for all screen sizes
+
+This improvement makes the source attribution section more readable and professional, enhancing the overall user experience while maintaining the important credibility that source attribution provides to news-based podcasts.
+
 ## Development Workflow
 
 The development process follows these steps:
@@ -442,3 +453,4 @@ The deployment process involves building and deploying both the backend and fron
 - Fixed an issue with the Google Cloud Storage bucket naming
 - Updated the frontend to use the production backend URL
 - Improved error handling for API calls 
+- Enhanced source display with better formatting and user-friendly references 
