@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
   const [prompt, setPrompt] = useState('');
-  const [useWebSearch, setUseWebSearch] = useState(false);
+  const [podcastType, setPodcastType] = useState('fictional'); // Default to "Fictional story"
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ const CreatePodcastForm: React.FC = () => {
       const newPodcast = await createPodcast({
         description,
         prompt, // Store the full prompt for future episode generation
-        useWebSearch // Add the useWebSearch flag
+        podcastType // Use podcastType instead of useWebSearch
       });
       
       console.log('Created podcast:', newPodcast);
@@ -93,24 +93,23 @@ const CreatePodcastForm: React.FC = () => {
           </div>
           
           <div className="form-group">
-            <div className="web-search-toggle">
-              <input
-                type="checkbox"
-                id="use-web-search"
-                checked={useWebSearch}
-                onChange={(e) => setUseWebSearch(e.target.checked)}
-                disabled={isSubmitting}
-              />
-              <label htmlFor="use-web-search">
-                Use real-time web information
-              </label>
-            </div>
-            <p className="form-help web-search-help">
-              When enabled, the podcast will use current information from the web to generate up-to-date content.
-              <br />
-              Recommended for news, current events, and other topics that benefit from the latest information.
-              <br />
-              Not recommended for fictional stories or historical content.
+            <label htmlFor="podcast-type">Podcast Type</label>
+            <select
+              id="podcast-type"
+              value={podcastType}
+              onChange={(e) => setPodcastType(e.target.value)}
+              disabled={isSubmitting}
+              className="select-dropdown"
+            >
+              <option value="fictional">Fictional story</option>
+              <option value="news">News from the web</option>
+            </select>
+            <p className="form-help podcast-type-help">
+              <strong>Fictional story:</strong> Creates imaginative content based solely on your prompt. Ideal for stories, adventures, and creative content.
+              <br /><br />
+              <strong>News from the web:</strong> Uses real-time web information to create fact-based content. Ideal for current events, educational content, and topic updates.
+              <br /><br />
+              <strong>Note:</strong> This selection cannot be changed later.
             </p>
           </div>
           

@@ -9,7 +9,8 @@
     "build": "npm run clean && tsc",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "migrate": "ts-node src/scripts/migrate-data.ts"
+    "migrate": "ts-node src/scripts/migrate-data.ts",
+    "migrate-podcast-types": "ts-node src/scripts/migrate-podcast-types.ts"
   },
   "keywords": [
     "podcast",

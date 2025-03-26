@@ -29,7 +29,7 @@ export async function getEpisodes(podcastId: string): Promise<Episode[]> {
   return response.json();
 }
 
-export async function createPodcast(podcast: Partial<Pick<Podcast, 'title' | 'description' | 'prompt'>> & Pick<Podcast, 'description' | 'prompt'>): Promise<Podcast> {
+export async function createPodcast(podcast: Partial<Pick<Podcast, 'title' | 'description' | 'prompt'>> & Pick<Podcast, 'description' | 'prompt'> & { podcastType?: string }): Promise<Podcast> {
   const response = await fetch(`${API_URL}/podcasts`, {
     method: 'POST',
     headers: {
@@ -122,7 +122,7 @@ export async function deletePodcast(podcastId: string): Promise<void> {
 
 export async function updatePodcast(
   podcastId: string,
-  updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'useWebSearch'>>
+  updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType'>>
 ): Promise<Podcast> {
   const response = await fetch(`${API_URL}/podcasts/${podcastId}`, {
     method: 'PATCH',

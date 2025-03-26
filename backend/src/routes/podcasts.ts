@@ -299,7 +299,7 @@ router.post('/:id/generate-episode', async (req, res) => {
     let searchSources: string[] = [];
 
     // Check if this podcast uses web search
-    if (podcast.useWebSearch) {
+    if (podcast.podcastType === 'news') {
       console.log('This podcast uses web search. Conducting search...');
       try {
         // Conduct the three-stage search process
@@ -323,7 +323,7 @@ router.post('/:id/generate-episode', async (req, res) => {
 
     // Build the prompt based on whether this podcast uses web search
     let prompt;
-    if (podcast.useWebSearch) {
+    if (podcast.podcastType === 'news') {
       prompt = `You are a news reporter creating content for a podcast titled "${podcast.title}". The podcast topic is: "${podcastPrompt}".
 
 I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to create a direct, factual podcast episode that reports on the most relevant information in a journalistic style.
@@ -450,7 +450,7 @@ Your content should:
         title: generatedContent.title.slice(0, 100),
         description: generatedContent.description.slice(0, 150),
         content: generatedContent.content,
-        sources: podcast.useWebSearch ? searchSources : undefined,
+        sources: podcast.podcastType === 'news' ? searchSources : undefined,
         created_at: new Date().toISOString()
       });
       
@@ -556,7 +556,7 @@ router.patch('/:id', async (req, res) => {
     }
 
     // Only allow updating certain fields
-    const allowedFields = ['title', 'description', 'prompt', 'useWebSearch'];
+    const allowedFields = ['title', 'description', 'prompt', 'podcastType'];
     const updates: Record<string, any> = {};
     
     for (const field of allowedFields) {

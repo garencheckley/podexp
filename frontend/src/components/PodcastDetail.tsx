@@ -211,6 +211,12 @@ const PodcastDetail = () => {
         <h2>{podcast.title}</h2>
         <p>{podcast.description}</p>
         
+        <div className="podcast-type-badge">
+          <span className={`badge ${podcast.podcastType === 'news' ? 'news' : 'fictional'}`}>
+            {podcast.podcastType === 'news' ? 'News from the web' : 'Fictional story'}
+          </span>
+        </div>
+        
         <div className="podcast-prompt-section">
           <div className="prompt-header">
             <h3>Podcast Prompt</h3>

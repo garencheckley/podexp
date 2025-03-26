@@ -3,7 +3,7 @@ export interface Podcast {
   title: string;
   description: string;
   prompt: string;
-  useWebSearch?: boolean;
+  podcastType?: string;
   created_at?: string;
 }
 

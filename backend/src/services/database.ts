@@ -8,7 +8,7 @@ export interface Podcast {
   title: string;
   description: string;
   prompt?: string;
-  useWebSearch?: boolean;
+  podcastType?: string;
   created_at?: string;
   episodes: Episode[];
 }
@@ -146,8 +146,8 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
  */
 export async function updatePodcast(
   podcastId: string, 
-  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'useWebSearch'>>
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType'>>
 ): Promise<void> {
   console.log(`Updating podcast ${podcastId}:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);
-} 
+}
