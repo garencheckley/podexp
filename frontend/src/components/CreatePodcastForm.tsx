@@ -87,8 +87,6 @@ const CreatePodcastForm: React.FC = () => {
             />
             <p className="form-help">
               This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
-              <br /><br />
-              <strong>Tip:</strong> You can specify episode length by including phrases like "episode length: 2 minutes" or "episode duration: 300 words" in your prompt. If not specified, episodes will default to 2 minutes in length.
             </p>
           </div>
           

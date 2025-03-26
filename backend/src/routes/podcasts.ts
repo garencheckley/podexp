@@ -257,7 +257,7 @@ router.post('/:podcastId/episodes', async (req, res) => {
 // Generate new episode
 router.post('/:id/generate-episode', async (req, res) => {
   try {
-    console.log(`POST /api/podcasts/${req.params.id}/generate-episode`);
+    console.log(`POST /api/podcasts/${req.params.id}/generate-episode`, req.body);
     
     const podcast = await getPodcast(req.params.id);
     if (!podcast) {
@@ -273,25 +273,39 @@ router.post('/:id/generate-episode', async (req, res) => {
     // Use the podcast prompt if available, otherwise use the description
     const podcastPrompt = podcast.prompt || podcast.description;
 
-    // Parse the prompt to check for length specification
-    // Look for patterns like "episode length: X minutes" or "episode duration: X words"
-    let targetWordCount = 300; // Default to 2 minutes (approximately 300 words)
-    let lengthSpecification = "approximately 2 minutes of spoken content (about 300 words)";
+    // Get episode length from request or parse it from the prompt
+    let targetWordCount = 450; // Default to 3 minutes (approximately 450 words)
+    let lengthSpecification = "approximately 3 minutes of spoken content (about 450 words)";
     
-    const lengthRegex = /episode\s+(?:length|duration):\s*(\d+)\s*(minute|minutes|min|words|word)/i;
-    const match = podcastPrompt.match(lengthRegex);
-    
-    if (match) {
-      const value = parseInt(match[1]);
-      const unit = match[2].toLowerCase();
-      
-      if (unit.includes('minute') || unit === 'min') {
+    // If episodeLength is provided in the request, use it
+    if (req.body && req.body.episodeLength) {
+      const minutes = parseInt(req.body.episodeLength);
+      if (!isNaN(minutes) && minutes > 0) {
         // Approximate 150 words per minute for spoken content
-        targetWordCount = value * 150;
-        lengthSpecification = `approximately ${value} minute${value !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
-      } else if (unit.includes('word')) {
-        targetWordCount = value;
-        lengthSpecification = `approximately ${value} words`;
+        targetWordCount = minutes * 150;
+        lengthSpecification = `approximately ${minutes} minute${minutes !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
+        console.log(`Using episode length from request: ${minutes} minutes (${targetWordCount} words)`);
+      }
+    } else {
+      // Fallback: Try to parse from the prompt
+      const lengthRegex = /episode\s+(?:length|duration):\s*(\d+)\s*(minute|minutes|min|words|word)/i;
+      const match = podcastPrompt.match(lengthRegex);
+      
+      if (match) {
+        const value = parseInt(match[1]);
+        const unit = match[2].toLowerCase();
+        
+        if (unit.includes('minute') || unit === 'min') {
+          // Approximate 150 words per minute for spoken content
+          targetWordCount = value * 150;
+          lengthSpecification = `approximately ${value} minute${value !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
+        } else if (unit.includes('word')) {
+          targetWordCount = value;
+          lengthSpecification = `approximately ${value} words`;
+        }
+        console.log(`Using episode length from prompt: ${lengthSpecification}`);
+      } else {
+        console.log(`Using default episode length: ${lengthSpecification}`);
       }
     }
 

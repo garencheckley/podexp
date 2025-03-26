@@ -19,6 +19,7 @@ const PodcastDetail = () => {
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptValue, setPromptValue] = useState('');
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [episodeLength, setEpisodeLength] = useState(3); // Default to 3 minutes
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -58,6 +59,23 @@ const PodcastDetail = () => {
     }
   }, [podcast]);
 
+  const handleEpisodeLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      setEpisodeLength(value);
+    }
+  };
+
+  const decrementEpisodeLength = () => {
+    if (episodeLength > 1) {
+      setEpisodeLength(episodeLength - 1);
+    }
+  };
+
+  const incrementEpisodeLength = () => {
+    setEpisodeLength(episodeLength + 1);
+  };
+
   const handleGenerateEpisode = async () => {
     if (!podcastId) return;
     
@@ -65,7 +83,7 @@ const PodcastDetail = () => {
     setError(null);
     setGenerating(true);
     try {
-      const newEpisode = await generateEpisode(podcastId);
+      const newEpisode = await generateEpisode(podcastId, episodeLength);
       setEpisodes(prevEpisodes => [newEpisode, ...prevEpisodes]);
     } catch (err) {
       // Show the detailed error message from the API
@@ -274,6 +292,38 @@ const PodcastDetail = () => {
             </button>
           </div>
         )}
+        
+        <div className="episode-length-control">
+          <h3>Episode Length</h3>
+          <div className="length-input-container">
+            <button 
+              className="length-button"
+              onClick={decrementEpisodeLength}
+              disabled={episodeLength <= 1 || generating}
+              aria-label="Decrease episode length"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min="1"
+              value={episodeLength}
+              onChange={handleEpisodeLengthChange}
+              className="length-input"
+              disabled={generating}
+            />
+            <button 
+              className="length-button"
+              onClick={incrementEpisodeLength}
+              disabled={generating}
+              aria-label="Increase episode length"
+            >
+              +
+            </button>
+            <span className="length-label">minutes</span>
+          </div>
+          <p className="length-help">Determines the duration of the generated episode. Longer episodes will have more content.</p>
+        </div>
         
         <button 
           onClick={handleGenerateEpisode} 

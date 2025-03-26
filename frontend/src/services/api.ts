@@ -60,12 +60,15 @@ export async function createEpisode(
   return response.json();
 }
 
-export async function generateEpisode(podcastId: string): Promise<Episode> {
+export async function generateEpisode(podcastId: string, episodeLength?: number): Promise<Episode> {
   const response = await fetch(`${API_URL}/podcasts/${podcastId}/generate-episode`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      episodeLength
+    }),
   });
   
   if (!response.ok) {
