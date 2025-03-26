@@ -365,30 +365,36 @@ REQUIREMENTS FOR AUDIO STORYTELLING:
 
 4. AUDIO PACING: Include natural pauses and transitions between ideas (e.g., "Meanwhile," "In related news," "Turning to," etc.) that help listeners follow along without seeing text.
 
-5. CONTEXTUAL FRAMING: Briefly introduce concepts, organizations, or terms that may be unfamiliar to listeners. For example, "The California Public Utilities Commission, the state agency that regulates utility companies, announced..."
+5. PARAGRAPH STRUCTURE FOR AUDIO:
+   - Start a new paragraph for each new thought, topic, or speaker
+   - Use short paragraphs (2-3 sentences) to create natural pauses
+   - Insert a blank line between paragraphs to create a slightly longer pause
+   - For dialogue, start a new paragraph each time the speaker changes
+   - Do not use literal "\n" characters in your response
+6. CONTEXTUAL FRAMING: Briefly introduce concepts, organizations, or terms that may be unfamiliar to listeners. For example, "The California Public Utilities Commission, the state agency that regulates utility companies, announced..."
 
-6. SOURCE ATTRIBUTION: Clearly attribute information to sources in an audio-friendly way:
+7. SOURCE ATTRIBUTION: Clearly attribute information to sources in an audio-friendly way:
    - Mention publication names naturally: "According to The Wall Street Journal..." or "As reported by Reuters yesterday..."
    - For quotes, clearly introduce the speaker and their relevance: "PG&E CEO Patricia Poppe told investors during last month's earnings call..."
    - Use varied attribution phrases for flow: "reports indicate," "according to," "as stated by," etc.
    - Include dates when relevant, especially for time-sensitive information
    - Prioritize recent sources but mention if citing older but still relevant information
 
-7. HUMANIZE THE STORY: Where appropriate, include how the news affects real people or communities to help listeners connect with the information.
+8. HUMANIZE THE STORY: Where appropriate, include how the news affects real people or communities to help listeners connect with the information.
 
-8. AUDIO-FRIENDLY NUMBERS: Round complex numbers and put them in context. Instead of saying "1.527 million dollars," say "more than 1.5 million dollars" or "about one and a half million dollars."
+9. AUDIO-FRIENDLY NUMBERS: Round complex numbers and put them in context. Instead of saying "1.527 million dollars," say "more than 1.5 million dollars" or "about one and a half million dollars."
 
-9. QUOTE INTEGRATION: Use key quotes from sources, but introduce speakers clearly and integrate quotes naturally into the narrative. For example: "Mark Johnson, a spokesperson for the company, explained the decision, saying quote: 'We believe this approach is in the best interest of our customers.' End quote."
+10. QUOTE INTEGRATION: Use key quotes from sources, but introduce speakers clearly and integrate quotes naturally into the narrative. For example: "Mark Johnson, a spokesperson for the company, explained the decision, saying quote: 'We believe this approach is in the best interest of our customers.' End quote."
 
-10. AVOID INFORMATION OVERLOAD: Don't cram too many statistics or data points together. Space them out and provide context for what they mean.
+11. AVOID INFORMATION OVERLOAD: Don't cram too many statistics or data points together. Space them out and provide context for what they mean.
 
-11. KEEP IT FACTUAL: While being conversational, remain objective and factual. Do not include personal opinions or commentary.
+12. KEEP IT FACTUAL: While being conversational, remain objective and factual. Do not include personal opinions or commentary.
 
-12. AUDIO LENGTH: The content MUST be ${lengthSpecification}. This is critical for timing in audio formats.
+13. AUDIO LENGTH: The content MUST be ${lengthSpecification}. This is critical for timing in audio formats.
 
-13. DO NOT include any speech instructions like "(pause)" or formatting markers, just write natural text with standard punctuation.
+14. DO NOT include any speech instructions like "(pause)" or formatting markers, just write natural text with standard punctuation.
 
-14. Format your response as valid JSON with the following structure:
+15. Format your response as valid JSON with the following structure:
 {
   "title": "Clear, Direct News-Style Title",
   "description": "Brief factual description of the episode (1-2 sentences)",
@@ -420,9 +426,15 @@ Your content should:
 6. Be engaging and hold the listener's interest
 7. Have a clear beginning, middle, and end
 8. Be child-friendly and appropriate for all audiences
-9. STRICTLY ADHERE to the ${lengthSpecification} limit - this is critical for timing
-10. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
-11. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation`;
+9. PARAGRAPH STRUCTURE FOR AUDIO:
+   - Start a new paragraph for each new thought, topic, or speaker
+   - Use short paragraphs (2-3 sentences) to create natural pauses
+   - Insert a blank line between paragraphs to create a slightly longer pause
+   - For dialogue, start a new paragraph each time the speaker changes
+   - Do not use literal "\n" characters in your response
+10. STRICTLY ADHERE to the ${lengthSpecification} limit - this is critical for timing
+11. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
+12. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation`;
     }
 
     try {
@@ -442,6 +454,13 @@ Your content should:
       let generatedContent;
       try {
         generatedContent = JSON.parse(cleanedText);
+        
+        // Process content to handle escaped newlines
+        generatedContent.content = generatedContent.content
+          .replace(/\\n/g, '\n') // Replace escaped newlines with actual newlines
+          .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines to just two
+          .replace(/\\"/g, '"');      // Replace escaped quotes with actual quotes
+        
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
         
@@ -452,10 +471,17 @@ Your content should:
         
         if (titleMatch && descriptionMatch && contentMatch) {
           console.log('Manually extracting content from unparseable response');
+          
+          // Process content to handle escaped newlines
+          const processedContent = contentMatch[1]
+            .replace(/\\n/g, '\n') // Replace escaped newlines with actual newlines
+            .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines to just two
+            .replace(/\\"/g, '"');      // Replace escaped quotes with actual quotes
+          
           generatedContent = {
             title: titleMatch[1],
             description: descriptionMatch[1],
-            content: contentMatch[1].replace(/\\"/g, '"')
+            content: processedContent
           };
         } else {
           // If we can't even extract manually, throw the original error
