@@ -274,15 +274,15 @@ router.post('/:id/generate-episode', async (req, res) => {
     const podcastPrompt = podcast.prompt || podcast.description;
 
     // Get episode length from request or parse it from the prompt
-    let targetWordCount = 450; // Default to 3 minutes (approximately 450 words)
-    let lengthSpecification = "approximately 3 minutes of spoken content (about 450 words)";
+    let targetWordCount = 375; // Default to 3 minutes (approximately 375 words at 125 words/min)
+    let lengthSpecification = "approximately 3 minutes of spoken content (about 375 words)";
     
     // If episodeLength is provided in the request, use it
     if (req.body && req.body.episodeLength) {
       const minutes = parseInt(req.body.episodeLength);
       if (!isNaN(minutes) && minutes > 0) {
-        // Approximate 150 words per minute for spoken content
-        targetWordCount = minutes * 150;
+        // Approximate 125 words per minute for spoken content
+        targetWordCount = minutes * 125;
         lengthSpecification = `approximately ${minutes} minute${minutes !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
         console.log(`Using episode length from request: ${minutes} minutes (${targetWordCount} words)`);
       }
@@ -296,8 +296,8 @@ router.post('/:id/generate-episode', async (req, res) => {
         const unit = match[2].toLowerCase();
         
         if (unit.includes('minute') || unit === 'min') {
-          // Approximate 150 words per minute for spoken content
-          targetWordCount = value * 150;
+          // Approximate 125 words per minute for spoken content
+          targetWordCount = value * 125;
           lengthSpecification = `approximately ${value} minute${value !== 1 ? 's' : ''} of spoken content (about ${targetWordCount} words)`;
         } else if (unit.includes('word')) {
           targetWordCount = value;
@@ -374,7 +374,7 @@ REQUIREMENTS:
 8. Make it clear to listeners that information comes from credible sources by frequently mentioning source names
 9. Use at least 3-5 direct quotes with attribution in each episode to demonstrate credibility
 10. Structure content like a news report with the most important information first
-11. The content should be ${lengthSpecification}
+11. WORD COUNT LIMIT: The content MUST be ${lengthSpecification}. This is VERY IMPORTANT. Count your words carefully and do not exceed the target word count.
 12. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
 13. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation
 14. DO NOT include a section at the end listing news sources or podcasts - focus only on substantive news content
@@ -392,7 +392,7 @@ Generate a factual, informative episode that strictly follows the podcast format
 
 ${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
 
-Create a new episode for this series. The content should be ${lengthSpecification}.
+Create a new episode for this series. IMPORTANT: The content MUST be ${lengthSpecification}. Do not exceed this word count.
 
 Format your response as valid JSON with the following structure:
 {
@@ -410,8 +410,9 @@ Your content should:
 6. Be engaging and hold the listener's interest
 7. Have a clear beginning, middle, and end
 8. Be child-friendly and appropriate for all audiences
-9. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
-10. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation`;
+9. STRICTLY ADHERE to the ${lengthSpecification} limit - this is critical for timing
+10. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
+11. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation`;
     }
 
     try {
@@ -455,6 +456,14 @@ Your content should:
       // Count words instead of characters
       const wordCount = generatedContent.content.split(/\s+/).length;
       console.log(`Generated content word count: ${wordCount} words`);
+      
+      // Compare with target word count and log the difference
+      const targetMinutes = targetWordCount / 125;
+      const estimatedMinutes = wordCount / 125;
+      console.log(`Target: ${targetWordCount} words (${targetMinutes.toFixed(1)} minutes)`);
+      console.log(`Actual: ${wordCount} words (${estimatedMinutes.toFixed(1)} minutes)`);
+      console.log(`Difference: ${wordCount - targetWordCount} words (${(estimatedMinutes - targetMinutes).toFixed(1)} minutes)`);
+      console.log(`Adherence: ${(wordCount / targetWordCount * 100).toFixed(1)}% of target length`);
 
       // Sources are now stored as metadata but not added to the transcript
       
