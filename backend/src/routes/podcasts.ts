@@ -338,9 +338,9 @@ router.post('/:id/generate-episode', async (req, res) => {
     // Build the prompt based on whether this podcast uses web search
     let prompt;
     if (podcast.podcastType === 'news') {
-      prompt = `You are a news reporter creating content for a podcast titled "${podcast.title}". The podcast topic is: "${podcastPrompt}".
+      prompt = `You are a professional news broadcaster creating an audio episode for a podcast titled "${podcast.title}". The podcast topic is: "${podcastPrompt}".
 
-I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to create a direct, factual podcast episode that reports on the most relevant information in a journalistic style.
+I'll provide you with real-time information from web searches related to this topic, as well as context from previous episodes if available. Your job is to craft an engaging, conversational, and well-structured news story that listeners can easily follow and understand.
 
 ${previousEpisodes.length > 0 ? `Here are the previous episodes for context:\n\n${episodeContext}\n\n` : ''}
 
@@ -355,37 +355,47 @@ The information below represents multiple search queries and sources, providing 
 
 ${webSearchContext}
 
-REQUIREMENTS:
-1. CRITICALLY IMPORTANT: Strictly adhere to the format and structure specified in the podcast prompt "${podcastPrompt}" - pay special attention to any specified number of topics, episode structure, or format requirements
-2. Write in a clear, direct journalistic style - factual, concise, and straightforward
-3. Provide in-depth coverage of topics rather than shallow coverage of many topics
-4. Do NOT include any personal commentary, opinions, or chatty remarks
-5. Avoid repeating information or stories covered in previous episodes
-6. IMPORTANT: Include publication dates whenever possible:
-   - Look for publication dates of articles/sources in the search results
-   - Include specific dates in your reporting (e.g., "On March 20th, the SF Chronicle reported...")
-   - Prioritize recent sources and clearly indicate when information is from older publications
-   - Use temporal markers like "yesterday," "last week," or "earlier this month" to give listeners context
-7. Include direct quotes from sources with specific, detailed attribution to build listener trust:
-   - Use the format: "[Publication Name] reported on [DATE] that [Person/Organization] said, '[Direct quote]'"
-   - Example: "The San Francisco Chronicle reported on March 22nd that Mayor London Breed said, 'We are addressing the housing crisis with new initiatives.'"
-   - Always specify both the publication and the original speaker when available
-   - Quotes should be word-for-word from the sources when possible
-8. Make it clear to listeners that information comes from credible sources by frequently mentioning source names
-9. Use at least 3-5 direct quotes with attribution in each episode to demonstrate credibility
-10. Structure content like a news report with the most important information first
-11. WORD COUNT LIMIT: The content MUST be ${lengthSpecification}. This is VERY IMPORTANT. Count your words carefully and do not exceed the target word count.
-12. DO NOT include any speech instructions like "(pause)", "(slightly faster pace)", "(upbeat intro music)" - these will not work with TTS
-13. DO NOT use any formatting like "**Host:**" or markdown - use only plain text with normal punctuation
-14. DO NOT include a section at the end listing news sources or podcasts - focus only on substantive news content
-15. Format your response as valid JSON with the following structure:
+REQUIREMENTS FOR AUDIO STORYTELLING:
+
+1. NARRATIVE STRUCTURE: Start with a compelling hook/headline that captures the main story, followed by the key points in a logical flow, and end with a clear conclusion or forward-looking statement.
+
+2. SELECTIVE FOCUS: Do NOT try to include all information from the research. Select only the 3-5 most important and relevant points that create a coherent story about the topic.
+
+3. CONVERSATIONAL TONE: Write in a natural, conversational broadcasting style that a listener can easily follow. Use short, clear sentences and avoid complex structures that would be difficult to understand when heard rather than read.
+
+4. AUDIO PACING: Include natural pauses and transitions between ideas (e.g., "Meanwhile," "In related news," "Turning to," etc.) that help listeners follow along without seeing text.
+
+5. CONTEXTUAL FRAMING: Briefly introduce concepts, organizations, or terms that may be unfamiliar to listeners. For example, "The California Public Utilities Commission, the state agency that regulates utility companies, announced..."
+
+6. SOURCE ATTRIBUTION: Clearly attribute information to sources in an audio-friendly way:
+   - Mention publication names naturally: "According to The Wall Street Journal..." or "As reported by Reuters yesterday..."
+   - For quotes, clearly introduce the speaker and their relevance: "PG&E CEO Patricia Poppe told investors during last month's earnings call..."
+   - Use varied attribution phrases for flow: "reports indicate," "according to," "as stated by," etc.
+   - Include dates when relevant, especially for time-sensitive information
+   - Prioritize recent sources but mention if citing older but still relevant information
+
+7. HUMANIZE THE STORY: Where appropriate, include how the news affects real people or communities to help listeners connect with the information.
+
+8. AUDIO-FRIENDLY NUMBERS: Round complex numbers and put them in context. Instead of saying "1.527 million dollars," say "more than 1.5 million dollars" or "about one and a half million dollars."
+
+9. QUOTE INTEGRATION: Use key quotes from sources, but introduce speakers clearly and integrate quotes naturally into the narrative. For example: "Mark Johnson, a spokesperson for the company, explained the decision, saying quote: 'We believe this approach is in the best interest of our customers.' End quote."
+
+10. AVOID INFORMATION OVERLOAD: Don't cram too many statistics or data points together. Space them out and provide context for what they mean.
+
+11. KEEP IT FACTUAL: While being conversational, remain objective and factual. Do not include personal opinions or commentary.
+
+12. AUDIO LENGTH: The content MUST be ${lengthSpecification}. This is critical for timing in audio formats.
+
+13. DO NOT include any speech instructions like "(pause)" or formatting markers, just write natural text with standard punctuation.
+
+14. Format your response as valid JSON with the following structure:
 {
   "title": "Clear, Direct News-Style Title",
   "description": "Brief factual description of the episode (1-2 sentences)",
   "content": "The full podcast script in plain text with only standard punctuation"
 }
 
-Generate a factual, informative episode that strictly follows the podcast format as specified in the podcast prompt, delivered in a direct journalistic style with extensive use of properly attributed quotes and publication dates to build listener trust.`;
+Consider this a news radio broadcast where you need to capture and maintain listener attention while clearly communicating the most important aspects of the story. Focus on creating a flowing narrative that a listener can easily follow by ear rather than cramming in every fact from the research.`;
     } else {
       // Original prompt for non-web-search podcasts
       prompt = `You are a story generator for a series titled "${podcast.title}". The series description is: "${podcastPrompt}".
