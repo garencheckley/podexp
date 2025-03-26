@@ -20,6 +20,7 @@ const PodcastDetail = () => {
   const [promptValue, setPromptValue] = useState('');
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [episodeLength, setEpisodeLength] = useState(3); // Default to 3 minutes
+  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -196,6 +197,13 @@ const PodcastDetail = () => {
   const handleCancelEdit = () => {
     setPromptValue(podcast?.prompt || '');
     setEditingPrompt(false);
+  };
+
+  const toggleSourcesVisibility = (episodeId: string) => {
+    setExpandedSources(prev => ({
+      ...prev,
+      [episodeId]: !prev[episodeId]
+    }));
   };
 
   if (loading) {
@@ -413,32 +421,47 @@ const PodcastDetail = () => {
                 
                 {episode.sources && episode.sources.length > 0 && (
                   <div className="episode-sources">
-                    <h4>Sources:</h4>
-                    <ul>
-                      {episode.sources.slice(0, 5).map((source, index) => (
-                        <li key={index}>
-                          <a href={source} target="_blank" rel="noopener noreferrer">
-                            {(() => {
-                              try {
-                                const url = new URL(source);
-                                // Check if it's a vertexaisearch URL (which isn't very useful to display)
-                                if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
-                                  return `Reference ${index + 1}`;
+                    <div className="sources-header">
+                      <h4>Sources:</h4>
+                      <button 
+                        onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
+                        className="toggle-sources-button"
+                        aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                      >
+                        {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                      </button>
+                    </div>
+                    
+                    {expandedSources[episode.id!] && (
+                      <ul>
+                        {episode.sources.map((source, index) => (
+                          <li key={index}>
+                            <a href={source} target="_blank" rel="noopener noreferrer">
+                              {(() => {
+                                try {
+                                  const url = new URL(source);
+                                  // Check if it's a vertexaisearch URL (which isn't very useful to display)
+                                  if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
+                                    return `Reference ${index + 1}`;
+                                  }
+                                  // For normal URLs, show the hostname with protocol stripped
+                                  return url.hostname;
+                                } catch (e) {
+                                  // If URL parsing fails, just show the source directly
+                                  return source;
                                 }
-                                // For normal URLs, show the hostname with protocol stripped
-                                return url.hostname;
-                              } catch (e) {
-                                // If URL parsing fails, just show the source directly
-                                return source;
-                              }
-                            })()}
-                          </a>
-                        </li>
-                      ))}
-                      {episode.sources.length > 5 && (
-                        <li>And {episode.sources.length - 5} more sources</li>
-                      )}
-                    </ul>
+                              })()}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    
+                    {!expandedSources[episode.id!] && (
+                      <p className="sources-summary">
+                        {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
