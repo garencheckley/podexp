@@ -313,8 +313,13 @@ The system now supports customizable episode lengths:
 - **Word-Based Measurement**: The system now focuses on word count rather than character count for more natural-sounding episodes
 - **Flexible Options**: Supports both minute-based and word-based specifications
 - **User Guidance**: The podcast creation form includes tips on how to specify episode length
+- **New Episode Length UI**: Added an intuitive interface for specifying episode length with a numeric input field and +/- buttons
+- **Visual Controls**: Users can easily adjust the desired podcast duration in minutes using interactive controls
+- **Default Setting**: The length selector defaults to 3 minutes but can be adjusted to any value
+- **Improved Backend Integration**: The system now explicitly passes the episode length to the backend rather than parsing it from the prompt
+- **Consistent Word Count**: Episode length is converted to appropriate word count (approximately 150 words per minute)
 
-This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences.
+This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences without having to modify the prompt text.
 
 ### Audio Processing for Longer Content
 The system now supports longer podcast episodes through intelligent text chunking:
