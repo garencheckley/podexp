@@ -10,6 +10,7 @@ export interface Podcast {
   prompt?: string;
   podcastType?: string;
   created_at?: string;
+  last_updated?: string;
   episodes: Episode[];
 }
 
@@ -75,7 +76,9 @@ export function getDb(): Firestore {
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
   console.log('Fetching all podcasts...');
-  const snapshot = await getDb().collection('podcasts').get();
+  const snapshot = await getDb().collection('podcasts')
+    .orderBy('last_updated', 'desc')
+    .get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
 }
 
@@ -88,8 +91,14 @@ export async function getPodcast(id: string): Promise<Podcast | null> {
 
 export async function createPodcast(podcast: Omit<Podcast, 'id'>): Promise<Podcast> {
   console.log('Creating new podcast:', podcast);
-  const docRef = await getDb().collection('podcasts').add(podcast);
-  return { id: docRef.id, ...podcast };
+  const now = new Date().toISOString();
+  const podcastWithTimestamps = {
+    ...podcast,
+    created_at: now,
+    last_updated: now
+  };
+  const docRef = await getDb().collection('podcasts').add(podcastWithTimestamps);
+  return { id: docRef.id, ...podcastWithTimestamps };
 }
 
 export async function getEpisodesByPodcastId(podcastId: string): Promise<Episode[]> {
@@ -165,7 +174,7 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
  */
 export async function updatePodcast(
   podcastId: string, 
-  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType'>>
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated'>>
 ): Promise<void> {
   console.log(`Updating podcast ${podcastId}:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);

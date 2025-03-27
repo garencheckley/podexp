@@ -3,6 +3,7 @@ import cors from 'cors';
 import * as dotenv from 'dotenv';
 import { initializeFirebase } from './services/database';
 import podcastRoutes from './routes/podcasts';
+import adminRoutes from './routes/admin';
 
 // Load environment variables
 dotenv.config();
@@ -26,7 +27,7 @@ console.log('Starting server with configuration:', {
 });
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
 // Initialize Firebase
@@ -57,6 +58,7 @@ app.get('/', (req, res) => {
 
 // Import and use route handlers
 app.use('/api/podcasts', podcastRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Start server with error handling
 const server = app.listen(port, '0.0.0.0', () => {
