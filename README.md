@@ -146,6 +146,7 @@ The system now features enhanced compatibility with Text-to-Speech (TTS) technol
 - **Prompt Engineering**: Updated the Gemini prompts to explicitly instruct the AI to avoid speech directions and formatting, using only standard punctuation
 - **Plain Text Emphasis**: The system now generates plain text with standard punctuation only (periods, commas, question marks, etc.) for optimal TTS processing
 - **Improved Audio Quality**: These changes result in more natural-sounding podcast audio without artificial pauses or formatting artifacts
+- **Enhanced Model**: Upgraded to using gemini-2.5-pro-exp-03-25 model for text generation, providing higher quality content
 
 These improvements significantly enhance the listening experience by ensuring that the Text-to-Speech engine receives clean, properly formatted text that can be converted accurately to speech without unexpected artifacts or interruptions.
 
@@ -272,31 +273,133 @@ The development process follows these steps:
 
 ## Deployment Process
 
-The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. The process is as follows:
+The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. There are two main approaches to deployment: using local Docker or using Google Cloud Build directly.
 
-1. **Backend Deployment**:
-   - The backend code is packaged into a Docker container
-   - The container is pushed to Google Container Registry
-   - The container is deployed to Google Cloud Run
-   - Environment variables are configured for the service
+### Backend Deployment (Recommended Method: Google Cloud Build)
 
-2. **Frontend Deployment**:
-   - The frontend code is built using Vite
-   - The built files are packaged into a Docker container with Nginx
-   - The container is pushed to Google Container Registry
-   - The container is deployed to Google Cloud Run
+The recommended approach is to use Google Cloud Build, which handles the Docker build process in the cloud:
 
-3. **Configuration Updates**:
-   - The frontend is configured to use the production backend URL
-   - The backend is configured with the correct environment variables
-   - The backend uses the correct Google Cloud Project ID for storage buckets
+1. **Build and Push the Container**:
+   ```bash
+   # Navigate to the backend directory
+   cd /path/to/project/backend
+   
+   # Build the container using Google Cloud Build
+   gcloud builds submit --tag gcr.io/PROJECT_ID/podcast-backend
+   ```
 
-4. **Troubleshooting**:
-   - Logs can be viewed in Google Cloud Console
-   - The backend logs show details about audio generation and API calls
-   - The frontend logs show details about user interactions
+2. **Deploy to Cloud Run**:
+   ```bash
+   # Deploy the container to Cloud Run
+   gcloud run deploy podcast-backend \
+     --image gcr.io/PROJECT_ID/podcast-backend:latest \
+     --region REGION \
+     --platform managed \
+     --allow-unauthenticated
+   ```
+
+3. **Environment Variables**: 
+   - Key environment variables are set in the Dockerfile and during deployment
+   - The service account credentials are included in the build
+   - Additional environment variables can be set during deployment with `--set-env-vars`
+
+### Backend Deployment (Alternative: Local Docker)
+
+If you prefer to build locally first (requires Docker installed):
+
+1. **Build the Container Locally**:
+   ```bash
+   # Navigate to the backend directory
+   cd /path/to/project/backend
+   
+   # Build the Docker image
+   docker build -t gcr.io/PROJECT_ID/podcast-backend .
+   
+   # Push to Google Container Registry
+   docker push gcr.io/PROJECT_ID/podcast-backend
+   ```
+
+2. **Deploy to Cloud Run**: Same as in the recommended method.
+
+### Frontend Deployment
+
+The frontend deployment follows a similar process:
+
+1. **Build and Push the Container**:
+   ```bash
+   # Navigate to the frontend directory
+   cd /path/to/project/frontend
+   
+   # Build the container using Google Cloud Build
+   gcloud builds submit --tag gcr.io/PROJECT_ID/podcast-frontend
+   ```
+
+2. **Deploy to Cloud Run**:
+   ```bash
+   # Deploy the container to Cloud Run
+   gcloud run deploy podcast-frontend \
+     --image gcr.io/PROJECT_ID/podcast-frontend:latest \
+     --region REGION \
+     --platform managed \
+     --allow-unauthenticated
+   ```
+
+### Common Deployment Issues and Solutions
+
+1. **Deployment Timeout**: 
+   - If the deployment process seems to hang, try adding `--no-traffic --tag=new-version` to your deployment command
+   - This will deploy a new revision without routing traffic to it immediately
+   - You can then migrate traffic gradually using the Cloud Console
+
+2. **Environment Variables**:
+   - Critical environment variables include `GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`, and `NODE_ENV`
+   - To update environment variables without redeploying, use:
+     ```bash
+     gcloud run services update podcast-backend --set-env-vars=KEY=VALUE
+     ```
+
+3. **Service Account Permissions**:
+   - Ensure the service account has proper permissions for Firestore, Storage, etc.
+   - Check permissions in Google Cloud Console under IAM & Admin
+
+4. **Debugging Deployed Services**:
+   - Use Cloud Logging to view logs: `gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=podcast-backend"`
+   - Set up Error Reporting in Google Cloud Console
+
+### Configuration Updates
+
+After deployment, additional configuration may be needed:
+
+1. **Frontend Backend URL**:
+   - The frontend needs to know the backend URL
+   - This is typically set in the frontend's environment configuration
+
+2. **Backend Configuration**:
+   - The backend needs Google Cloud credentials
+   - Configure the project ID for storage buckets
+   - Set up API keys for external services
+
+3. **Cloud Run Service Configuration**:
+   - Memory allocation: Increase if needed for larger models
+   - CPU allocation: Can be adjusted based on traffic
+   - Concurrency: Adjust based on your application's needs
+
+### Rollback Procedure
+
+If a deployment causes issues:
+
+1. **Identify Last Working Revision**:
+   ```bash
+   gcloud run revisions list --service=podcast-backend
+   ```
+
+2. **Rollback to Previous Revision**:
+   ```bash
+   gcloud run services update-traffic podcast-backend --to-revisions=REVISION_NAME=100
+   ```
 
 ### Recent Updates
+- Updated the Gemini model from `gemini-2.5-pro-exp-03-25` to `gemini-2.0-flash` to avoid rate limit issues
 - Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp3-HD-Leda` for improved audio quality
 - Fixed an issue with the Google Cloud Storage bucket naming
 - Updated the frontend to use the production backend URL
