@@ -191,6 +191,17 @@ cd /Users/garen/Desktop/GCPG/frontend && gcloud builds submit --tag gcr.io/gcpg-
 - Add support for custom voice selection
 - Implement batch processing for audio generation
 
+## Enhancement Backlog
+
+A detailed backlog of planned enhancements to improve the quality of news-type podcast episodes has been created. These enhancements focus on:
+
+- Making content less repetitive across episodes
+- Providing more in-depth rather than surface-level coverage
+- Delivering more comprehensive analysis and viewpoints
+- Building upon previous episodes (additive knowledge)
+
+For full details on the planned improvements, see the [BACKLOG.md](BACKLOG.md) file.
+
 ## Configuration
 
 ### Environment Variables
