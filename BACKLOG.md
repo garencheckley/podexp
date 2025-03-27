@@ -43,23 +43,24 @@ See the "Advanced Search Orchestration with Episode Planning" section in the REA
 
 ### 2. Episode Planning & Execution Pipeline
 
-**Problem**: Current generation is single-stage, which may lead to unfocused content without a clear structure.
+**Problem**: Current episode planning focuses primarily on topic selection but lacks detailed narrative structuring, optimal content allocation, and execution metrics.
 
-**Solution**: Create a multi-stage generation process that plans before executing research and content creation.
+**Solution**: Enhance the existing planning system with more sophisticated narrative structure, word count allocation, and plan adherence tracking.
 
 **Components**:
-- Episode planning generator that creates an outline before content
-- Dynamic research specifications based on the plan
-- Research-plan integration system
-- Content generation optimized for the specific plan
-- Plan-execution comparison metrics
+- Advanced narrative planning with clear introduction, body sections, transitions, and conclusion
+- Intelligent word count allocation system based on topic importance and complexity
+- Plan adherence metrics to measure how well the final content matches the planned structure
+- Content formatting engine that generates content according to the narrative structure
+- Feedback loop mechanism to improve future planning based on adherence metrics
 
 **Expected Outcomes**:
-- More focused and coherent episodes
-- Better allocation of time/words to important topics
-- Clearer narrative structure
-- More efficient research targeting only what's needed for the plan
-- Consistent delivery on the intended content structure
+- More cohesive narrative flow in episodes with clear story arc
+- Better allocation of time/words to important topics based on priority
+- Measurable improvement in content structure and organization
+- More intuitive progression between topics with smoother transitions
+- Enhanced listening experience through improved narrative structure
+- Data-driven improvements to the planning process over time
 
 ### 3. Deep Dive Research Framework
 
