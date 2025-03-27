@@ -205,6 +205,46 @@ This approach delivers the following benefits:
 
 The Advanced Search Orchestration with Episode Planning implementation is particularly valuable for news-type podcasts where maintaining fresh, non-repetitive content is essential.
 
+### Deep Dive Research Framework
+
+The system now implements a sophisticated Deep Dive Research Framework that enables podcasts to cover fewer topics with much greater depth, resulting in more substantial and valuable content. This multi-layered approach to research ensures comprehensive coverage of selected topics.
+
+#### Core Components
+
+##### 1. Topic Prioritization Algorithm
+- **Importance & Newsworthiness Scoring**: Ranks potential topics based on multiple factors including relevance, newsworthiness, and depth potential
+- **Optimal Topic Selection**: Intelligently selects fewer topics (typically 1-3) based on episode length
+- **Key Question Identification**: Generates specific questions that the research should answer
+- **Previous Coverage Analysis**: Considers topics covered in previous episodes to avoid repetition
+
+##### 2. Multi-Layer Research Strategy
+- **Surface Layer (Level 1)**: Gathers foundational factual information and key definitions
+- **Intermediate Layer (Level 2)**: Explores context, background, and supporting details
+- **Deep Layer (Level 3)**: Analyzes expert opinions, implications, historical context, and future prospects
+- **Progressive Query Generation**: Each layer informs the queries for subsequent layers
+
+##### 3. Depth Metrics System
+- **Factual Density**: Measures the concentration of specific facts, figures, and concrete information
+- **Insight Score**: Evaluates the quality of analysis beyond just presenting facts
+- **Contextual Depth**: Assesses how well the content provides historical context and broader implications
+- **Overall Depth Assessment**: Combines metrics to evaluate comprehensive depth quality
+
+##### 4. Research Synthesis Engine
+- **Cross-Layer Integration**: Combines insights from all research layers into a cohesive narrative
+- **Question-Targeted Content**: Ensures key questions identified during prioritization are answered
+- **Depth-Appropriate Structure**: Organizes content to progressively build understanding from basic facts to deeper analysis
+- **Content Distribution**: Allocates content based on topic importance and depth potential
+
+#### Benefits
+
+- **Substantive Coverage**: Episodes provide significantly more detailed information on key topics
+- **Enhanced Understanding**: Listeners gain deeper insights rather than surface-level overviews
+- **Contextual Richness**: Topics are presented with historical background and broader implications
+- **Expert-Level Analysis**: Content includes the type of analysis typically found in expert commentary
+- **Educational Value**: Podcasts become more valuable knowledge resources on specific topics
+
+This implementation is ideal for educational and informational podcasts where listeners are seeking in-depth understanding rather than broad coverage of many topics.
+
 ### Improved Source Attribution Display
 The system now features an enhanced display for source attribution in news-based podcasts:
 

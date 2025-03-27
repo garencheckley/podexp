@@ -22,6 +22,7 @@ import * as searchOrchestrator from '../services/searchOrchestrator';
 import * as contentDifferentiator from '../services/contentDifferentiator';
 import * as narrativePlanner from '../services/narrativePlanner';
 import * as contentFormatter from '../services/contentFormatter';
+import * as deepDiveResearch from '../services/deepDiveResearch';
 
 const router = express.Router();
 
@@ -231,6 +232,11 @@ router.post('/:podcastId/episodes', async (req, res) => {
       podcastId: req.params.podcastId
     });
     
+    // Update the podcast's last_updated field
+    await updatePodcast(req.params.podcastId, {
+      last_updated: new Date().toISOString()
+    });
+    
     // Generate audio for the episode
     try {
       // TypeScript non-null assertions for properties we know exist at this point
@@ -288,42 +294,96 @@ router.post('/:id/generate-episode', async (req, res) => {
     const initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
     console.log(`Initial search complete: Found ${initialSearchResults.potentialTopics.length} potential topics`);
     
-    // 3. Have Gemini decide on topics and depth
-    console.log('Step 3: Planning episode content');
-    const episodePlan = await searchOrchestrator.planEpisodeContent(
-      podcast, 
-      episodeAnalysis, 
-      initialSearchResults
-    );
-    console.log(`Episode plan created: "${episodePlan.episodeTitle}" with ${episodePlan.selectedTopics.length} topics`);
-    
-    // 3a. Create enhanced narrative structure with word allocation
-    console.log('Step 3a: Creating detailed narrative structure');
-    const narrativeStructure = await narrativePlanner.createNarrativeStructure(
-      episodePlan,
+    // 2a. NEW: Prioritize topics for deep dive research
+    console.log('Step 2a: Prioritizing topics for deep dive research');
+    const prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(
+      initialSearchResults,
+      episodeAnalysis,
       targetWordCount
     );
-    console.log(`Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
+    console.log(`Topic prioritization complete: Selected ${prioritizedTopics.length} topics for deep research`);
     
-    // 4. Perform deep research with contrasting viewpoints
-    console.log('Step 4: Performing deep research on selected topics');
-    const researchResults = await searchOrchestrator.performDeepResearch(episodePlan);
-    console.log(`Research complete: ${researchResults.topicResearch.length} topics researched, ${researchResults.allSources.length} sources`);
-    
-    // 5. Generate structured content following the narrative plan
-    console.log('Step 5: Generating structured content following narrative plan');
-    const structuredContent = await contentFormatter.generateStructuredContent(
-      researchResults,
-      narrativeStructure
+    // 2b. NEW: Conduct deep dive research on prioritized topics
+    console.log('Step 2b: Conducting deep dive research');
+    const deepResearchResults = await deepDiveResearch.conductDeepDiveResearch(
+      prioritizedTopics,
+      targetWordCount
     );
-    console.log(`Structured content generated (${structuredContent.split(/\s+/).length} words)`);
+    console.log(`Deep research complete: Researched ${deepResearchResults.researchedTopics.length} topics in depth`);
     
-    // Generate episode title and description
-    const generatedContent = {
-      title: episodePlan.episodeTitle,
-      description: `An exploration of ${episodePlan.selectedTopics.map(t => t.topic).join(', ')}.`,
-      content: structuredContent
-    };
+    let generatedContent;
+    let researchResults;
+    let narrativeStructure;
+    
+    // Determine whether to use deep dive or standard flow based on research results
+    if (deepResearchResults.researchedTopics.length > 0) {
+      // Use deep dive research results directly
+      console.log('Using deep dive research results for content generation');
+      
+      generatedContent = {
+        title: `${podcast.title}: Deep Dive into ${deepResearchResults.researchedTopics.map(r => r.topic).join(' and ')}`,
+        description: `An in-depth exploration of ${deepResearchResults.researchedTopics.map(r => r.topic).join(' and ')}.`,
+        content: deepResearchResults.overallContent
+      };
+      
+      // Create a compatible structure for content differentiator
+      researchResults = {
+        topicResearch: deepResearchResults.researchedTopics.map(topic => ({
+          topic: topic.topic,
+          mainResearch: {
+            content: topic.layers.map(layer => layer.content).join('\n\n'),
+            sources: [...new Set(topic.layers.flatMap(layer => layer.sources))]
+          },
+          contrastingViewpoints: {
+            content: '',
+            sources: []
+          },
+          synthesizedContent: topic.synthesizedContent
+        })),
+        overallSynthesis: deepResearchResults.overallContent,
+        allSources: deepResearchResults.allSources
+      };
+    } else {
+      // Fall back to the standard flow if deep research didn't yield results
+      console.log('Falling back to standard episode planning flow');
+      
+      // 3. Have Gemini decide on topics and depth (standard flow)
+      console.log('Step 3: Planning episode content');
+      const episodePlan = await searchOrchestrator.planEpisodeContent(
+        podcast, 
+        episodeAnalysis, 
+        initialSearchResults
+      );
+      console.log(`Episode plan created: "${episodePlan.episodeTitle}" with ${episodePlan.selectedTopics.length} topics`);
+      
+      // 3a. Create enhanced narrative structure with word allocation
+      console.log('Step 3a: Creating detailed narrative structure');
+      narrativeStructure = await narrativePlanner.createNarrativeStructure(
+        episodePlan,
+        targetWordCount
+      );
+      console.log(`Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
+      
+      // 4. Perform deep research with contrasting viewpoints
+      console.log('Step 4: Performing deep research on selected topics');
+      researchResults = await searchOrchestrator.performDeepResearch(episodePlan);
+      console.log(`Research complete: ${researchResults.topicResearch.length} topics researched, ${researchResults.allSources.length} sources`);
+      
+      // 5. Generate structured content following the narrative plan
+      console.log('Step 5: Generating structured content following narrative plan');
+      const structuredContent = await contentFormatter.generateStructuredContent(
+        researchResults,
+        narrativeStructure
+      );
+      console.log(`Structured content generated (${structuredContent.split(/\s+/).length} words)`);
+      
+      // Generate episode title and description
+      generatedContent = {
+        title: episodePlan.episodeTitle,
+        description: `An exploration of ${episodePlan.selectedTopics.map(t => t.topic).join(', ')}.`,
+        content: structuredContent
+      };
+    }
     
     // 6. Ensure content differentiation
     console.log('Step 6: Validating content differentiation');
@@ -336,17 +396,40 @@ router.post('/:id/generate-episode', async (req, res) => {
     // Use the final content (either original or improved version if needed)
     const finalContent = validationResult.improvedContent || generatedContent.content;
     
-    // 7. Evaluate adherence to narrative structure
-    console.log('Step 7: Evaluating adherence to narrative structure');
-    const updatedNarrativeStructure = await narrativePlanner.evaluateContentAdherence(
-      finalContent,
-      narrativeStructure
-    );
-    console.log(`Adherence evaluation complete: overall score ${updatedNarrativeStructure.adherenceMetrics.overallAdherence}`);
-    
     // Create adherence feedback for storage
-    const adherenceFeedback = contentFormatter.createAdherenceFeedback(updatedNarrativeStructure);
-    console.log(adherenceFeedback);
+    let adherenceFeedback = '';
+    let narrativeForStorage = null;
+    
+    // Only evaluate narrative adherence if using standard flow with narrative structure
+    if (narrativeStructure) {
+      // 7. Evaluate adherence to narrative structure
+      console.log('Step 7: Evaluating adherence to narrative structure');
+      const updatedNarrativeStructure = await narrativePlanner.evaluateContentAdherence(
+        finalContent,
+        narrativeStructure
+      );
+      console.log(`Adherence evaluation complete: overall score ${updatedNarrativeStructure.adherenceMetrics.overallAdherence}`);
+      
+      // Create adherence feedback for storage
+      adherenceFeedback = contentFormatter.createAdherenceFeedback(updatedNarrativeStructure);
+      console.log(adherenceFeedback);
+      
+      // Format narrative structure for storage
+      narrativeForStorage = {
+        introduction: {
+          wordCount: updatedNarrativeStructure.introduction.wordCount,
+          approach: updatedNarrativeStructure.introduction.approach
+        },
+        bodySections: updatedNarrativeStructure.bodySections.map(section => ({
+          sectionTitle: section.sectionTitle,
+          wordCount: section.wordCount
+        })),
+        conclusion: {
+          wordCount: updatedNarrativeStructure.conclusion.wordCount
+        },
+        adherenceMetrics: updatedNarrativeStructure.adherenceMetrics
+      };
+    }
     
     // Count words
     const wordCount = finalContent.split(/\s+/).length;
@@ -360,31 +443,26 @@ router.post('/:id/generate-episode', async (req, res) => {
     console.log(`Difference: ${wordCount - targetWordCount} words (${(estimatedMinutes - targetMinutes).toFixed(1)} minutes)`);
     console.log(`Adherence: ${(wordCount / targetWordCount * 100).toFixed(1)}% of target length`);
     
-    // Format narrative structure for storage
-    const narrativeForStorage = {
-      introduction: {
-        wordCount: updatedNarrativeStructure.introduction.wordCount,
-        approach: updatedNarrativeStructure.introduction.approach
-      },
-      bodySections: updatedNarrativeStructure.bodySections.map(section => ({
-        sectionTitle: section.sectionTitle,
-        wordCount: section.wordCount
-      })),
-      conclusion: {
-        wordCount: updatedNarrativeStructure.conclusion.wordCount
-      },
-      adherenceMetrics: updatedNarrativeStructure.adherenceMetrics
-    };
-    
     // Create the episode
-    const episode = await createEpisode({
+    const episodeData: any = {
       podcastId: podcastId,
       title: generatedContent.title.slice(0, 100),
       description: generatedContent.description.slice(0, 150),
       content: finalContent,
       sources: researchResults.allSources,
-      created_at: new Date().toISOString(),
-      narrativeStructure: narrativeForStorage
+      created_at: new Date().toISOString()
+    };
+    
+    // Only add narrative structure if it exists
+    if (narrativeForStorage) {
+      episodeData.narrativeStructure = narrativeForStorage;
+    }
+    
+    const episode = await createEpisode(episodeData);
+    
+    // Update the podcast's last_updated field
+    await updatePodcast(podcastId, {
+      last_updated: new Date().toISOString()
     });
     
     // Generate audio for the episode
