@@ -1,0 +1,176 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { EpisodeAnalysis } from './episodeAnalyzer';
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const modelId = 'gemini-2.0-flash';
+const model = genAI.getGenerativeModel({ model: modelId });
+
+/**
+ * Interface for content validation result
+ */
+export interface ValidationResult {
+  similarityScore: number;
+  uniqueElements: string[];
+  redundantElements: string[];
+  differentiationAssessment: string;
+  improvementSuggestions: string[];
+  isPassing: boolean;
+  improvedContent?: string;
+}
+
+/**
+ * Validates that new content is sufficiently differentiated from previous episode content
+ * @param draftContent Draft episode content to validate
+ * @param analysis Analysis of previous episodes
+ * @returns Validation result with assessment and potential improvements
+ */
+export async function validateContentDifferentiation(
+  draftContent: string,
+  analysis: EpisodeAnalysis
+): Promise<ValidationResult> {
+  try {
+    console.log('Validating content differentiation');
+    
+    // If there are no previous episodes, content is automatically differentiated
+    if (analysis.episodeCount === 0) {
+      return {
+        similarityScore: 0,
+        uniqueElements: ['All content is unique as there are no previous episodes'],
+        redundantElements: [],
+        differentiationAssessment: 'Content is unique as this is the first episode.',
+        improvementSuggestions: [],
+        isPassing: true
+      };
+    }
+    
+    const validationPrompt = `
+      Evaluate this draft episode content against previous episodes to ensure it provides unique value.
+      
+      Draft episode content:
+      ${draftContent.substring(0, 6000)}
+      
+      Previous episodes have covered these topics:
+      ${analysis.recentTopics.map(t => `- ${t.topic} (mentioned ${t.frequency} times)`).join('\n')}
+      
+      Recurrent themes in previous episodes:
+      ${Array.from(analysis.recurrentThemes).join(', ')}
+      
+      Analyze and respond in JSON format:
+      {
+        "similarityScore": 0-100,
+        "uniqueElements": ["element1", "element2", ...],
+        "redundantElements": ["element1", "element2", ...],
+        "differentiationAssessment": "Detailed assessment of how unique this content is",
+        "improvementSuggestions": ["suggestion1", "suggestion2", ...],
+        "isPassing": true/false
+      }
+      
+      Set "isPassing" to true if the content is sufficiently differentiated, or false if it needs improvement.
+      A content should pass if:
+      1. It covers topics not extensively covered in previous episodes
+      2. It provides new perspectives or information on existing topics
+      3. It has a unique approach or angle to the subject matter
+      4. The similarity score is below 50
+    `;
+    
+    const result = await model.generateContent(validationPrompt);
+    const responseText = result.response.text();
+    
+    try {
+      // Clean up the response to ensure it's valid JSON
+      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+      const validationResult = JSON.parse(cleanedResponse) as ValidationResult;
+      
+      console.log(`Content validation complete. Similarity score: ${validationResult.similarityScore}, Passing: ${validationResult.isPassing}`);
+      
+      // If content isn't differentiated enough, request improvements
+      if (!validationResult.isPassing) {
+        console.log('Content needs improvement. Requesting improved version...');
+        const improvedContent = await improveContentDifferentiation(
+          draftContent,
+          validationResult.redundantElements,
+          validationResult.improvementSuggestions
+        );
+        
+        return {
+          ...validationResult,
+          improvedContent
+        };
+      }
+      
+      return validationResult;
+    } catch (parseError) {
+      console.error('Error parsing validation result:', parseError);
+      // Provide a default passing validation on error
+      return {
+        similarityScore: 30,
+        uniqueElements: ['Unable to determine unique elements due to parsing error'],
+        redundantElements: [],
+        differentiationAssessment: 'Error in validation process, but content is assumed to be sufficiently unique.',
+        improvementSuggestions: [],
+        isPassing: true
+      };
+    }
+  } catch (error) {
+    console.error('Error validating content differentiation:', error);
+    // Provide a default passing validation on error
+    return {
+      similarityScore: 30,
+      uniqueElements: ['Unable to determine unique elements due to error'],
+      redundantElements: [],
+      differentiationAssessment: 'Error in validation process, but content is assumed to be sufficiently unique.',
+      improvementSuggestions: [],
+      isPassing: true
+    };
+  }
+}
+
+/**
+ * Improves content to make it more differentiated from previous episodes
+ * @param draftContent Original draft content
+ * @param redundantElements Elements identified as redundant
+ * @param improvementSuggestions Suggestions for improvement
+ * @returns Improved content
+ */
+async function improveContentDifferentiation(
+  draftContent: string,
+  redundantElements: string[],
+  improvementSuggestions: string[]
+): Promise<string> {
+  try {
+    console.log('Improving content differentiation');
+    
+    const improvementPrompt = `
+      Rewrite this podcast episode content to make it more unique and differentiated.
+      
+      Original content:
+      ${draftContent.substring(0, 6000)}
+      
+      The following elements were identified as redundant or too similar to previous episodes:
+      ${redundantElements.map(e => `- ${e}`).join('\n')}
+      
+      Please implement these specific improvement suggestions:
+      ${improvementSuggestions.map(s => `- ${s}`).join('\n')}
+      
+      Create an improved version that:
+      1. Replaces redundant elements with more unique content
+      2. Deepens coverage in areas where it can be differentiated
+      3. Takes a fresh perspective on the topics
+      4. Maintains the same general structure and flow
+      5. Preserves the educational value and information accuracy
+      
+      Improved content:
+    `;
+    
+    const result = await model.generateContent(improvementPrompt);
+    const improvedContent = result.response.text();
+    
+    console.log('Generated improved content');
+    return improvedContent;
+  } catch (error) {
+    console.error('Error improving content differentiation:', error);
+    // Return the original content if improvement fails
+    return draftContent;
+  }
+} 

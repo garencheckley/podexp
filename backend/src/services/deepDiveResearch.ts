@@ -638,6 +638,14 @@ async function generateIntegratedContent(
       5. Has a clear introduction, body, and conclusion
       6. Feels like a cohesive episode, not disjointed sections
       
+      IMPORTANT FORMAT REQUIREMENTS:
+      1. Write in plain text with plain punctuation only - NO markdown formatting
+      2. DO NOT include audio instructions like "(upbeat music)" or "(pause)"
+      3. DO NOT include speaker indicators like "Host:" or "Speaker:"
+      4. DO NOT include section headers or transition markers
+      5. Avoid using bold, italics, or other formatting that won't be recognized by text-to-speech
+      6. Write in a conversational style but without explicitly marking the speaker
+      
       The content should be podcast-ready, conversational yet substantive,
       and structured to maintain listener engagement throughout.
     `;
@@ -649,7 +657,7 @@ async function generateIntegratedContent(
     
     // Fallback: Just concatenate the synthesized content from each topic
     return researchedTopics
-      .map(research => `## ${research.topic}\n\n${research.synthesizedContent}`)
+      .map(research => `${research.topic}\n\n${research.synthesizedContent}`)
       .join('\n\n');
   }
 } 

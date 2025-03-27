@@ -3,10 +3,10 @@ import { Tool, GenerationConfig } from '@google/generative-ai';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash'; // Updated to Gemini 2.0 which better supports search
+const modelId = 'gemini-2.0-flash'; // Using flash model with higher rate limits
 const model = genAI.getGenerativeModel({ model: modelId });
 
-// Configure Google Search tool as per Gemini 2.0 documentation
+// Configure Google Search tool as per Gemini documentation
 const googleSearchTool = {
   google_search: {}  // Using google_search as required by the API
 };

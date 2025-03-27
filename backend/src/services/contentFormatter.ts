@@ -58,8 +58,15 @@ export async function generateStructuredContent(
       4. Use the research content as your factual basis
       5. Maintain a conversational podcast tone throughout
       6. Create a cohesive story that flows naturally between sections
-      7. Write in plain text with no formatting, speech directions, or special characters
-      8. Use only standard punctuation (periods, commas, question marks)
+      
+      CRITICAL FORMAT REQUIREMENTS:
+      1. Write in plain text with ONLY standard punctuation (periods, commas, question marks)
+      2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
+      3. DO NOT include any speaker indicators like "Host:" or "Speaker:"
+      4. DO NOT include section headers or transition markers in the actual content
+      5. DO NOT use markdown formatting, special characters, bold, or italics
+      6. Write in a conversational style but without explicitly marking the speaker
+      7. Do not mention section numbers or use formatting markers in the actual content
       
       REQUIRED: Structure the content exactly according to the word counts specified - this is critical.
     `;
