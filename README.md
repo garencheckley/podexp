@@ -422,6 +422,8 @@ The development process follows these steps:
 6. **Documentation**: Update the README.md with details of the changes
 7. **Version Control**: Commit changes to Git repository
 
+**IMPORTANT**: When implementing new features, always remember to commit and push your changes to the Git repository. This ensures that all changes are properly tracked and that other team members have access to the latest code. Use meaningful commit messages that clearly describe the changes made.
+
 ## Deployment Process
 
 The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. The process is as follows:
