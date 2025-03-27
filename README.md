@@ -185,9 +185,6 @@ cd /Users/garen/Desktop/GCPG/frontend && gcloud builds submit --tag gcr.io/gcpg-
 - Enhanced prompt engineering for integrating search results into episode content
 
 ### Phase 6 (Planned)
-- Introduce user authentication using Google Account login
-- Restrict podcast visibility to creators
-- Complete user flow: Authentication → Podcasts List → Episodes
 - Add support for custom voice selection
 - Implement batch processing for audio generation
 
