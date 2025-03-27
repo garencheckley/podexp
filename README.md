@@ -137,264 +137,6 @@ The frontend includes a custom audio player component (`frontend/src/components/
 - Time display
 - Direct URL access to audio files
 
-## Deployment
-
-### Backend Deployment
-```bash
-cd /Users/garen/Desktop/GCPG/backend && gcloud builds submit --tag gcr.io/gcpg-452703/podcast-backend && gcloud run deploy podcast-backend --image gcr.io/gcpg-452703/podcast-backend --platform managed --region us-west1 --allow-unauthenticated
-```
-
-### Frontend Deployment
-```bash
-cd /Users/garen/Desktop/GCPG/frontend && gcloud builds submit --tag gcr.io/gcpg-452703/podcast-frontend && gcloud run deploy podcast-frontend --image gcr.io/gcpg-452703/podcast-frontend --platform managed --region us-west1 --allow-unauthenticated
-```
-
-## Service URLs
-- Frontend: https://podcast-frontend-827681017824.us-west1.run.app
-- Backend: https://podcast-backend-827681017824.us-west1.run.app
-
-## Development Phases
-
-### Phase 1 (Completed)
-- Basic webapp with hardcoded podcast and episodes
-- "Timmy the T-Rex and his adventures" as demo podcast
-- Text-only episodes, no audio playback
-
-### Phase 2 (Completed)
-- Integration with Gemini API for generating additional episodes
-- Using prior episodes as context for future episodes
-- Episodes remain text-only
-
-### Phase 3 (Completed)
-- Allow creation of new podcasts by users
-- Allow custom prompting for podcast generation
-- No authentication or login required
-
-### Phase 4 (Completed)
-- Introduce audio playback using Google Text-to-Speech API
-- Display audio URLs for direct access
-- Implement custom audio player component
-- Optimize voice configuration using Chirp3 HD voice for natural-sounding narration
-- Enhance Gemini prompts for better audio content generation
-
-### Phase 5 (Completed)
-- Integrate web search functionality using Gemini API's grounding capability
-- Add toggle for enabling/disabling web search at podcast creation
-- Implement intelligent three-stage search process for relevant information retrieval
-- Display and attribution of sources for web search enabled episodes
-- Enhanced prompt engineering for integrating search results into episode content
-
-### Phase 6 (Planned)
-- Add support for custom voice selection
-- Implement batch processing for audio generation
-
-## Enhancement Backlog
-
-A detailed backlog of planned enhancements to improve the quality of news-type podcast episodes has been created. These enhancements focus on:
-
-- Making content less repetitive across episodes
-- Providing more in-depth rather than surface-level coverage
-- Delivering more comprehensive analysis and viewpoints
-- Building upon previous episodes (additive knowledge)
-
-For full details on the planned improvements, see the [BACKLOG.md](BACKLOG.md) file.
-
-## Configuration
-
-### Environment Variables
-The backend requires the following environment variables:
-- `PORT`: Server port (default: 8080)
-- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID
-- `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account key file
-- `GEMINI_API_KEY`: API key for Google Gemini
-
-### Service Account
-The application uses a service account with the following permissions:
-- Firestore: Read/Write
-- Cloud Storage: Admin
-- Text-to-Speech: Client
-
-## Technical Implementation Details
-
-### Text-to-Speech Implementation
-```typescript
-// Configure the request
-const request = {
-  input: { text },
-  voice: {
-    languageCode: 'en-US',
-    name: 'en-US-Chirp3-HD-Leda', // Using the newest Chirp3 HD Leda voice for even more natural sound
-  },
-  audioConfig: { 
-    audioEncoding: 'MP3',
-    speakingRate: 1.0, // Natural speaking rate
-    pitch: 0.0,        // Default pitch
-    volumeGainDb: 0,    // Default volume
-    effectsProfileId: ['headphone-class-device'], // Optimize for headphones
-  },
-};
-```
-
-### Gemini Prompt Optimization
-The system uses an optimized prompt for the Gemini LLM to generate content specifically designed for audio narration. Key features:
-
-- Generates content with natural pacing and rhythm suitable for spoken delivery
-- Creates short, simple sentences that are easy to follow when listened to
-- Maintains continuity with previous episodes for a coherent listening experience
-- Optimizes for child-friendly content with appropriate vocabulary and themes
-- Structures content with clear beginnings and endings for better audio flow
-- Strategic use of punctuation (periods, ellipses, commas, and hyphens) to enhance dramatic effect and create natural pauses
-
-### Docker Configuration
-The application uses multi-stage Docker builds for both frontend and backend to minimize image size and improve security.
-
-#### Backend Dockerfile
-- Build stage: Compiles TypeScript to JavaScript
-- Production stage: Runs the compiled JavaScript with minimal dependencies
-- Includes service account key for authentication
-
-#### Frontend Dockerfile
-- Build stage: Builds the React application with Vite
-- Production stage: Serves the static files using Nginx
-- Custom Nginx configuration for SPA routing
-
-## Known Issues and Limitations
-
-1. The service account key is included in the Docker image, which is not ideal for production security. In a more secure setup, it would use Google Cloud Run's built-in service account integration.
-
-2. There's no rate limiting or quota management for the AI generation features, which could lead to excessive API usage.
-
-3. The audio generation process happens synchronously, which can cause timeouts for long episodes. A future improvement would be to implement asynchronous processing with webhooks.
-
-4. The frontend doesn't implement caching for API responses, which could improve performance.
-
-## Future Enhancements (Beyond Phase 5)
-
-1. Implement podcast RSS feed generation for compatibility with podcast platforms
-2. Add support for custom voice selection
-3. Implement batch processing for audio generation
-4. Add analytics for tracking podcast and episode popularity
-5. Implement social sharing features
-6. Add support for podcast artwork/images
-7. Implement premium features with payment integration
-
-## Recent Improvements
-
-### Audio Quality Enhancements
-The system has been upgraded to use Google's newest Chirp3 HD Leda voice model (en-US-Chirp3-HD-Leda), which provides significantly improved audio quality compared to the previous voice model. Key improvements include:
-
-- More natural-sounding narration with better intonation and rhythm
-- Higher definition audio quality for improved listening experience
-- Optimized speaking rate for better comprehension
-- Better handling of pauses and emphasis in the generated content
-- Enhanced clarity and expressiveness for a more engaging listening experience
-
-### Content Generation Optimization
-The Gemini prompt has been refined to generate content that is specifically optimized for audio narration:
-
-- Content is now structured with shorter, simpler sentences that are easier to follow when listened to
-- The prompt emphasizes natural pacing and rhythm suitable for spoken delivery
-- Generated content maintains better continuity with previous episodes
-- Enhanced use of punctuation for dramatic storytelling effects:
-  - Strategic use of periods (.) for definitive stops that create impact
-  - Use of ellipses (...) for suspense, trailing thoughts, or to indicate pauses
-  - Proper use of commas (,) to control pacing and create natural speech rhythms
-  - Use of hyphens (-) to indicate interruptions or sudden changes
-- The system now produces more child-friendly content with appropriate vocabulary
-- Episode structure includes clear beginnings and endings for better audio flow
-
-### Delete Functionality
-The system now includes the ability to delete podcasts and episodes:
-
-- **Podcast Deletion**: Users can delete entire podcasts, which automatically removes all associated episodes and audio files from both the database and storage.
-- **Episode Deletion**: Individual episodes can be deleted, removing both the database entry and the associated audio file.
-- **User Interface**: Delete buttons are provided in both the podcast list and episode views, with confirmation dialogs to prevent accidental deletion.
-- **Cascading Deletes**: When a podcast is deleted, all its episodes and audio files are automatically removed to prevent orphaned data.
-
-These improvements provide users with complete control over their content, allowing them to manage their podcasts more effectively.
-
-### Episode Length Customization
-The system now supports customizable episode lengths:
-
-- **Prompt-Based Configuration**: Users can specify the desired episode length in the podcast prompt using phrases like "episode length: 3 minutes" or "episode duration: 300 words"
-- **Default Length**: If no length is specified, episodes default to 2 minutes (approximately 300 words)
-- **Word-Based Measurement**: The system now focuses on word count rather than character count for more natural-sounding episodes
-- **Flexible Options**: Supports both minute-based and word-based specifications
-- **User Guidance**: The podcast creation form includes tips on how to specify episode length
-- **New Episode Length UI**: Added an intuitive interface for specifying episode length with a numeric input field and +/- buttons
-- **Visual Controls**: Users can easily adjust the desired podcast duration in minutes using interactive controls
-- **Default Setting**: The length selector defaults to 3 minutes but can be adjusted to any value
-- **Improved Backend Integration**: The system now explicitly passes the episode length to the backend rather than parsing it from the prompt
-- **Consistent Word Count**: Episode length is converted to appropriate word count (approximately 150 words per minute)
-
-This feature gives users more control over their podcast content, allowing them to create episodes that match their specific needs and preferences without having to modify the prompt text.
-
-### Audio Processing for Longer Content
-The system now supports longer podcast episodes through intelligent text chunking:
-
-- **Smart Audio Chunking**: Automatically splits long text content that exceeds the Text-to-Speech API's 5000-byte limit into manageable chunks
-- **Sentence-Aware Splitting**: Preserves sentence integrity when splitting content to maintain natural flow
-- **Seamless Audio Stitching**: Combines generated audio chunks into a single cohesive MP3 file
-- **Optimized Chunk Size**: Uses a conservative 4500-byte limit per chunk to ensure reliability
-- **Transparent Processing**: Logs detailed information about chunk sizes and processing for troubleshooting
-
-This improvement allows for creation of longer episodes (such as 10-minute podcasts) without audio generation failures.
-
-### Regenerate Audio Capability
-A new feature has been added to regenerate audio for existing episodes:
-
-- **On-Demand Audio Regeneration**: Users can regenerate audio for any episode via a menu option
-- **Error Recovery**: Provides a solution for episodes where audio generation initially failed
-- **Voice Model Updates**: Allows updating existing episodes with improved voice models as they become available
-- **Audio Quality Improvements**: Episodes can be refreshed with the latest audio generation settings
-- **User Interface Integration**: Accessible directly from the episode menu with clear status indicators
-
-### Enhanced Web Search Intelligence
-The web search-driven podcast generation has been improved to better respect format specifications:
-
-- **Podcast Format Adherence**: Strictly follows format requirements specified in the podcast description (e.g., covering exactly 2-3 topics when specified)
-- **Deep Topic Coverage**: Focuses on providing in-depth coverage of fewer topics rather than shallow coverage of many
-- **Format Priority**: The system now emphasizes podcast format specifications as the highest priority requirement
-- **Flexible Implementation**: Adapts to different podcast formats without hardcoded constraints
-
-### Publication Date Integration
-Web search-driven episodes now include temporal context for better relevance:
-
-- **Date-Aware Reporting**: Includes publication dates of sources when reporting information
-- **Temporal Markers**: Uses specific dates and relative time references (e.g., "yesterday", "last week") for clarity
-- **Date Attribution**: Quotes now include publication dates (e.g., "The Chronicle reported on March 22nd...")
-- **Recency Prioritization**: Clearly indicates when information comes from older sources
-- **Listener Trust**: Enhances credibility by providing temporal context for all information
-
-These improvements collectively enhance the podcast generation system's ability to create longer, higher-quality, format-respecting content with clear temporal context and reliable audio generation for all episode lengths.
-
-### Adaptive Multi-Stage Research
-The system now features an intelligent follow-up search capability that enhances the depth and quality of podcast content:
-
-- **Intelligent Research Analysis**: Automatically analyzes initial search results to identify topics needing deeper investigation
-- **Targeted Follow-up Searches**: Conducts specific, focused follow-up searches on identified topics
-- **Prioritized Research Topics**: Uses AI to prioritize which aspects of a topic need the most additional context
-- **Length-Based Research Scaling**: Automatically adjusts the depth and breadth of research based on podcast length
-- **Parallel Processing**: Executes multiple follow-up searches simultaneously for efficiency
-- **Comprehensive Consolidation**: Intelligently combines findings from all searches into a cohesive research document
-- **Enhanced Source Diversity**: Gathers sources from multiple searches, providing a wider range of references
-- **Gap Identification**: Specifically looks for information gaps, outdated data, or areas needing verification
-- **Self-Directed Research**: The system determines on its own when and what follow-up searches are necessary
-
-This improvement transforms the podcast generation process from a single-query approach to a multi-stage research project, resulting in significantly more comprehensive, nuanced, and well-sourced podcast episodes. Shorter podcasts (1-2 minutes) receive focused research with fewer follow-up queries, while longer episodes (5-10 minutes) trigger more extensive research with additional follow-up searches to ensure appropriate depth of coverage.
-
-### In-Place Prompt Editing
-The system now allows users to edit podcast prompts directly from the podcast detail page:
-
-- **Intuitive Editing Interface**: Edit prompts directly from the podcast detail page without navigating away
-- **Real-time Updates**: Changes to prompts are immediately reflected in the system
-- **Improved Workflow**: Simplifies the process of refining podcast generation instructions
-- **Error Handling**: Robust error management ensures prompt updates are reliable
-- **User-Friendly Controls**: Clear editing interface with save and cancel options
-- **Responsive Design**: Works well on both desktop and mobile devices
-
-This feature enhances the user experience by making it easier to iterate on podcast prompts until they generate the desired content. Users can now make quick adjustments to prompts after seeing the results of previous episodes, allowing for a more efficient creative process without leaving the podcast detail view.
-
 ### TTS Compatibility Improvements
 The system now features enhanced compatibility with Text-to-Speech (TTS) technology:
 
@@ -406,6 +148,62 @@ The system now features enhanced compatibility with Text-to-Speech (TTS) technol
 - **Improved Audio Quality**: These changes result in more natural-sounding podcast audio without artificial pauses or formatting artifacts
 
 These improvements significantly enhance the listening experience by ensuring that the Text-to-Speech engine receives clean, properly formatted text that can be converted accurately to speech without unexpected artifacts or interruptions.
+
+### Advanced Search Orchestration with Episode Planning
+
+The system now implements a sophisticated multi-stage process for episode generation, combining advanced search orchestration with intelligent episode planning. This implementation follows a five-step workflow:
+
+#### 1. Episode Analysis
+- **Comprehensive Content Review**: Automatically analyzes previous episodes to identify topics, themes, and content patterns
+- **Topic Frequency Analysis**: Tracks which topics have been covered and how frequently
+- **Theme Identification**: Extracts recurring themes to avoid repetition
+- **Source Tracking**: Maintains a database of previously used sources
+- **Smart AI Analysis**: Uses Gemini to perform semantic analysis of episode content
+
+#### 2. Initial Exploratory Search
+- **Differentiated Query Generation**: Creates search queries specifically designed to find content not covered in previous episodes
+- **Recency-Aware Queries**: Includes time markers in queries to prioritize recent information
+- **Topic Identification**: Analyzes search results to identify potential new topics
+- **Relevance Scoring**: Rates potential topics based on relevance to podcast theme
+- **Query Suggestion**: Automatically suggests follow-up queries for deeper research
+
+#### 3. Intelligent Episode Planning
+- **Editorial Decision Making**: AI selects the most appropriate topics for the episode
+- **Depth Assignment**: Determines ideal coverage depth for each topic (deep, medium, or overview)
+- **Angle Identification**: Specifies the angles or perspectives to explore for each topic
+- **Further Research Planning**: Creates specific research queries for deeper investigation
+- **Differentiation Strategy**: Develops a strategy to ensure the episode differs from previous ones
+
+#### 4. Deep Research with Contrasting Viewpoints
+- **Targeted Research**: Conducts deep research on selected topics
+- **Contrasting Viewpoint Search**: Specifically seeks alternative perspectives on each topic
+- **Multi-Query Execution**: Runs multiple parallel searches to gather comprehensive information
+- **Topic Synthesis**: Combines research into coherent topic summaries
+- **Source Collection**: Gathers diverse sources for attribution
+
+#### 5. Content Differentiation Validation
+- **Similarity Analysis**: Compares generated content against previous episodes
+- **Redundancy Detection**: Identifies redundant elements that might duplicate previous content
+- **Automated Improvement**: When necessary, automatically rewrites content to increase differentiation
+- **Quality Metrics**: Provides similarity scores and differentiation assessments
+- **Content Optimization**: Fine-tunes content to ensure uniqueness while maintaining quality
+
+#### Advanced Search Architecture
+The implementation consists of three primary services:
+
+1. **episodeAnalyzer**: Analyzes existing episodes to understand previously covered content
+2. **searchOrchestrator**: Coordinates the multi-phase search process and topic selection
+3. **contentDifferentiator**: Ensures new content is sufficiently differentiated from previous episodes
+
+This approach delivers the following benefits:
+
+- **Reduced Repetition**: Each episode contains significantly less repeated information from previous episodes
+- **Increased Depth**: Topics are covered more thoroughly with deeper insights
+- **Multiple Perspectives**: Content now includes contrasting viewpoints for more balanced coverage
+- **Progressive Knowledge Building**: Episodes build upon previous knowledge rather than repeating basics
+- **Enhanced Differentiation**: Each episode provides unique value not found in previous episodes
+
+The Advanced Search Orchestration with Episode Planning implementation is particularly valuable for news-type podcasts where maintaining fresh, non-repetitive content is essential.
 
 ### Improved Source Attribution Display
 The system now features an enhanced display for source attribution in news-based podcasts:
