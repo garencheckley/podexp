@@ -22,6 +22,25 @@ export interface Episode {
   audioUrl?: string;
   sources?: string[];
   created_at?: string;
+  narrativeStructure?: {
+    introduction: {
+      wordCount: number;
+      approach: string;
+    };
+    bodySections: Array<{
+      sectionTitle: string;
+      wordCount: number;
+    }>;
+    conclusion: {
+      wordCount: number;
+    };
+    adherenceMetrics?: {
+      structureScore: number;
+      balanceScore: number;
+      transitionScore: number;
+      overallAdherence: number;
+    };
+  };
 }
 
 export function initializeFirebase() {
@@ -150,4 +169,22 @@ export async function updatePodcast(
 ): Promise<void> {
   console.log(`Updating podcast ${podcastId}:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);
+}
+
+/**
+ * Updates an episode with narrative structure information
+ * @param episodeId The ID of the episode to update
+ * @param narrativeStructure The narrative structure information
+ */
+export async function updateEpisodeNarrativeStructure(
+  episodeId: string,
+  narrativeStructure: Episode['narrativeStructure']
+): Promise<void> {
+  if (!episodeId) {
+    console.error('Unable to update episode narrative structure: Episode ID is undefined');
+    return;
+  }
+  
+  console.log(`Updating episode ${episodeId} with narrative structure information`);
+  await getDb().collection('episodes').doc(episodeId).update({ narrativeStructure });
 }
