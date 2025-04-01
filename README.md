@@ -257,6 +257,25 @@ The system now features an enhanced display for source attribution in news-based
 
 This improvement makes the source attribution section more readable and professional, enhancing the overall user experience while maintaining the important credibility that source attribution provides to news-based podcasts.
 
+### Enhanced User Interface Features
+
+The system now includes several UI enhancements to improve the user experience:
+
+#### Auto-Play Functionality
+- **Automatic Playback**: When clicking the "Play Episode" button, audio now automatically begins playing instead of just loading the player
+- **Smooth Transitions**: Audio state is properly reset when switching between episodes
+- **Error Handling**: Graceful fallback for browsers with autoplay restrictions
+- **Playback Controls**: Maintain all existing controls (play/pause, skip forward/backward, progress tracking)
+
+#### Improved Date and Time Display
+- **Relative Time Indicators**: Episode creation dates now show relative time (e.g., "2 mins ago", "3 hours ago", "2 days ago")
+- **Detailed Timestamps**: Full date and time information is displayed alongside relative time
+- **Format**: "Created: X mins/hours/days ago (MM/DD/YYYY at HH:MM AM/PM)"
+- **Dynamic Updates**: Relative time indicators accurately reflect the passage of time
+- **Intelligent Formatting**: Automatically uses appropriate singular/plural forms (e.g., "1 minute ago" vs "2 minutes ago")
+
+These UI improvements enhance usability and provide more intuitive information to users, making the podcast experience more engaging and user-friendly.
+
 ## Development Workflow
 
 The development process follows these steps:
@@ -403,5 +422,7 @@ If a deployment causes issues:
 - Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp3-HD-Leda` for improved audio quality
 - Fixed an issue with the Google Cloud Storage bucket naming
 - Updated the frontend to use the production backend URL
-- Improved error handling for API calls 
-- Enhanced source display with better formatting and user-friendly references 
+- Improved error handling for API calls
+- Enhanced podcast source management with the implementation of source discovery and source-guided search
+- Improved audio player with automatic playback when clicking "Play Episode" button
+- Enhanced episode creation date display to show both relative time (e.g., "2 mins ago") and full date-time information 

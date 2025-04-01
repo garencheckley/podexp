@@ -206,6 +206,38 @@ const PodcastDetail = () => {
     }));
   };
 
+  // Helper function to format date with time
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const formattedDate = date.toLocaleDateString();
+    const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${formattedDate} at ${formattedTime}`;
+  };
+
+  // Helper function to calculate relative time
+  const getRelativeTimeString = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -467,7 +499,9 @@ const PodcastDetail = () => {
               </div>
               
               <div className="episode-meta">
-                Created: {new Date(episode.created_at!).toLocaleDateString()}
+                Created: {episode.created_at && 
+                  `${getRelativeTimeString(episode.created_at)} (${formatDateTime(episode.created_at)})`
+                }
               </div>
             </div>
           ))

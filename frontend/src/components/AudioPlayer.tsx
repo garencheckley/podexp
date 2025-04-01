@@ -12,6 +12,37 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title }) => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
 
+  // Auto-play when audioUrl changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    // Reset audio state for new URLs
+    setProgress(0);
+    setCurrentTime(0);
+    
+    // Play the audio automatically when loaded
+    const playAudio = () => {
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(error => {
+          console.error('Auto-play failed:', error);
+          // Some browsers block auto-play without user interaction
+          setIsPlaying(false);
+        });
+    };
+    
+    // Add event listener for canplay event
+    audio.addEventListener('canplay', playAudio);
+    
+    // Clean up event listener
+    return () => {
+      audio.removeEventListener('canplay', playAudio);
+    };
+  }, [audioUrl]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
