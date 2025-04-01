@@ -15,6 +15,8 @@ export interface SearchResults {
   potentialTopics: Array<{ topic: string; relevance: number; query: string }>;
   relevantSources: string[];
   recencyMapping: { [topic: string]: string };
+  combinedResearch?: string;
+  allSources?: string[];
 }
 
 /**
@@ -238,14 +240,18 @@ async function identifyPotentialTopics(
         return {
           potentialTopics: analysisResult.potentialTopics,
           relevantSources: [...new Set(allSources)], // Deduplicate sources
-          recencyMapping
+          recencyMapping,
+          combinedResearch: combinedContent,
+          allSources: [...new Set(allSources)]
         };
       } else {
         console.error('Invalid topic analysis format:', cleanedResponse);
         return {
           potentialTopics: [],
           relevantSources: [...new Set(allSources)],
-          recencyMapping: {}
+          recencyMapping: {},
+          combinedResearch: '',
+          allSources: []
         };
       }
     } catch (parseError) {
@@ -253,7 +259,9 @@ async function identifyPotentialTopics(
       return {
         potentialTopics: [],
         relevantSources: [...new Set(allSources)],
-        recencyMapping: {}
+        recencyMapping: {},
+        combinedResearch: '',
+        allSources: []
       };
     }
   } catch (error) {
@@ -261,7 +269,9 @@ async function identifyPotentialTopics(
     return {
       potentialTopics: [],
       relevantSources: [],
-      recencyMapping: {}
+      recencyMapping: {},
+      combinedResearch: '',
+      allSources: []
     };
   }
 }

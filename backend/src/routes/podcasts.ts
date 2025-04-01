@@ -23,12 +23,13 @@ import * as contentDifferentiator from '../services/contentDifferentiator';
 import * as narrativePlanner from '../services/narrativePlanner';
 import * as contentFormatter from '../services/contentFormatter';
 import * as deepDiveResearch from '../services/deepDiveResearch';
+import * as sourceManager from '../services/sourceManager';
 
 const router = express.Router();
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
 
 // Get all podcasts
 router.get('/', async (req, res) => {
@@ -142,6 +143,29 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
     console.log('Creating podcast with title:', req.body.title);
     const podcast = await createPodcast(req.body);
     console.log('Created podcast:', podcast);
+    
+    // Discover sources for the new podcast
+    console.log('Discovering sources for the new podcast...');
+    try {
+      const sources = await sourceManager.discoverSources(podcast.prompt || podcast.description);
+      
+      if (sources && sources.length > 0) {
+        // Update the podcast with the discovered sources
+        await updatePodcast(podcast.id, {
+          sources: sources
+        });
+        console.log(`Updated podcast with ${sources.length} discovered sources`);
+        
+        // Add sources to the podcast object for the response
+        podcast.sources = sources;
+      } else {
+        console.log('No sources discovered or error during source discovery');
+      }
+    } catch (sourceError) {
+      console.error('Error discovering sources:', sourceError);
+      // Continue without sources - non-critical error
+    }
+    
     res.status(201).json(podcast);
   } catch (error) {
     console.error('Error creating podcast:', error);
@@ -284,6 +308,28 @@ router.post('/:id/generate-episode', async (req, res) => {
     const lengthSpecification = `approximately ${targetWordCount} words (about ${Math.round(targetWordCount / 125)} minutes when spoken)`;
     console.log(`Target length: ${lengthSpecification}`);
     
+    // Refresh sources if needed
+    console.log('Refreshing podcast sources...');
+    try {
+      const updatedSources = await sourceManager.refreshSourcesIfNeeded(podcast);
+      
+      if (updatedSources && JSON.stringify(updatedSources) !== JSON.stringify(podcast.sources)) {
+        // Update the podcast with the refreshed sources
+        await updatePodcast(podcastId, {
+          sources: updatedSources
+        });
+        console.log(`Updated podcast with ${updatedSources.length} refreshed sources`);
+        
+        // Update the podcast object for use in this request
+        podcast.sources = updatedSources;
+      } else {
+        console.log('No changes to podcast sources');
+      }
+    } catch (sourceError) {
+      console.error('Error refreshing sources:', sourceError);
+      // Continue without refreshed sources - non-critical error
+    }
+    
     // 1. Review existing episodes
     console.log('Step 1: Analyzing existing episodes');
     const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
@@ -294,7 +340,19 @@ router.post('/:id/generate-episode', async (req, res) => {
     const initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
     console.log(`Initial search complete: Found ${initialSearchResults.potentialTopics.length} potential topics`);
     
-    // 2a. NEW: Prioritize topics for deep dive research
+    // 2.1. NEW: Perform source-guided search using podcast sources
+    console.log('Step 2.1: Performing source-guided search');
+    const topicNames = initialSearchResults.potentialTopics.map(topic => topic.topic);
+    const sourceGuidedResults = await sourceManager.performSourceGuidedSearch(podcast, topicNames);
+    console.log(`Source-guided search complete: ${sourceGuidedResults.content.length} characters, ${sourceGuidedResults.sources.length} sources`);
+    
+    // Combine initial and source-guided search results
+    if (sourceGuidedResults.content) {
+      initialSearchResults.combinedResearch += '\n\n' + sourceGuidedResults.content;
+      initialSearchResults.allSources = [...initialSearchResults.allSources, ...sourceGuidedResults.sources];
+    }
+    
+    // 2a. Prioritize topics for deep dive research
     console.log('Step 2a: Prioritizing topics for deep dive research');
     const prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(
       initialSearchResults,
