@@ -97,6 +97,56 @@ See the "Deep Dive Research Framework" section in the README.md for full impleme
 - Improved understanding of core issues vs. peripheral details
 - Content that listeners find more valuable and informative
 
+### 3.5. Enhanced Gemini Search Integration with Podcast Source Management
+
+**Problem**: News-style episodes often lack truly recent information and don't effectively identify current trends from prompts, leading to repetitive content.
+
+**Solution**: Create a podcast-specific repository of high-quality sources that guides the search process during episode generation, with a focus on recency and relevance.
+
+**Components**:
+- Source discovery system that identifies authoritative websites based on podcast themes
+- Podcast-specific source repository stored in Firestore
+- Source quality evaluation process during episode generation
+- Source-guided search implementation using site-specific queries
+- Trending topic identification to guide source-specific searches
+
+**Implementation Plan**:
+1. **Source Discovery at Podcast Creation**:
+   - When a podcast is created, analyze the prompt to identify key topics
+   - Use Gemini to generate a list of 10-15 authoritative websites covering those topics
+   - Classify and store these sources with the podcast record
+
+2. **Source Schema**:
+   ```typescript
+   interface PodcastSource {
+     podcastId: string;
+     url: string;
+     name: string;
+     category: string;
+     topicRelevance: string[];
+     qualityScore: number;
+     lastUsed: Date;
+   }
+   ```
+
+3. **Source Refresh During Episode Generation**:
+   - Evaluate current sources for continued relevance
+   - Replace low-quality sources with new ones
+   - Track which sources contributed to each episode
+
+4. **Source-Guided Search Process**:
+   - Perform general web search to identify current trending topics
+   - Conduct targeted searches on podcast's stored source list
+   - Use site-specific search operators (e.g., site:example.com)
+   - Include explicit time constraints for recency
+
+**Expected Outcomes**:
+- More recent and relevant information in episodes
+- Reduced repetition of outdated information
+- Better topic selection based on current trends
+- Higher quality sources leading to more authoritative content
+- Improved freshness of news-style podcasts
+
 ### 4. Expert Analysis Simulator
 
 **Problem**: Content is often factual but lacks the analytical depth of expert commentary.
@@ -166,11 +216,13 @@ The projects are listed in recommended implementation order, with each building 
 
 3. **Deep Dive Research Framework** ✅ enhances the search orchestration with better topic prioritization. (COMPLETED)
 
-4. **Expert Analysis Simulator** adds depth to the content generation portion.
+4. **Enhanced Gemini Search Integration with Podcast Source Management** adds depth to the content generation portion.
 
-5. **Additive Knowledge Engine** ties everything together with cross-episode intelligence.
+5. **Expert Analysis Simulator** adds analytical depth to the content generation.
 
-6. **User Authentication & Personalization** adds user-specific features to enhance the podcast experience.
+6. **Additive Knowledge Engine** ties everything together with cross-episode intelligence.
+
+7. **User Authentication & Personalization** adds user-specific features to enhance the podcast experience.
 
 ## Technical Considerations
 
