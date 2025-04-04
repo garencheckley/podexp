@@ -105,7 +105,8 @@ export async function createPodcast(podcast: Omit<Podcast, 'id'>): Promise<Podca
   const podcastWithTimestamps = {
     ...podcast,
     created_at: now,
-    last_updated: now
+    last_updated: now,
+    podcastType: 'news'
   };
   const docRef = await getDb().collection('podcasts').add(podcastWithTimestamps);
   return { id: docRef.id, ...podcastWithTimestamps };

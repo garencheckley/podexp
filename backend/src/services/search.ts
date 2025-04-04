@@ -1,10 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Tool, GenerationConfig } from '@google/generative-ai';
+import { FAST_MODEL_ID, POWERFUL_MODEL_ID } from '../config'; // Ensure both models are imported
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash'; // Using flash model with higher rate limits
-const model = genAI.getGenerativeModel({ model: modelId });
 
 // Configure Google Search tool as per Gemini documentation
 const googleSearchTool = {
@@ -74,7 +73,7 @@ export async function executeWebSearch(query: string): Promise<{content: string,
     
     // Create a model instance with the search tool configured
     const searchModel = genAI.getGenerativeModel({
-      model: modelId,
+      model: FAST_MODEL_ID, // Use FAST_MODEL_ID from config instead of modelId
       tools: [googleSearchTool as any], // Type cast to any to bypass TypeScript error
     });
 
@@ -212,6 +211,7 @@ async function identifyResearchTopics(
   podcastPrompt: string,
   targetWordCount: number = 300
 ): Promise<ResearchTopic[]> {
+  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID }); // Use FAST_MODEL_ID
   try {
     console.log('Analyzing search results to identify follow-up research topics');
 
