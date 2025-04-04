@@ -46,10 +46,13 @@ export async function generateStructuredContent(
       
       RESEARCH CONTENT TO USE:
       
-      ${researchResults.topicResearch.map((research, index) => `
-      Topic ${index + 1}: ${research.topic}
-      ${research.synthesizedContent.substring(0, 500)}...
+      ${researchResults.topicResearch.map(research => `
+      Topic: ${research.topic}
+      ${research.synthesizedContent}
       `).join('\n\n')}
+      
+      OVERALL SYNTHESIS:
+      ${researchResults.overallSynthesis}
       
       INSTRUCTIONS:
       1. Follow the narrative structure precisely, maintaining the specified word counts for each section

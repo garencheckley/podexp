@@ -185,7 +185,7 @@ export async function conductLayeredResearch(topic: DeepResearchTopic): Promise<
     // Layer 3: Deep dive (expert analysis, implications, nuances)
     console.log('Conducting Layer 3 (Deep) research');
     // Generate sophisticated queries based on insights from layers 1 & 2
-    const layer3Queries = generateDeepDiveQueries(topic, [...layer1Insights, ...layer2Insights]);
+    const layer3Queries = await generateDeepDiveQueries(topic, [...layer1Insights, ...layer2Insights]);
     const layer3Results = await executeMultipleSearches(layer3Queries);
     
     // Extract key insights from deep level
@@ -282,11 +282,11 @@ async function extractKeyInsights(
   topic: string,
   level: number
 ): Promise<string[]> {
-  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Extracting Key Insights - Level ${level} for Topic: "${topic}"`);
-    // Limit content length to avoid exceeding model limits, especially for flash
-    const maxInputLength = 15000; // Adjust as needed for flash model limits
+    // Limit content length to avoid exceeding model limits, even for powerful model
+    const maxInputLength = 30000; // Increased limit for powerful model
     const truncatedContent = content.length > maxInputLength
       ? content.substring(0, maxInputLength)
       : content;
@@ -358,10 +358,63 @@ function generateFollowupQueries(topic: string, insights: string[]): string[] {
  * @param insights Insights from previous research layers
  * @returns Array of deep dive queries
  */
-function generateDeepDiveQueries(topic: DeepResearchTopic, insights: string[]): string[] {
-   // More complex, but let's try fast model first - Assuming no direct AI call needed here based on current impl.
-   // If an AI call were added here, it would use FAST_MODEL_ID
-  console.log(`Generating Deep Dive Queries for Topic: "${topic.topic}"`);
+async function generateDeepDiveQueries(topic: DeepResearchTopic, insights: string[]): Promise<string[]> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+  try {
+    console.log(`Generating Deep Dive Queries for Topic: "${topic.topic}"`);
+    
+    const prompt = `
+      Generate sophisticated search queries to find deep expert analysis and contrasting viewpoints for the topic:
+      "${topic.topic}"
+      
+      Key insights from previous research:
+      ${insights.join('\n')}
+      
+      Key questions about this topic:
+      ${topic.keyQuestions.join('\n')}
+      
+      Generate 5 search queries that will find:
+      1. Expert analysis and detailed perspectives on this topic
+      2. Contrasting viewpoints and alternative interpretations
+      3. Historical context and background information
+      4. Future implications and predictions
+      5. In-depth exploration of the most important aspects
+      
+      Respond in JSON format as an array of query strings:
+      ["query1", "query2", ...]
+    `;
+    
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    
+    try {
+      // Clean up the response to ensure it's valid JSON
+      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+      const queries = JSON.parse(cleanedResponse);
+      
+      if (Array.isArray(queries) && queries.length > 0) {
+        return queries;
+      } else {
+        console.error('Invalid query format:', cleanedResponse);
+        // Fallback to predefined queries if the model fails
+        return getDefaultDeepDiveQueries(topic);
+      }
+    } catch (parseError) {
+      console.error('Error parsing deep dive queries:', parseError);
+      return getDefaultDeepDiveQueries(topic);
+    }
+  } catch (error) {
+    console.error(`Error generating deep dive queries for topic "${topic.topic}":`, error);
+    return getDefaultDeepDiveQueries(topic);
+  }
+}
+
+/**
+ * Provides fallback default queries for deep dive research
+ * @param topic The deep research topic
+ * @returns Array of default deep dive queries
+ */
+function getDefaultDeepDiveQueries(topic: DeepResearchTopic): string[] {
   const baseQueries = [
     `expert analysis ${topic.topic}`,
     `implications of ${topic.topic}`,
@@ -370,10 +423,9 @@ function generateDeepDiveQueries(topic: DeepResearchTopic, insights: string[]): 
     `contrasting views ${topic.topic}`
   ];
   // Add queries derived from key questions and insights
-  const insightQueries = insights.slice(0, 2).map(i => `deep analysis of ${i.substring(0,60)} regarding ${topic.topic}`);
   const questionQueries = topic.keyQuestions.slice(0, 2).map(q => `in-depth research ${q}`);
 
-  return [...baseQueries, ...insightQueries, ...questionQueries].slice(0, 5); // Limit total queries
+  return [...baseQueries, ...questionQueries].slice(0, 5); // Limit total queries
 }
 
 /**
@@ -396,14 +448,14 @@ async function synthesizeLayeredResearch(
     console.log(`Synthesizing layered research for topic: "${topic.topic}"`);
     
     // Prepare combined content for synthesis, prioritizing deeper layers
-    // Concatenate insights and key content snippets - might need adjustment based on token limits
-    let synthesisInput = `Topic: ${topic.topic}\nKey Questions to Answer:\n${topic.keyQuestions.join('\\n- ')}\n\n`;
+    // Pass complete content instead of truncating to fixed character limit
+    let synthesisInput = `Topic: ${topic.topic}\nKey Questions to Answer:\n${topic.keyQuestions.join('\n- ')}\n\n`;
     synthesisInput += "Key Insights & Content from Research Layers:\n";
     layers.forEach(layer => {
       synthesisInput += `\n--- Layer ${layer.level} ---\n`;
       synthesisInput += `Insights: ${layer.keyInsights.join(', ')}\n`;
-      // Add a snippet of content - avoid overwhelming the model
-      synthesisInput += `Content Snippet: ${layer.content.substring(0, 1000)}...\n`;
+      // Pass full content for each layer rather than a limited snippet
+      synthesisInput += `Content: ${layer.content}\n`;
     });
 
     const synthesisPrompt = `
@@ -431,7 +483,7 @@ async function synthesizeLayeredResearch(
       - Repetitive information or redundant statements
       
       Research Input:
-      ${synthesisInput.substring(0, 30000)} // Limit input size for safety
+      ${synthesisInput}
 
       Generate only the synthesized narrative text with substantive analytical content.
     `;
@@ -475,7 +527,7 @@ async function calculateDepthMetrics(
       Evaluate its depth based on factual density, insight quality, and contextual richness.
 
       Synthesized Content:
-      ${synthesizedContent.substring(0, 15000)} // Limit input size
+      ${synthesizedContent}
 
       Rate the following metrics on a scale of 1-10 (1=low, 10=high):
       1. Factual Density: Concentration of specific facts, figures, concrete info.
@@ -631,7 +683,7 @@ async function generateIntegratedContent(
       6. Use only plain text with standard punctuation (periods, commas, question marks)
 
       Synthesized Research Input:
-      ${combinedResearch.substring(0, 30000)} // Limit input size
+      ${combinedResearch}
 
       Generate ONLY the integrated podcast script content that delivers genuine insights on these topics. Focus on synthesis, analysis, and meaningful commentary.
     `;

@@ -497,16 +497,25 @@ async function findContrastingViewpoints(
   try {
     console.log(`Finding contrasting viewpoints for topic: "${topic}"`);
     
-    // Generate queries to find contrasting viewpoints
+    // Generate queries to find contrasting viewpoints - pass more context
     const contrastingQueriesPrompt = `
-      Based on this research about "${topic}", generate 2 search queries specifically designed 
-      to find contrasting viewpoints or alternative perspectives.
+      Based on this research about "${topic}", generate 3-4 search queries specifically designed 
+      to find contrasting viewpoints, alternative perspectives, or criticisms of mainstream views.
       
       Research summary:
-      ${mainResearch.substring(0, 2000)}
+      ${mainResearch.substring(0, 5000)}
       
-      Generate search queries in this format:
-      ["query1", "query2"]
+      Focus on finding:
+      1. Opposing expert opinions or interpretations
+      2. Alternative frameworks for understanding this topic
+      3. Critiques of dominant narratives
+      4. Different stakeholder perspectives
+
+      Generate search queries that would uncover these contrasting viewpoints.
+      Each query should be specifically crafted to find views different from what appears in the main research.
+      
+      Respond in JSON format as an array of strings:
+      ["query1", "query2", "query3", "query4"]
     `;
     
     const result = await model.generateContent(contrastingQueriesPrompt);
@@ -518,7 +527,9 @@ async function findContrastingViewpoints(
       const queries = JSON.parse(cleanedResponse);
       
       if (Array.isArray(queries) && queries.length > 0) {
-        return executeMultipleSearches(queries);
+        console.log(`Generated ${queries.length} contrasting viewpoint queries for topic: "${topic}"`);
+        const contrasting = await executeMultipleSearches(queries);
+        return contrasting;
       } else {
         console.error('Invalid query format returned:', cleanedResponse);
         return {
@@ -561,18 +572,31 @@ async function synthesizeTopicResearch(
   try {
     console.log(`Synthesizing research for topic: "${topic.topic}"`);
     
-    // Generate prompt to synthesize research
+    // Generate prompt to synthesize research - pass full content without character limits
     const synthesisPrompt = `
       Based on this research about "${topic.topic}", synthesize a ${topic.targetDepth} summary
       that explores these angles: ${topic.angles.join(', ')}.
       
       Main research:
-      ${mainResearch.content.substring(0, 2000)}
+      ${mainResearch.content}
       
       Contrasting viewpoints:
-      ${contrastingViewpoints.content.substring(0, 2000)}
+      ${contrastingViewpoints.content}
       
-      Synthesize the research in a coherent and engaging manner.
+      Synthesize the research in a coherent and engaging manner that:
+      
+      1. Provides a comprehensive analysis focusing on a ${topic.targetDepth} level of detail
+      2. Explores all specified angles: ${topic.angles.join(', ')}
+      3. Presents multiple perspectives including contrasting viewpoints
+      4. Identifies patterns, trends and broader implications
+      5. Connects facts to create meaningful insights
+      6. Provides context that helps understand the significance
+      
+      AVOID:
+      - Filler phrases and unnecessary commentary
+      - Surface-level summaries without analytical depth
+      - Redundant information
+      - Vague generalizations
     `;
     
     const result = await model.generateContent(synthesisPrompt);
@@ -610,18 +634,37 @@ async function createOverallSynthesis(
   try {
     console.log('Creating overall synthesis for the episode');
     
-    // Generate prompt to create overall synthesis
+    // Generate prompt to create overall synthesis with full topic content
     const synthesisPrompt = `
-      Based on the research for this episode, create an overall synthesis that:
-      1. Summarizes the main findings of each topic
-      2. Highlights the key takeaways
-      3. Provides a coherent narrative
-      4. Uses the differentiation strategy: ${plan.differentiationStrategy}
+      Create a comprehensive overall synthesis for an episode titled "${plan.episodeTitle}" that:
       
-      Topic research:
-      ${topicResearch.map(tr => `- ${tr.topic}: ${tr.synthesizedContent}`).join('\n')}
+      1. Integrates research from all topics into a cohesive narrative
+      2. Highlights key findings, patterns, and connections ACROSS topics
+      3. Implements this differentiation strategy: ${plan.differentiationStrategy}
+      4. Provides meaningful analysis that goes beyond surface-level reporting
+      5. Presents multiple perspectives where relevant
+      6. Creates a coherent flow between different topics
       
-      Create a coherent and engaging overall synthesis.
+      Topic research to synthesize:
+      ${topicResearch.map(tr => `
+      --- Topic: ${tr.topic} ---
+      ${tr.synthesizedContent}
+      `).join('\n\n')}
+      
+      FORMAT REQUIREMENTS:
+      - Create a flowing narrative, not a topic-by-topic structure
+      - Use substantive transitions between related ideas
+      - Maintain an analytical news podcast tone
+      - Focus on insights and analysis rather than just reporting facts
+      - Avoid filler phrases and superficial commentary
+      
+      STRICT AVOIDANCE:
+      - Filler phrases like "it's important to note," "as we can see," etc.
+      - Redundant information that repeats across topics
+      - Surface-level summaries without analytical depth
+      - Vague generalizations or oversimplifications
+      
+      Create a sophisticated, insightful synthesis that delivers substantive analysis.
     `;
     
     const result = await model.generateContent(synthesisPrompt);

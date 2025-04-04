@@ -46,7 +46,9 @@ The backlog items aim to address the following core user-reported problems with 
     2. `synthesizeLayeredResearch`: Improved to require specific analytical elements and prohibit filler phrases
     3. `createNarrativeStructure`: Modified to explicitly include analytical section types and focus on insights rather than facts
 
-#### 1.2. Enhance Research & Synthesis Strategy
+#### 1.2. Enhance Research & Synthesis Strategy ✅
+
+**Status**: Completed
 
 **Problem**: Using summaries (e.g., first 2000/6000 chars) as input for subsequent steps (contrasting viewpoints, synthesis, final integration) can lead to loss of critical details and nuance. Generating contrasting viewpoints and synthesizing across layers are complex tasks potentially underserved by the current model and prompts.
 **Solution**:
@@ -54,6 +56,11 @@ The backlog items aim to address the following core user-reported problems with 
     - Improve contrasting viewpoints: Use the stronger model to generate these queries/perspectives, possibly integrating it into Layer 3 of the `deepDiveResearch`.
     - Improve synthesis prompts (as per 1.1) and ensure the stronger model performs this step using more complete input data.
 **Rationale**: Preserves information integrity throughout the pipeline, providing the generation model with richer context, enabling deeper synthesis and analysis.
+**Implementation Notes**: Updated four key areas:
+    1. `synthesizeLayeredResearch`: Removed character limits to pass full content from all research layers
+    2. `extractKeyInsights`: Upgraded to use powerful model instead of fast model and increased input size limit
+    3. `generateDeepDiveQueries`: Reimplemented to use powerful model for better contrasting viewpoint generation
+    4. `generateIntegratedContent` and `createOverallSynthesis`: Removed input truncation to maintain full context
 
 #### 1.3. Improve Differentiation Logic
 
