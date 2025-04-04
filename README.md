@@ -428,6 +428,7 @@ If a deployment causes issues:
    ```
 
 ### Recent Updates
+- Implemented Hybrid AI Model Strategy using powerful models (gemini-2.5-pro-exp-03-25) for complex tasks and fast models (gemini-2.0-flash) for simpler operations
 - Updated the Gemini model from `gemini-2.5-pro-exp-03-25` to `gemini-2.0-flash` to avoid rate limit issues
 - Updated the Text-to-Speech voice model from `en-US-Chirp3-HD-Orus` to `en-US-Chirp3-HD-Leda` for improved audio quality
 - Fixed an issue with the Google Cloud Storage bucket naming

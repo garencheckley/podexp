@@ -30,18 +30,7 @@ The backlog items aim to address the following core user-reported problems with 
 
 **Goal**: Refine the existing generation pipeline to produce demonstrably deeper, more analytical, less repetitive, and less "fluffy" content.
 
-#### 1.1. Implement Hybrid AI Model Strategy
-
-**Problem**: Using `gemini-flash` for all generation steps (topic ID, planning, synthesis, differentiation, final script generation) likely limits the system's ability to perform nuanced analysis, interpret "depth" effectively, generate truly contrasting viewpoints, and create insightful, non-superficial content.
-**Solution**: Adopt a hybrid approach. Continue using `gemini-flash` for simpler, faster tasks (e.g., initial query generation). Switch to a more powerful model (e.g., `gemini-pro` or latest equivalent) for critical reasoning and generation tasks:
-    - Topic Prioritization & Key Question Generation (`deepDiveResearch.ts`)
-    - Multi-Layer Synthesis (`synthesizeLayeredResearch` in `deepDiveResearch.ts`)
-    - Contrasting Viewpoint Generation (`searchOrchestrator.ts` or `deepDiveResearch.ts`)
-    - Differentiation Validation & Improvement (`contentDifferentiator.ts`)
-    - **Final Episode Script Generation** (`generateIntegratedContent` in `deepDiveResearch.ts`).
-**Rationale**: Matches model capability to task complexity. Ensures complex analysis, synthesis, and writing tasks are handled by a model better suited for nuance and depth, directly addressing core quality concerns.
-
-#### 1.2. Refine Core Generation Prompts
+#### 1.1. Refine Core Generation Prompts
 
 **Problem**: Prompts mention depth/analysis but lack explicit instructions against filler content ("fluff") and don't clearly define the *type* of analysis required (causal, comparative, etc.). The final script generation prompt focuses on integrating research rather than crafting an analytical narrative.
 **Solution**:
@@ -51,16 +40,16 @@ The backlog items aim to address the following core user-reported problems with 
     - Rewrite the final integration prompt (`generateIntegratedContent`) to focus on "writing an insightful podcast script" rather than just "integrating research." Instruct it to synthesize insights *across* topics and provide analytical commentary.
 **Rationale**: Provides clearer instructions to the AI, guiding it towards the desired analytical style and away from superficial content, directly addressing "fluff" and lack of depth.
 
-#### 1.3. Enhance Research & Synthesis Strategy
+#### 1.2. Enhance Research & Synthesis Strategy
 
 **Problem**: Using summaries (e.g., first 2000/6000 chars) as input for subsequent steps (contrasting viewpoints, synthesis, final integration) can lead to loss of critical details and nuance. Generating contrasting viewpoints and synthesizing across layers are complex tasks potentially underserved by the current model and prompts.
 **Solution**:
     - Minimize summarization: Remove or drastically increase character limits when passing research content between steps. Feed more complete information, especially to the stronger model during synthesis and final generation.
     - Improve contrasting viewpoints: Use the stronger model to generate these queries/perspectives, possibly integrating it into Layer 3 of the `deepDiveResearch`.
-    - Improve synthesis prompts (as per 1.2) and ensure the stronger model performs this step using more complete input data.
+    - Improve synthesis prompts (as per 1.1) and ensure the stronger model performs this step using more complete input data.
 **Rationale**: Preserves information integrity throughout the pipeline, providing the generation model with richer context, enabling deeper synthesis and analysis.
 
-#### 1.4. Improve Differentiation Logic
+#### 1.3. Improve Differentiation Logic
 
 **Problem**: `episodeAnalyzer` and `contentDifferentiator` use `gemini-flash` and may rely on superficial topic/theme lists, potentially missing subtle repetition or failing to drive meaningful differentiation in the rewrite step. Analysis history is limited.
 **Solution**:
@@ -69,7 +58,7 @@ The backlog items aim to address the following core user-reported problems with 
     - Focus differentiation improvement suggestions (in `contentDifferentiator`) on changing the *angle* or *analytical frame*, not just swapping facts.
 **Rationale**: Improves the system's ability to detect and correct for repetition beyond simple topic overlap, leading to genuinely fresher content.
 
-#### 1.5. Refine Source Management & Usage
+#### 1.4. Refine Source Management & Usage
 
 **Problem**: Source discovery relies on AI interpretation of "authoritative." Source-guided search impact seems limited.
 **Solution**:
@@ -77,13 +66,13 @@ The backlog items aim to address the following core user-reported problems with 
     - Consider increasing the number of `site:` queries in `performSourceGuidedSearch` or integrating its findings more directly into the `deepDiveResearch` process for selected topics.
 **Rationale**: Improves the quality and relevance of information sources used, potentially contributing to deeper analysis.
 
-#### 1.6. Structure for Analysis
+#### 1.5. Structure for Analysis
 
 **Problem**: The `narrativePlanner` creates structure but doesn't strongly enforce analytical sections, potentially allowing "fluff".
 **Solution**: Modify the `createNarrativeStructure` prompt to explicitly suggest or require more analytical section types (e.g., "Background & Context," "Competing Perspectives," "Analysis & Implications," "Outlook") rather than just generic topic summaries.
 **Rationale**: Guides the AI to structure the episode around analysis rather than just factual reporting, reinforcing the goal of depth.
 
-#### 1.7. Implement Pre-Analysis Clustering (Inspired by Meridian)
+#### 1.6. Implement Pre-Analysis Clustering (Inspired by Meridian)
 
 **Problem**: The system may waste analytical resources by performing deep dives on multiple highly similar articles reporting the same core event, contributing to perceived repetition.
 **Solution**: Introduce an article clustering step *before* deep dive analysis.
@@ -142,7 +131,7 @@ The backlog items aim to address the following core user-reported problems with 
 
 The projects are listed in recommended implementation order:
 
-1.  **Quality Improvement Initiatives (Item 1.1-1.7)**: Address core quality issues by refining existing frameworks (documented in README). Implementing 1.1 (Hybrid Model), 1.2 (Prompt Refinement), and **1.7 (Clustering)** are likely highest priority for depth and repetition.
+1.  **Quality Improvement Initiatives (Item 1.1-1.6)**: Address core quality issues by refining existing frameworks (documented in README). Implementing 1.1 (Prompt Refinement) and **1.6 (Clustering)** are likely highest priority for depth and repetition.
 2.  **Expert Analysis Simulator (Item 2)**: Builds upon improved quality foundation to add specific analytical capabilities.
 3.  **Additive Knowledge Engine (Item 3)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
 4.  **User Authentication & Personalization (Item 4)**: Adds user-facing features.
