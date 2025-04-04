@@ -30,7 +30,9 @@ The backlog items aim to address the following core user-reported problems with 
 
 **Goal**: Refine the existing generation pipeline to produce demonstrably deeper, more analytical, less repetitive, and less "fluffy" content.
 
-#### 1.1. Refine Core Generation Prompts
+#### 1.1. Refine Core Generation Prompts ✅
+
+**Status**: Completed
 
 **Problem**: Prompts mention depth/analysis but lack explicit instructions against filler content ("fluff") and don't clearly define the *type* of analysis required (causal, comparative, etc.). The final script generation prompt focuses on integrating research rather than crafting an analytical narrative.
 **Solution**:
@@ -39,6 +41,10 @@ The backlog items aim to address the following core user-reported problems with 
     - Consistently reinforce the desired host persona in key prompts.
     - Rewrite the final integration prompt (`generateIntegratedContent`) to focus on "writing an insightful podcast script" rather than just "integrating research." Instruct it to synthesize insights *across* topics and provide analytical commentary.
 **Rationale**: Provides clearer instructions to the AI, guiding it towards the desired analytical style and away from superficial content, directly addressing "fluff" and lack of depth.
+**Implementation Notes**: Updated three key prompts:
+    1. `generateIntegratedContent`: Enhanced to focus on analytical content with specific types of analysis and anti-fluff constraints
+    2. `synthesizeLayeredResearch`: Improved to require specific analytical elements and prohibit filler phrases
+    3. `createNarrativeStructure`: Modified to explicitly include analytical section types and focus on insights rather than facts
 
 #### 1.2. Enhance Research & Synthesis Strategy
 

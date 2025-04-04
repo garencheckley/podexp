@@ -245,7 +245,43 @@ The system now implements a sophisticated Deep Dive Research Framework that enab
 - **Expert-Level Analysis**: Content includes the type of analysis typically found in expert commentary
 - **Educational Value**: Podcasts become more valuable knowledge resources on specific topics
 
-This implementation is ideal for educational and informational podcasts where listeners are seeking in-depth understanding rather than broad coverage of many topics.
+### Enhanced Analytical Depth with Refined Prompting
+
+The system now implements sophisticated prompt engineering to significantly enhance the analytical depth and reduce "fluff" content in generated podcast episodes. This improvement targets key areas of the generation pipeline to produce more insightful, substantive content.
+
+#### Core Components
+
+##### 1. Targeted Analytical Frameworks
+- **Causal Analysis**: Prompts explicitly require explanation of causes and effects related to main developments
+- **Comparative Analysis**: Instructions to compare different viewpoints, approaches, or alternatives
+- **Contextual Analysis**: Requirements to explain historical, social, economic, or political context
+- **Implication Analysis**: Focus on the consequences and impacts of developments
+- **Pattern Identification**: Identification of trends, cycles, or recurring elements
+
+##### 2. Anti-Fluff Mechanisms
+- **Filler Phrase Elimination**: Explicit constraints against common filler phrases (e.g., "it's important to note," "as we can see," "it's worth mentioning")
+- **Evidence Requirements**: Instructions to support analytical points with specific evidence
+- **Redundancy Prevention**: Guidelines to avoid repetitive information or redundant statements
+- **Meaningful Transitions**: Requirements for substantive connections between topics rather than superficial transitions
+
+##### 3. Enhanced Host Persona
+- **Defined Personality**: Clear definition of the host as confident, knowledgeable, and thoughtful
+- **Analytical Mindset**: Emphasis on synthesizing complex information with clear analysis
+- **Audience Consideration**: Focus on helping listeners understand both what happened and why it matters
+- **Balanced Authority**: Guidance to be authoritative but conversational, never condescending
+
+##### 4. Narrative Structure Requirements
+- **Analytical Section Types**: Required frameworks including "Background & Context," "Competing Perspectives," "Analysis & Implications," "Future Outlook"
+- **Key Insights Focus**: Emphasis on analytical points rather than mere facts
+- **Cross-Topic Synthesis**: Instructions to identify patterns and connections across topics
+- **Depth-Oriented Structure**: Organization that encourages analytical depth rather than surface-level coverage
+
+#### Benefits
+- **Reduced Filler Content**: Significantly less "fluff" and more substantive information
+- **Deeper Analysis**: More thorough exploration of topics with meaningful insights
+- **Multiple Perspectives**: Better representation of contrasting viewpoints on complex issues
+- **Enhanced Clarity**: Clearer explanation of significance and implications
+- **Improved Listening Experience**: More valuable, insightful content for audience engagement and learning
 
 ### Hybrid AI Model Strategy
 

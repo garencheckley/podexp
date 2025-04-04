@@ -55,7 +55,7 @@ export async function createNarrativeStructure(
     console.log('Creating enhanced narrative structure for episode');
     
     const prompt = `
-      Create a detailed narrative structure for a podcast episode based on this basic plan.
+      Create a detailed narrative structure for an analytical news podcast episode based on this basic plan.
       
       Episode title: ${episodePlan.episodeTitle}
       
@@ -71,23 +71,32 @@ export async function createNarrativeStructure(
       1. Introduction section:
          - A compelling approach to introduce the main themes
          - A hook to engage listeners
-         - Word count allocation (typically 10-15% of total)
+         - A brief framing of why these topics matter now
+         - Word count allocation (typically a concise 10% of total)
       
       2. Body sections (one for each topic):
-         - Section title
+         - Section title (should reflect the analytical angle)
          - Topic reference (which selected topic this covers)
-         - Content approach (how to present this topic)
-         - Key points to include
-         - Transitions in and out of the section
+         - REQUIRED ANALYTICAL FRAMEWORKS (include at least 2-3 per section):
+            * "Background & Context" - providing historical or foundational understanding
+            * "Competing Perspectives" - presenting contrasting viewpoints
+            * "Causal Analysis" - explaining causes and effects
+            * "Implications & Significance" - analyzing why this matters and potential impacts
+            * "Pattern Identification" - pointing out trends, cycles, or recurring elements
+            * "Comparative Analysis" - examining similarities and differences
+            * "Future Outlook" - discussing potential developments or predictions
+         - Key insights (not just facts, but analytical points)
+         - Substantive transitions that form meaningful connections between topics
          - Word count allocation (based on topic depth: deep > medium > overview)
       
       3. Conclusion section:
-         - Summarization approach
-         - Final thoughts or call to action
-         - Word count allocation (typically 10-15% of total)
+         - Synthesis of key insights across topics (not just summary)
+         - Broader implications or takeaways
+         - Word count allocation (typically 10% of total)
       
       Allocate the ${targetWordCount} words across all sections, giving more words to 
-      deeper topics and ensuring the total adds up correctly.
+      deeper topics and ensuring the total adds up correctly. The structure should 
+      encourage analytical depth rather than surface-level coverage.
       
       Respond in JSON format:
       {

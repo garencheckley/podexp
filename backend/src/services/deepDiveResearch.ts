@@ -407,17 +407,33 @@ async function synthesizeLayeredResearch(
     });
 
     const synthesisPrompt = `
-      Synthesize the following research findings for the topic "${topic.topic}" into a cohesive narrative (approx 400-600 words).
-      Focus on answering the key questions provided. Integrate insights from all layers (surface, intermediate, deep).
-      Ensure a logical flow, starting with basics and moving to deeper analysis and implications.
-      Maintain an objective, analytical tone suitable for a news podcast.
-      DO NOT just list facts; provide context and analysis.
-      Prioritize insights from Layer 3 (deep research).
-
+      Synthesize the following research findings for the topic "${topic.topic}" into a cohesive, analytical narrative (approx 400-600 words).
+      
+      REQUIRED ANALYTICAL ELEMENTS:
+      1. ANSWER KEY QUESTIONS: Address all key questions provided thoroughly with evidence-based answers
+      2. CAUSAL ANALYSIS: Explain causes and effects related to the main developments in this topic
+      3. COMPARATIVE ANALYSIS: Compare different viewpoints, approaches, or alternatives when relevant
+      4. CONTEXTUAL ANALYSIS: Explain the historical, social, economic, or political context that makes this topic significant
+      5. IMPLICATION ANALYSIS: Discuss the potential consequences or impacts of the main developments
+      
+      WRITING APPROACH:
+      - Integrate insights from all layers, with special emphasis on Layer 3 (deep research)
+      - Start with foundational understanding and build to sophisticated insights
+      - Maintain an objective yet insightful tone suitable for a news podcast
+      - Present contrasting viewpoints where they exist
+      - Identify underlying trends or patterns
+      
+      STRICTLY AVOID:
+      - Filler phrases like "it's important to note," "as we can see," "it's worth mentioning," etc.
+      - Stating the obvious or making claims without supporting evidence
+      - Surface-level summaries without analytical depth
+      - Vague generalizations or oversimplifications
+      - Repetitive information or redundant statements
+      
       Research Input:
       ${synthesisInput.substring(0, 30000)} // Limit input size for safety
 
-      Generate only the synthesized narrative text.
+      Generate only the synthesized narrative text with substantive analytical content.
     `;
 
     const result = await model.generateContent(synthesisPrompt);
@@ -585,15 +601,27 @@ async function generateIntegratedContent(
     });
 
     const generationPrompt = `
-      You are a podcast script writer. Write a cohesive and engaging podcast script section based on the provided synthesized research for multiple topics.
+      You are an expert podcast script writer crafting an INSIGHTFUL, ANALYTICAL news podcast. Your goal is to write a cohesive and engaging podcast script that goes BEYOND surface-level reporting to deliver meaningful analysis.
+      
       Target total word count: ${targetWordCount} words.
       Allocate content according to the target length suggested for each topic.
-      Ensure smooth transitions between topics.
-      Maintain an objective, analytical, and informative tone suitable for a news podcast.
-      Focus on delivering insights and context, not just facts. Avoid fluff or filler phrases.
-      Start directly with the content, no intro/outro needed for this section.
-      Structure the content logically within each topic and across the episode segment.
-
+      
+      HOST PERSONA: Confident, knowledgeable, and thoughtful. You synthesize complex information and present it in a clear, analytical manner. You're authoritative but conversational - never condescending. You help listeners understand not just WHAT happened but WHY it matters.
+      
+      REQUIRED CONTENT QUALITIES:
+      1. ANALYTICAL DEPTH: Don't just report facts - analyze their significance, consequences, and broader context
+      2. SYNTHETIC THINKING: Identify patterns and connections ACROSS topics when relevant
+      3. MULTIPLE PERSPECTIVES: Present contrasting viewpoints on complex issues
+      4. NUANCED COMMENTARY: Acknowledge complexity and avoid oversimplification
+      5. CAUSAL ANALYSIS: Explain causes and effects when appropriate
+      
+      CRITICAL WRITING RESTRICTIONS:
+      1. NO FILLER PHRASES: Avoid empty phrases like "it's important to note," "as we can see," "it's worth mentioning," "it's interesting that," "as mentioned earlier," etc.
+      2. NO STATING THE OBVIOUS: Don't tell listeners something is "fascinating" or "important" - demonstrate WHY it matters through analysis
+      3. NO REDUNDANCY: Never repeat information unnecessarily
+      4. NO VAGUE CLAIMS: Support analytical points with specific evidence
+      5. NO SUPERFICIAL TRANSITIONS: Make substantive connections between topics
+      
       CRITICAL FORMAT REQUIREMENTS:
       1. DO NOT include any speaker indicators like "Host:" or "Speaker:"
       2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
@@ -605,7 +633,7 @@ async function generateIntegratedContent(
       Synthesized Research Input:
       ${combinedResearch.substring(0, 30000)} // Limit input size
 
-      Generate ONLY the integrated podcast script content.
+      Generate ONLY the integrated podcast script content that delivers genuine insights on these topics. Focus on synthesis, analysis, and meaningful commentary.
     `;
 
     const result = await model.generateContent(generationPrompt);
