@@ -67,6 +67,9 @@ export async function generateStructuredContent(
       5. DO NOT use markdown formatting, special characters, bold, or italics
       6. Write in a conversational style but without explicitly marking the speaker
       7. Do not mention section numbers or use formatting markers in the actual content
+      8. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" or "(Podcast Outro Music Fades In)"
+      9. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
+      10. AVOID assumptions about publication frequency (daily, weekly, monthly)
       
       REQUIRED: Structure the content exactly according to the word counts specified - this is critical.
     `;

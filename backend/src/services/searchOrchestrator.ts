@@ -315,6 +315,12 @@ export async function planEpisodeContent(
       3. Identifies specific angles or perspectives to explore
       4. Suggests what further research is needed
       
+      IMPORTANT REQUIREMENTS FOR EPISODE TITLE:
+      1. DO NOT include any specific dates, months, or years in the title (like "April 2025" or "March Update")
+      2. DO NOT make references to publication frequency (like "Weekly News" or "Monthly Update")
+      3. Keep the title timeless and focused on the content itself
+      4. Ensure the title is concise, engaging, and descriptive of the main topics
+      
       Respond in JSON format:
       {
         "episodeTitle": "Proposed title",

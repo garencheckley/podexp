@@ -161,6 +161,14 @@ async function improveContentDifferentiation(
       4. Maintains the same general structure and flow
       5. Preserves the educational value and information accuracy
       
+      CRITICAL FORMAT REQUIREMENTS:
+      1. Write in plain text with ONLY standard punctuation (periods, commas, question marks)
+      2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
+      3. DO NOT include any speaker indicators like "Host:" or "Speaker:"
+      4. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" or "(Podcast Outro Music Fades In)"
+      5. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
+      6. AVOID assumptions about publication frequency (daily, weekly, monthly)
+      
       Improved content:
     `;
     

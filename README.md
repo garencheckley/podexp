@@ -69,8 +69,9 @@ interface Podcast {
   title: string;
   description: string;
   prompt?: string;
-  useWebSearch?: boolean;
+  podcastType: string; // Always set to 'news'
   created_at: string;
+  sources?: PodcastSource[];
 }
 ```
 
@@ -125,10 +126,10 @@ The system uses Gemini API's grounding with Google Search capability to incorpor
   1. Initial query generation based on podcast prompt
   2. Search execution and relevance evaluation
   3. In-depth research on high-relevance stories
-- Optional toggle at podcast creation to enable/disable web search
+- Web search is always enabled for all podcasts to provide current, fact-based content
 - Automatic attribution of sources in episode content
 - Display of sources with clickable links in the episode transcript
-- Particularly useful for news, current events, and informational podcasts
+- Particularly valuable for news, current events, and informational podcasts
 
 ### Audio Player
 The frontend includes a custom audio player component (`frontend/src/components/AudioPlayer.tsx`) that provides:
@@ -321,7 +322,7 @@ The recommended approach is to use Google Cloud Build, which handles the Docker 
    # Deploy the container to Cloud Run
    gcloud run deploy podcast-backend \
      --image gcr.io/PROJECT_ID/podcast-backend:latest \
-     --region REGION \
+     --region us-west1 \
      --platform managed \
      --allow-unauthenticated
    ```

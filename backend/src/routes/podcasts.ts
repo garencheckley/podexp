@@ -378,9 +378,12 @@ router.post('/:id/generate-episode', async (req, res) => {
       // Use deep dive research results directly
       console.log('Using deep dive research results for content generation');
       
+      // Generate a title without time-specific references
+      const topicsList = deepResearchResults.researchedTopics.map(r => r.topic).join(' and ');
+      
       generatedContent = {
-        title: `${podcast.title}: Deep Dive into ${deepResearchResults.researchedTopics.map(r => r.topic).join(' and ')}`,
-        description: `An in-depth exploration of ${deepResearchResults.researchedTopics.map(r => r.topic).join(' and ')}.`,
+        title: `${podcast.title}: Deep Dive into ${topicsList}`,
+        description: `An in-depth exploration of ${topicsList}.`,
         content: deepResearchResults.overallContent
       };
       

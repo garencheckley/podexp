@@ -811,12 +811,6 @@ a:hover {
   border: 1px solid #91d5ff;
 }
 
-.badge.fictional {
-  background-color: #f6ffed;
-  color: #389e0d;
-  border: 1px solid #b7eb8f;
-}
-
 /* Add styles for podcast prompt editing */
 .podcast-prompt-section {
   margin-top: 1.5rem;

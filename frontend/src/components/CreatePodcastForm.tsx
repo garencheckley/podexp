@@ -4,7 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
   const [prompt, setPrompt] = useState('');
-  const [podcastType, setPodcastType] = useState('fictional'); // Default to "Fictional story"
+  // Always use 'news' type, no longer offering a choice
+  const podcastType = 'news';
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const CreatePodcastForm: React.FC = () => {
       const newPodcast = await createPodcast({
         description,
         prompt, // Store the full prompt for future episode generation
-        podcastType // Use podcastType instead of useWebSearch
+        podcastType // Always 'news'
       });
       
       console.log('Created podcast:', newPodcast);
@@ -86,30 +87,11 @@ const CreatePodcastForm: React.FC = () => {
               disabled={isSubmitting}
             />
             <p className="form-help">
-              This prompt will be used to generate episodes and an automatic title for your podcast. Be descriptive about the characters, setting, and style.
+              This prompt will be used to generate news podcast episodes based on current web information. Be specific about the topics, style, and focus you'd like for your news podcast.
             </p>
           </div>
           
-          <div className="form-group">
-            <label htmlFor="podcast-type">Podcast Type</label>
-            <select
-              id="podcast-type"
-              value={podcastType}
-              onChange={(e) => setPodcastType(e.target.value)}
-              disabled={isSubmitting}
-              className="select-dropdown"
-            >
-              <option value="fictional">Fictional story</option>
-              <option value="news">News from the web</option>
-            </select>
-            <p className="form-help podcast-type-help">
-              <strong>Fictional story:</strong> Creates imaginative content based solely on your prompt. Ideal for stories, adventures, and creative content.
-              <br /><br />
-              <strong>News from the web:</strong> Uses real-time web information to create fact-based content. Ideal for current events, educational content, and topic updates.
-              <br /><br />
-              <strong>Note:</strong> This selection cannot be changed later.
-            </p>
-          </div>
+          {/* Podcast type selection removed, always using 'news' type */}
           
           <button 
             type="submit" 

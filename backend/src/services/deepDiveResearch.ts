@@ -594,6 +594,14 @@ async function generateIntegratedContent(
       Start directly with the content, no intro/outro needed for this section.
       Structure the content logically within each topic and across the episode segment.
 
+      CRITICAL FORMAT REQUIREMENTS:
+      1. DO NOT include any speaker indicators like "Host:" or "Speaker:"
+      2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
+      3. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" or "(Podcast Outro Music Fades In)"
+      4. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
+      5. AVOID assumptions about publication frequency (daily, weekly, monthly)
+      6. Use only plain text with standard punctuation (periods, commas, question marks)
+
       Synthesized Research Input:
       ${combinedResearch.substring(0, 30000)} // Limit input size
 
