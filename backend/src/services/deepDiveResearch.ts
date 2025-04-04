@@ -2,11 +2,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { executeWebSearch } from './search';
 import { EpisodeAnalysis } from './episodeAnalyzer';
 import { SearchResults, EpisodePlan } from './searchOrchestrator';
+import { FAST_MODEL_ID, POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Interface for a topic to be deeply researched
@@ -66,6 +65,7 @@ export async function prioritizeTopicsForDeepDive(
   analysis: EpisodeAnalysis,
   targetWordCount: number
 ): Promise<DeepResearchTopic[]> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Prioritizing topics for deep dive research');
     
@@ -282,8 +282,14 @@ async function extractKeyInsights(
   topic: string,
   level: number
 ): Promise<string[]> {
+  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
   try {
-    console.log(`Extracting key insights for ${topic} at level ${level}`);
+    console.log(`Extracting Key Insights - Level ${level} for Topic: "${topic}"`);
+    // Limit content length to avoid exceeding model limits, especially for flash
+    const maxInputLength = 15000; // Adjust as needed for flash model limits
+    const truncatedContent = content.length > maxInputLength
+      ? content.substring(0, maxInputLength)
+      : content;
     
     const levelDescriptions = {
       1: "surface-level, factual information",
@@ -291,12 +297,12 @@ async function extractKeyInsights(
       3: "deep analysis, expert perspectives, and implications"
     };
     
-    const insightsPrompt = `
+    const prompt = `
       Extract key insights from this research on "${topic}".
       Focus on ${levelDescriptions[level as keyof typeof levelDescriptions]}.
       
       Research content:
-      ${content.substring(0, 6000)}
+      ${truncatedContent}
       
       Extract 5-7 key insights that represent the most valuable information.
       Each insight should be concise (1-2 sentences) but substantive.
@@ -305,7 +311,7 @@ async function extractKeyInsights(
       ["Insight 1", "Insight 2", ...]
     `;
     
-    const result = await model.generateContent(insightsPrompt);
+    const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     
     try {
@@ -324,8 +330,8 @@ async function extractKeyInsights(
       return [];
     }
   } catch (error) {
-    console.error('Error extracting key insights:', error);
-    return [];
+    console.error(`Error extracting key insights for topic "${topic}" at level ${level}:`, error);
+    return []; // Return empty array on error
   }
 }
 
@@ -336,24 +342,14 @@ async function extractKeyInsights(
  * @returns Array of follow-up queries
  */
 function generateFollowupQueries(topic: string, insights: string[]): string[] {
-  // Take up to 3 insights and generate follow-up queries
-  const followupQueries = insights.slice(0, 3).map(insight => {
-    // Extract key concepts from the insight
-    const insightWords = insight
-      .replace(/[^\w\s]/gi, '')
-      .split(' ')
-      .filter(word => word.length > 4);
-    
-    // Choose 2-3 key words to focus the follow-up query
-    const keyWords = insightWords
-      .sort(() => 0.5 - Math.random())
-      .slice(0, Math.min(3, insightWords.length))
-      .join(' ');
-    
-    return `${topic} ${keyWords} detailed analysis`;
-  });
-  
-  return followupQueries;
+  // Simple generation, fast model likely sufficient - Assuming no direct AI call needed here based on current impl.
+  // If an AI call were added here, it would use FAST_MODEL_ID
+  console.log(`Generating Followup Queries for Topic: "${topic}"`);
+  if (insights.length === 0) {
+    return [`latest updates on ${topic}`];
+  }
+  // Simple logic, no AI call currently
+  return insights.slice(0, 3).map(insight => `${topic} ${insight.substring(0, 50)} details`);
 }
 
 /**
@@ -363,28 +359,21 @@ function generateFollowupQueries(topic: string, insights: string[]): string[] {
  * @returns Array of deep dive queries
  */
 function generateDeepDiveQueries(topic: DeepResearchTopic, insights: string[]): string[] {
-  const queries = [];
-  
-  // Add expert analysis query
-  queries.push(`expert analysis of ${topic.topic} implications`);
-  
-  // Use key questions from the topic
-  topic.keyQuestions.forEach(question => {
-    queries.push(`${topic.topic} ${question}`);
-  });
-  
-  // Generate nuanced queries based on insights
-  if (insights.length > 0) {
-    // Take a random insight and convert it to a query
-    const randomInsight = insights[Math.floor(Math.random() * insights.length)];
-    queries.push(`${topic.topic} ${randomInsight.substring(0, 50)}`);
-  }
-  
-  // Add a historical or future implications query
-  queries.push(`${topic.topic} historical context and future implications`);
-  
-  // Limit to 3-4 queries to manage API usage
-  return queries.slice(0, 4);
+   // More complex, but let's try fast model first - Assuming no direct AI call needed here based on current impl.
+   // If an AI call were added here, it would use FAST_MODEL_ID
+  console.log(`Generating Deep Dive Queries for Topic: "${topic.topic}"`);
+  const baseQueries = [
+    `expert analysis ${topic.topic}`,
+    `implications of ${topic.topic}`,
+    `historical context ${topic.topic}`,
+    `future predictions ${topic.topic}`,
+    `contrasting views ${topic.topic}`
+  ];
+  // Add queries derived from key questions and insights
+  const insightQueries = insights.slice(0, 2).map(i => `deep analysis of ${i.substring(0,60)} regarding ${topic.topic}`);
+  const questionQueries = topic.keyQuestions.slice(0, 2).map(q => `in-depth research ${q}`);
+
+  return [...baseQueries, ...insightQueries, ...questionQueries].slice(0, 5); // Limit total queries
 }
 
 /**
@@ -402,40 +391,40 @@ async function synthesizeLayeredResearch(
     keyInsights: string[];
   }>
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Synthesizing layered research for topic: "${topic.topic}"`);
     
-    // Combine key insights from all layers
-    const allInsights = layers.flatMap(layer => 
-      layer.keyInsights.map(insight => `[Level ${layer.level}] ${insight}`)
-    );
-    
+    // Prepare combined content for synthesis, prioritizing deeper layers
+    // Concatenate insights and key content snippets - might need adjustment based on token limits
+    let synthesisInput = `Topic: ${topic.topic}\nKey Questions to Answer:\n${topic.keyQuestions.join('\\n- ')}\n\n`;
+    synthesisInput += "Key Insights & Content from Research Layers:\n";
+    layers.forEach(layer => {
+      synthesisInput += `\n--- Layer ${layer.level} ---\n`;
+      synthesisInput += `Insights: ${layer.keyInsights.join(', ')}\n`;
+      // Add a snippet of content - avoid overwhelming the model
+      synthesisInput += `Content Snippet: ${layer.content.substring(0, 1000)}...\n`;
+    });
+
     const synthesisPrompt = `
-      Synthesize this multi-layer research on "${topic.topic}" into a cohesive narrative.
-      
-      Key insights from different research layers:
-      ${allInsights.join('\n')}
-      
-      Key questions this research should answer:
-      ${topic.keyQuestions.join('\n')}
-      
-      Create a comprehensive synthesis that:
-      1. Introduces the topic and its significance
-      2. Presents factual information from surface research
-      3. Adds context and details from intermediate research
-      4. Incorporates expert analysis and implications from deep research
-      5. Addresses the key questions listed above
-      6. Concludes with significance and implications
-      
-      The synthesis should be well-structured, flowing naturally between levels of depth.
-      Aim for around 600-800 words of substantive, insight-rich content.
+      Synthesize the following research findings for the topic "${topic.topic}" into a cohesive narrative (approx 400-600 words).
+      Focus on answering the key questions provided. Integrate insights from all layers (surface, intermediate, deep).
+      Ensure a logical flow, starting with basics and moving to deeper analysis and implications.
+      Maintain an objective, analytical tone suitable for a news podcast.
+      DO NOT just list facts; provide context and analysis.
+      Prioritize insights from Layer 3 (deep research).
+
+      Research Input:
+      ${synthesisInput.substring(0, 30000)} // Limit input size for safety
+
+      Generate only the synthesized narrative text.
     `;
-    
+
     const result = await model.generateContent(synthesisPrompt);
     return result.response.text();
   } catch (error) {
     console.error(`Error synthesizing research for topic "${topic.topic}":`, error);
-    return `Research synthesis for ${topic.topic} could not be completed due to an error.`;
+    return `Synthesis failed for topic: ${topic.topic}.`;
   }
 }
 
@@ -461,67 +450,48 @@ async function calculateDepthMetrics(
   contextualDepth: number;
   overallDepthScore: number;
 }> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Calculating depth metrics for topic: "${topic.topic}"`);
     
     const metricsPrompt = `
-      Evaluate the depth of this research on "${topic.topic}".
-      
-      Synthesized content:
-      ${synthesizedContent.substring(0, 6000)}
-      
-      Key questions that should be addressed:
-      ${topic.keyQuestions.join('\n')}
-      
-      Number of sources: ${new Set(layers.flatMap(l => l.sources)).size}
-      Number of insights: ${layers.reduce((sum, l) => sum + l.keyInsights.length, 0)}
-      
-      Evaluate on these metrics (scale 1-10):
-      1. Factual Density: How rich in specific facts, figures, and concrete information
-      2. Insight Score: How well it provides analysis and "so what" beyond just facts
-      3. Contextual Depth: How well it provides historical context and broader implications
-      4. Overall Depth Score: Comprehensive assessment of depth quality
-      
-      Respond in JSON format:
+      Analyze the following synthesized content for the topic "${topic.topic}".
+      Evaluate its depth based on factual density, insight quality, and contextual richness.
+
+      Synthesized Content:
+      ${synthesizedContent.substring(0, 15000)} // Limit input size
+
+      Rate the following metrics on a scale of 1-10 (1=low, 10=high):
+      1. Factual Density: Concentration of specific facts, figures, concrete info.
+      2. Insight Score: Quality of analysis, interpretation, going beyond surface facts.
+      3. Contextual Depth: Provision of background, historical context, implications.
+
+      Respond ONLY in JSON format:
       {
-        "factualDensity": 8,
-        "insightScore": 7,
-        "contextualDepth": 9,
-        "overallDepthScore": 8
+        "factualDensity": <number>,
+        "insightScore": <number>,
+        "contextualDepth": <number>
       }
     `;
-    
+
     const result = await model.generateContent(metricsPrompt);
     const responseText = result.response.text();
-    
-    try {
-      // Clean up the response to ensure it's valid JSON
-      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
-      const metrics = JSON.parse(cleanedResponse);
-      
-      return {
-        factualDensity: metrics.factualDensity || 5,
-        insightScore: metrics.insightScore || 5,
-        contextualDepth: metrics.contextualDepth || 5,
-        overallDepthScore: metrics.overallDepthScore || 5
-      };
-    } catch (parseError) {
-      console.error('Error parsing depth metrics:', parseError);
-      return {
-        factualDensity: 5,
-        insightScore: 5,
-        contextualDepth: 5,
-        overallDepthScore: 5
-      };
-    }
+    const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+    const metrics = JSON.parse(cleanedResponse);
+
+    // Calculate overall score (simple average for now)
+    const overallDepthScore = Math.round(
+      (metrics.factualDensity + metrics.insightScore + metrics.contextualDepth) / 3
+    );
+
+    return {
+      ...metrics,
+      overallDepthScore
+    };
+
   } catch (error) {
     console.error(`Error calculating depth metrics for topic "${topic.topic}":`, error);
-    return {
-      factualDensity: 5,
-      insightScore: 5,
-      contextualDepth: 5,
-      overallDepthScore: 5
-    };
+    return { factualDensity: 0, insightScore: 0, contextualDepth: 0, overallDepthScore: 0 };
   }
 }
 
@@ -601,63 +571,40 @@ async function generateIntegratedContent(
   topicDistribution: Array<{ topic: string; allocation: number }>,
   targetWordCount: number
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
-    console.log('Generating integrated content from deep research');
-    
-    const topicsContent = researchedTopics.map((research, index) => {
-      const distribution = topicDistribution.find(d => d.topic === research.topic);
-      
-      return {
-        topic: research.topic,
-        content: research.synthesizedContent,
-        allocation: distribution?.allocation || 0,
-        depthScore: research.depthMetrics.overallDepthScore
-      };
+    console.log('Generating integrated podcast script content');
+
+    let combinedResearch = "Synthesized Research for Podcast Episode:\n\n";
+    researchedTopics.forEach(topicResult => {
+      const allocation = topicDistribution.find(d => d.topic === topicResult.topic)?.allocation || (100 / researchedTopics.length);
+      const estimatedWords = Math.round(targetWordCount * (allocation / 100));
+      combinedResearch += `--- Topic: ${topicResult.topic} (Target Length: ~${estimatedWords} words) ---\n`;
+      combinedResearch += `Overall Depth Score: ${topicResult.depthMetrics.overallDepthScore}/10\n`;
+      combinedResearch += `Synthesized Content:\n${topicResult.synthesizedContent}\n\n`;
     });
-    
-    const integrationPrompt = `
-      Create a cohesive podcast episode script that integrates these deeply-researched topics.
-      
-      Target length: ${targetWordCount} words
-      
-      Topics to cover:
-      ${topicsContent.map(t => `- ${t.topic} (${t.allocation}% of content, depth score: ${t.depthScore}/10)`).join('\n')}
-      
-      For each topic, here is the research synthesis:
-      
-      ${topicsContent.map(t => `
-      ## ${t.topic}
-      ${t.content.substring(0, 2000)}
-      `).join('\n\n')}
-      
-      Create an integrated narrative that:
-      1. Flows naturally between topics with smooth transitions
-      2. Maintains appropriate depth for each topic
-      3. Allocates content according to the specified percentages
-      4. Creates connections between related topics where possible
-      5. Has a clear introduction, body, and conclusion
-      6. Feels like a cohesive episode, not disjointed sections
-      
-      IMPORTANT FORMAT REQUIREMENTS:
-      1. Write in plain text with plain punctuation only - NO markdown formatting
-      2. DO NOT include audio instructions like "(upbeat music)" or "(pause)"
-      3. DO NOT include speaker indicators like "Host:" or "Speaker:"
-      4. DO NOT include section headers or transition markers
-      5. Avoid using bold, italics, or other formatting that won't be recognized by text-to-speech
-      6. Write in a conversational style but without explicitly marking the speaker
-      
-      The content should be podcast-ready, conversational yet substantive,
-      and structured to maintain listener engagement throughout.
+
+    const generationPrompt = `
+      You are a podcast script writer. Write a cohesive and engaging podcast script section based on the provided synthesized research for multiple topics.
+      Target total word count: ${targetWordCount} words.
+      Allocate content according to the target length suggested for each topic.
+      Ensure smooth transitions between topics.
+      Maintain an objective, analytical, and informative tone suitable for a news podcast.
+      Focus on delivering insights and context, not just facts. Avoid fluff or filler phrases.
+      Start directly with the content, no intro/outro needed for this section.
+      Structure the content logically within each topic and across the episode segment.
+
+      Synthesized Research Input:
+      ${combinedResearch.substring(0, 30000)} // Limit input size
+
+      Generate ONLY the integrated podcast script content.
     `;
-    
-    const result = await model.generateContent(integrationPrompt);
+
+    const result = await model.generateContent(generationPrompt);
     return result.response.text();
+
   } catch (error) {
-    console.error('Error generating integrated content:', error);
-    
-    // Fallback: Just concatenate the synthesized content from each topic
-    return researchedTopics
-      .map(research => `${research.topic}\n\n${research.synthesizedContent}`)
-      .join('\n\n');
+    console.error('Error generating integrated podcast content:', error);
+    return "Failed to generate integrated podcast content due to an internal error.";
   }
 } 

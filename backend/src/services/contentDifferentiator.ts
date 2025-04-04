@@ -1,10 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EpisodeAnalysis } from './episodeAnalyzer';
+import { POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Interface for content validation result
@@ -29,6 +28,7 @@ export async function validateContentDifferentiation(
   draftContent: string,
   analysis: EpisodeAnalysis
 ): Promise<ValidationResult> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Validating content differentiation');
     
@@ -138,6 +138,7 @@ async function improveContentDifferentiation(
   redundantElements: string[],
   improvementSuggestions: string[]
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Improving content differentiation');
     

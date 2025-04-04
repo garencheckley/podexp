@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- Remember, I am the CEO and you are the engineer. You are to follow my instructions on what to build and not do anything beyond what I request. 
+
+- Before you implement anything please outline your plan and ask for approval.
+
+- Check the [README.md](mdc:README.md) file to understand the structure.

@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Podcast, PodcastSource } from './database';
+import { POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
 
 /**
  * Discovers authoritative sources based on a podcast's prompt
@@ -11,6 +11,7 @@ const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
  * @returns Array of podcast sources
  */
 export async function discoverSources(podcastPrompt: string): Promise<PodcastSource[]> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Discovering sources for podcast prompt:', podcastPrompt);
     
@@ -137,7 +138,8 @@ export async function refreshSourcesIfNeeded(podcast: Podcast): Promise<PodcastS
   
   // We have existing sources, evaluate them
   console.log(`Evaluating ${podcast.sources.length} existing sources for podcast "${podcast.title}"`);
-  
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+
   const sourceEvaluationPrompt = `
 Review the following sources for a podcast with theme: "${podcast.prompt || podcast.description}"
 

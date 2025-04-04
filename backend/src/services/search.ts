@@ -297,109 +297,85 @@ Response format:
 }
 
 /**
- * Conducts adaptive research with intelligent follow-up searches
- * This analyzes initial results and performs targeted follow-up searches
+ * Conducts adaptive multi-stage research based on initial findings
  * 
- * @param prompt The podcast prompt
- * @param targetWordCount The target word count for the podcast episode
- * @returns Comprehensive research results with all follow-up information
+ * @param prompt The initial podcast prompt
+ * @param targetWordCount The target word count for the episode
+ * @returns Research results including initial search, identified topics, follow-up results, and consolidated content
  */
 export async function conductAdaptiveResearch(
   prompt: string,
   targetWordCount: number = 300
 ): Promise<AdaptiveResearchResults> {
-  console.log(`Starting adaptive research process for prompt: "${prompt}" with target length: ${targetWordCount} words`);
-  
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID }); // Instantiate powerful model here for consolidation
   try {
-    // Step 1: Initial broad search to understand the topic
-    console.log('Conducting initial search...');
+    console.log(`Starting adaptive research process for prompt: "${prompt}"`);
+    
+    // Stage 1: Initial Search
     const initialSearch = await conductSimpleSearch(prompt);
+    console.log('Initial search complete');
     
-    // Step 2: Analyze results to identify topics that need more research
-    console.log('Analyzing initial results to identify follow-up topics...');
-    const researchTopics = await identifyResearchTopics(initialSearch.content, prompt, targetWordCount);
+    // Stage 2: Identify Follow-up Topics
+    const followupTopics = await identifyResearchTopics(
+      initialSearch.content,
+      prompt,
+      targetWordCount
+    );
+    console.log(`Identified ${followupTopics.length} topics for follow-up research`);
     
-    // Step 3: Conduct follow-up searches on identified topics
-    console.log(`Conducting ${researchTopics.length} follow-up searches...`);
-    const followupResults: {[topic: string]: {content: string, sources: string[]}} = {};
+    // Stage 3: Follow-up Research
+    const followupResults: { [topic: string]: { content: string; sources: string[] } } = {};
+    const followupPromises = followupTopics.map(async (topic) => {
+      console.log(`Conducting follow-up research for topic: "${topic.topic}"`);
+      followupResults[topic.topic] = await executeWebSearch(topic.query);
+    });
+    await Promise.all(followupPromises);
+    console.log('Follow-up research complete');
     
-    // Execute follow-up searches in parallel to save time
-    await Promise.all(researchTopics.map(async (topic) => {
-      console.log(`Researching topic: "${topic.topic}" with query: "${topic.query}"`);
-      const result = await executeWebSearch(topic.query);
-      followupResults[topic.topic] = result;
-    }));
-    
-    // Step 4: Consolidate all findings into a cohesive research document
-    console.log('Consolidating all research findings...');
-    
-    // Adjust consolidation prompt based on target length
-    // For longer podcasts, we want to preserve more details
-    const detailLevel = targetWordCount > 750 ? 
-      "extremely detailed and comprehensive" : 
-      "factual but concise";
-    
-    const consolidationPrompt = `You are a professional journalist preparing a ${detailLevel} research document for a podcast that will be about ${targetWordCount} words long. 
-    
-Please consolidate the following research into a well-organized document that covers all key information, focusing on facts, 
-quotes, statistics, and recent developments. ${targetWordCount > 750 ? "Preserve as many details as possible." : "Focus on the most important points while maintaining accuracy."} Remove any redundancy and organize information logically.
-
-INITIAL RESEARCH:
-${initialSearch.content}
-
-${Object.entries(followupResults).map(([topic, data]) => `
-FOLLOW-UP RESEARCH ON "${topic}":
-${data.content}
-`).join('\n')}
-
-Create a comprehensive document organized by topic that a journalist could use to write a detailed, factual news podcast.
-Focus on including specific dates, quotes with attribution, and factual information. Do NOT summarize the information - 
-preserve all important details, quotes, and context.`;
-
-    const maxOutputTokens = Math.min(8000, Math.max(4000, targetWordCount * 4));
-    console.log(`Using max output tokens: ${maxOutputTokens} for consolidation`);
-
-    const consolidationResult = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: consolidationPrompt }] }],
-      generationConfig: {
-        temperature: 0,
-        maxOutputTokens: maxOutputTokens,
-      }
+    // Stage 4: Consolidate Research
+    console.log('Consolidating all research findings');
+    let consolidatedContent = `Initial research on "${prompt}":\n${initialSearch.content}\n\n`;
+    consolidatedContent += 'Follow-up research findings:\n';
+    followupTopics.forEach(topic => {
+      consolidatedContent += `\n--- Topic: ${topic.topic} ---\n`;
+      consolidatedContent += `Reason for research: ${topic.reason}\n`;
+      consolidatedContent += `${followupResults[topic.topic]?.content || 'No additional information found.'}\n`;
     });
     
-    const consolidatedContent = consolidationResult.response.text();
+    // Use AI to refine the consolidated content if needed
+    const refinementPrompt = `Refine the following consolidated research findings into a cohesive summary suitable for generating a podcast episode on "${prompt}". Focus on integrating the initial and follow-up research smoothly.
+
+${consolidatedContent.substring(0, 30000)}
+
+Refined Summary:
+`;
     
-    // Collect all unique sources
-    const allSources = [...initialSearch.sources];
-    Object.values(followupResults).forEach(result => {
-      result.sources.forEach(source => {
-        if (!allSources.includes(source)) {
-          allSources.push(source);
-        }
-      });
-    });
+    const refinementResult = await model.generateContent(refinementPrompt); // Use the instantiated model
+    const finalConsolidatedContent = refinementResult.response.text();
+    console.log('Research consolidation complete');
     
-    console.log('Adaptive research completed successfully');
-    console.log(`Found ${allSources.length} total unique sources`);
-    
+    // Combine all sources
+    const allSources = [
+      ...initialSearch.sources,
+      ...followupTopics.flatMap(topic => followupResults[topic.topic]?.sources || [])
+    ];
+    const uniqueSources = [...new Set(allSources)];
+
     return {
       initialSearch,
-      followupTopics: researchTopics,
+      followupTopics,
       followupResults,
-      consolidatedContent,
-      allSources
+      consolidatedContent: finalConsolidatedContent,
+      allSources: uniqueSources
     };
   } catch (error) {
     console.error('Error in adaptive research process:', error);
-    // Return a minimal result if anything fails
+    // Return a minimal structure on error
     return {
-      initialSearch: {
-        content: 'Initial search failed.',
-        sources: []
-      },
+      initialSearch: { content: 'Adaptive research failed', sources: [] },
       followupTopics: [],
       followupResults: {},
-      consolidatedContent: 'Research process failed. Please try again.',
+      consolidatedContent: 'Adaptive research failed',
       allSources: []
     };
   }

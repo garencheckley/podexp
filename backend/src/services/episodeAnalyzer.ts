@@ -1,10 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDb, Episode } from './database';
+import { POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Interface for the result of analyzing existing episodes
@@ -66,6 +65,7 @@ export async function analyzeExistingEpisodes(podcastId: string, limit = 5): Pro
       
       // Use Gemini to analyze the episode content
       console.log(`Analyzing content for episode ${episode.id}`);
+      const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
       
       // Truncate content if it's very long to avoid token limits
       const contentForAnalysis = episode.content.length > 10000 
@@ -94,7 +94,9 @@ export async function analyzeExistingEpisodes(podcastId: string, limit = 5): Pro
         
         // Parse the JSON response
         try {
-          const analysisResult = JSON.parse(responseText);
+          // Clean up potential markdown formatting
+          const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+          const analysisResult = JSON.parse(cleanedResponse);
           
           // Update topic frequency
           if (analysisResult.topics && Array.isArray(analysisResult.topics)) {

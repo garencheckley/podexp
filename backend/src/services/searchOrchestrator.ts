@@ -2,11 +2,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { executeWebSearch } from './search';
 import { EpisodeAnalysis } from './episodeAnalyzer';
 import { Podcast } from './database';
+import { FAST_MODEL_ID, POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Interface for search results from initial exploration
@@ -101,6 +100,7 @@ async function generateExploratoryQueries(
   podcast: Podcast,
   analysis: EpisodeAnalysis
 ): Promise<string[]> {
+  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
   try {
     console.log('Generating exploratory search queries');
     
@@ -179,6 +179,7 @@ async function identifyPotentialTopics(
   analysis: EpisodeAnalysis,
   podcast: Podcast
 ): Promise<SearchResults> {
+  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
   try {
     console.log('Identifying potential topics from search results');
     
@@ -270,8 +271,8 @@ async function identifyPotentialTopics(
       potentialTopics: [],
       relevantSources: [],
       recencyMapping: {},
-      combinedResearch: '',
-      allSources: []
+      combinedResearch: searchResults.map(r => r.content).join('\n\n'),
+      allSources: searchResults.flatMap(r => r.sources)
     };
   }
 }
@@ -288,6 +289,7 @@ export async function planEpisodeContent(
   analysis: EpisodeAnalysis,
   searchResults: SearchResults
 ): Promise<EpisodePlan> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Planning episode content for podcast: ${podcast.title}`);
     
@@ -485,6 +487,7 @@ async function findContrastingViewpoints(
   topic: string,
   mainResearch: string
 ): Promise<{content: string, sources: string[]}> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Finding contrasting viewpoints for topic: "${topic}"`);
     
@@ -525,11 +528,8 @@ async function findContrastingViewpoints(
       };
     }
   } catch (error) {
-    console.error('Error finding contrasting viewpoints:', error);
-    return {
-      content: '',
-      sources: []
-    };
+    console.error(`Error finding contrasting viewpoints for topic "${topic}":`, error);
+    return { content: 'Could not find contrasting viewpoints.', sources: [] };
   }
 }
 
@@ -551,6 +551,7 @@ async function synthesizeTopicResearch(
   mainResearch: {content: string, sources: string[]},
   contrastingViewpoints: {content: string, sources: string[]}
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Synthesizing research for topic: "${topic.topic}"`);
     
@@ -573,8 +574,8 @@ async function synthesizeTopicResearch(
     
     return responseText;
   } catch (error) {
-    console.error('Error synthesizing topic research:', error);
-    return "Synthesis could not be completed due to an error.";
+    console.error(`Error synthesizing research for topic "${topic.topic}":`, error);
+    return `Synthesis failed for ${topic.topic}.`;
   }
 }
 
@@ -599,8 +600,9 @@ async function createOverallSynthesis(
     synthesizedContent: string;
   }>
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
-    console.log(`Creating overall synthesis for episode: "${plan.episodeTitle}"`);
+    console.log('Creating overall synthesis for the episode');
     
     // Generate prompt to create overall synthesis
     const synthesisPrompt = `
@@ -622,6 +624,7 @@ async function createOverallSynthesis(
     return responseText;
   } catch (error) {
     console.error('Error creating overall synthesis:', error);
-    return "Overall synthesis could not be completed due to an error.";
+    // Fallback: just join the individual topic syntheses
+    return topicResearch.map(t => t.synthesizedContent).join('\n\n---\n\n');
   }
 }

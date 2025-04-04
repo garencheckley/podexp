@@ -246,6 +246,15 @@ The system now implements a sophisticated Deep Dive Research Framework that enab
 
 This implementation is ideal for educational and informational podcasts where listeners are seeking in-depth understanding rather than broad coverage of many topics.
 
+### Hybrid AI Model Strategy
+
+To address quality concerns such as lack of depth, repetition, and "fluff" (as outlined in Backlog Item 1.1), the system now employs a hybrid AI model strategy. This involves:
+
+- **Powerful Model (`gemini-2.5-pro-exp-03-25`)**: Used for complex tasks requiring deep reasoning, nuanced analysis, and high-quality generation. This includes topic prioritization, research synthesis, content differentiation analysis, narrative planning, and final script generation.
+- **Fast Model (`gemini-2.0-flash`)**: Used for simpler, speed-sensitive tasks where cost-effectiveness is also important. This includes initial search query generation, preliminary topic identification from search results, and executing grounded web searches.
+
+This approach matches AI model capabilities to task complexity, aiming to improve the overall quality, depth, and analytical rigor of the generated podcast content while managing computational resources effectively.
+
 ### Improved Source Attribution Display
 The system now features an enhanced display for source attribution in news-based podcasts:
 

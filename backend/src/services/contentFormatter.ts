@@ -1,11 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { DetailedResearchResults } from './searchOrchestrator';
 import { NarrativeStructure } from './narrativePlanner';
+import { POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Generates structured content following the narrative plan
@@ -17,6 +16,7 @@ export async function generateStructuredContent(
   researchResults: DetailedResearchResults,
   narrativeStructure: NarrativeStructure
 ): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Generating structured content based on narrative plan');
     

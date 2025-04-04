@@ -1,0 +1,28 @@
+FROM node:18-slim AS builder
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
+
+RUN npm install
+
+COPY backend/src/ ./src/
+
+RUN npm run build
+
+FROM node:18-slim
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm install --only=production
+
+COPY --from=builder /app/dist/ ./dist/
+COPY backend/service-account-key.json* ./
+
+ENV NODE_ENV=production
+ENV GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json
+
+# Command to run the migration script
+CMD ["node", "dist/scripts/update-podcasts-last-updated.js"] 

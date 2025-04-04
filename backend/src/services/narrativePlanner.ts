@@ -1,10 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EpisodePlan } from './searchOrchestrator';
+import { POWERFUL_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const modelId = 'gemini-2.0-flash';
-const model = genAI.getGenerativeModel({ model: modelId });
 
 /**
  * Interface for enhanced narrative structure
@@ -51,6 +50,7 @@ export async function createNarrativeStructure(
   episodePlan: EpisodePlan,
   targetWordCount: number
 ): Promise<NarrativeStructure> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Creating enhanced narrative structure for episode');
     
@@ -256,84 +256,67 @@ function createFallbackNarrativeStructure(
 }
 
 /**
- * Evaluates how well the generated content adheres to the narrative structure
- * @param generatedContent The actual content that was generated
+ * Evaluates generated content against the planned narrative structure
+ * @param generatedContent The final generated podcast script content
  * @param narrativeStructure The planned narrative structure
- * @returns Updated narrative structure with adherence metrics
+ * @returns The narrative structure updated with adherence metrics
  */
 export async function evaluateContentAdherence(
   generatedContent: string,
   narrativeStructure: NarrativeStructure
 ): Promise<NarrativeStructure> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log('Evaluating content adherence to narrative structure');
-    
+
     const prompt = `
-      Evaluate how well this generated podcast episode content adheres to the planned narrative structure.
+      Evaluate how well this generated podcast content adheres to the planned narrative structure.
       
-      Planned Narrative Structure:
-      - Introduction (${narrativeStructure.introduction.wordCount} words)
-        Hook: ${narrativeStructure.introduction.hook}
-        
-      - Body Sections:
-        ${narrativeStructure.bodySections.map(section => 
-          `${section.sectionTitle} (${section.wordCount} words)
-           Key points: ${section.keyPoints.join(', ')}`
-        ).join('\n\n        ')}
-        
-      - Conclusion (${narrativeStructure.conclusion.wordCount} words)
-        Approach: ${narrativeStructure.conclusion.summarizationApproach}
+      Planned Structure:
+      ${JSON.stringify(narrativeStructure, null, 2)}
       
       Generated Content:
-      ${generatedContent.substring(0, 6000)}
+      ${generatedContent.substring(0, 15000)}
       
-      Evaluate on these criteria and provide scores from 0-100:
-      1. Structure adherence - Does the content follow the planned section structure?
-      2. Balance adherence - Does the content allocate appropriate word count to each section?
-      3. Transition quality - Does the content use good transitions between sections?
-      4. Overall adherence - Overall score for plan adherence
+      Evaluate the following on a scale of 1-10 (1=poor, 10=excellent):
+      1. Structure Score: How well does the content follow the planned sections (intro, body, conclusion)?
+      2. Balance Score: How well does the word count distribution match the planned allocation?
+      3. Transition Score: How smooth are the transitions between sections?
       
-      Respond in JSON format:
+      Respond ONLY in JSON format:
       {
-        "structureScore": 85,
-        "balanceScore": 75,
-        "transitionScore": 90,
-        "overallAdherence": 83,
-        "feedback": "Detailed feedback on adherence and suggestions for improvement"
+        "structureScore": <number>,
+        "balanceScore": <number>,
+        "transitionScore": <number>
       }
     `;
-    
+
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    
-    try {
-      // Clean up the response to ensure it's valid JSON
-      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
-      const adherenceResult = JSON.parse(cleanedResponse);
-      
-      // Update adherence metrics in the narrative structure
-      const updatedStructure = { ...narrativeStructure };
-      updatedStructure.adherenceMetrics = {
-        structureScore: adherenceResult.structureScore || 0,
-        balanceScore: adherenceResult.balanceScore || 0,
-        transitionScore: adherenceResult.transitionScore || 0,
-        overallAdherence: adherenceResult.overallAdherence || 0
-      };
-      
-      console.log(`Content adherence evaluation: overall score ${updatedStructure.adherenceMetrics.overallAdherence}`);
-      if (adherenceResult.feedback) {
-        console.log(`Feedback: ${adherenceResult.feedback}`);
+    const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+    const metrics = JSON.parse(cleanedResponse);
+
+    // Calculate overall adherence
+    const overallAdherence = Math.round(
+      (metrics.structureScore + metrics.balanceScore + metrics.transitionScore) / 3
+    );
+
+    console.log(`Adherence Evaluation: Structure=${metrics.structureScore}, Balance=${metrics.balanceScore}, Transitions=${metrics.transitionScore}, Overall=${overallAdherence}`);
+
+    // Update the narrative structure with the metrics
+    return {
+      ...narrativeStructure,
+      adherenceMetrics: {
+        structureScore: metrics.structureScore,
+        balanceScore: metrics.balanceScore,
+        transitionScore: metrics.transitionScore,
+        overallAdherence: overallAdherence
       }
-      
-      return updatedStructure;
-    } catch (parseError) {
-      console.error('Error parsing adherence evaluation:', parseError);
-      // Return original structure with default scores on error
-      return narrativeStructure;
-    }
+    };
+
   } catch (error) {
     console.error('Error evaluating content adherence:', error);
-    // Return original structure with default scores on error
+    // Return the original structure if evaluation fails
     return narrativeStructure;
   }
 } 
