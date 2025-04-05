@@ -332,7 +332,7 @@ router.post('/:id/generate-episode', async (req, res) => {
     
     // 1. Review existing episodes
     console.log('Step 1: Analyzing existing episodes');
-    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
+    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId, 10);
     console.log(`Analysis complete: Found ${episodeAnalysis.episodeCount} episodes, ${episodeAnalysis.recentTopics.length} topics`);
     
     // 2. Perform initial search for new content

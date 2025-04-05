@@ -186,7 +186,9 @@ The system now implements a sophisticated multi-stage process for episode genera
 #### 5. Content Differentiation Validation
 - **Similarity Analysis**: Compares generated content against previous episodes
 - **Redundancy Detection**: Identifies redundant elements that might duplicate previous content
-- **Automated Improvement**: When necessary, automatically rewrites content to increase differentiation
+- **Enhanced History**: Analyzes the last 10 episodes (increased from 5) for better detection of long-term repetition.
+- **Automated Improvement**: When necessary, automatically rewrites content to increase differentiation.
+  - **Refined Prompting**: The rewrite prompt now explicitly instructs the AI to change the *analytical frame* or *perspective*, rather than just swapping facts, to ensure meaningful differentiation.
 - **Quality Metrics**: Provides similarity scores and differentiation assessments
 - **Content Optimization**: Fine-tunes content to ensure uniqueness while maintaining quality
 

@@ -155,11 +155,11 @@ async function improveContentDifferentiation(
       ${improvementSuggestions.map(s => `- ${s}`).join('\n')}
       
       Create an improved version that:
-      1. Replaces redundant elements with more unique content
-      2. Deepens coverage in areas where it can be differentiated
-      3. Takes a fresh perspective on the topics
-      4. Maintains the same general structure and flow
-      5. Preserves the educational value and information accuracy
+      1. Replaces redundant elements with significantly different content, focusing on new insights or information.
+      2. Focuses on changing the ANALYTICAL FRAME or PERSPECTIVE on the topics, rather than just swapping minor facts or rephrasing. Offer a different angle or interpretation.
+      3. Deepens coverage in areas that allow for this new perspective.
+      4. Maintains the same general structure and flow.
+      5. Preserves the educational value and information accuracy.
       
       CRITICAL FORMAT REQUIREMENTS:
       1. Write in plain text with ONLY standard punctuation (periods, commas, question marks)
