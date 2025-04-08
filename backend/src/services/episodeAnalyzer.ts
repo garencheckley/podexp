@@ -18,10 +18,10 @@ export interface EpisodeAnalysis {
 /**
  * Analyzes existing episodes to identify topics, themes, and content patterns
  * @param podcastId The podcast ID to analyze episodes for
- * @param limit Maximum number of episodes to analyze (default: 5)
+ * @param limit Maximum number of episodes to analyze (default: 15)
  * @returns Analysis of episode content patterns
  */
-export async function analyzeExistingEpisodes(podcastId: string, limit = 5): Promise<EpisodeAnalysis> {
+export async function analyzeExistingEpisodes(podcastId: string, limit = 15): Promise<EpisodeAnalysis> {
   try {
     console.log(`Analyzing existing episodes for podcast ${podcastId}, limit: ${limit}`);
     

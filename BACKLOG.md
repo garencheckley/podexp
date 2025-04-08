@@ -62,16 +62,7 @@ The backlog items aim to address the following core user-reported problems with 
     3. `generateDeepDiveQueries`: Reimplemented to use powerful model for better contrasting viewpoint generation
     4. `generateIntegratedContent` and `createOverallSynthesis`: Removed input truncation to maintain full context
 
-#### 1.3. Improve Differentiation Logic
-
-**Problem**: `episodeAnalyzer` and `contentDifferentiator` use `gemini-flash` and may rely on superficial topic/theme lists, potentially missing subtle repetition or failing to drive meaningful differentiation in the rewrite step. Analysis history is limited.
-**Solution**:
-    - Use the stronger model (Gemini Pro) for analysis in `episodeAnalyzer` and `contentDifferentiator` for more nuanced understanding of previous content.
-    - Consider increasing the history limit (`limit` parameter in `analyzeExistingEpisodes`) to detect longer-term repetition (e.g., 10 episodes).
-    - Focus differentiation improvement suggestions (in `contentDifferentiator`) on changing the *angle* or *analytical frame*, not just swapping facts.
-**Rationale**: Improves the system's ability to detect and correct for repetition beyond simple topic overlap, leading to genuinely fresher content.
-
-#### 1.4. Refine Source Management & Usage
+#### 1.3. Refine Source Management & Usage
 
 **Problem**: Source discovery relies on AI interpretation of "authoritative." Source-guided search impact seems limited.
 **Solution**:
@@ -79,13 +70,13 @@ The backlog items aim to address the following core user-reported problems with 
     - Consider increasing the number of `site:` queries in `performSourceGuidedSearch` or integrating its findings more directly into the `deepDiveResearch` process for selected topics.
 **Rationale**: Improves the quality and relevance of information sources used, potentially contributing to deeper analysis.
 
-#### 1.5. Structure for Analysis
+#### 1.4. Structure for Analysis
 
 **Problem**: The `narrativePlanner` creates structure but doesn't strongly enforce analytical sections, potentially allowing "fluff".
 **Solution**: Modify the `createNarrativeStructure` prompt to explicitly suggest or require more analytical section types (e.g., "Background & Context," "Competing Perspectives," "Analysis & Implications," "Outlook") rather than just generic topic summaries.
 **Rationale**: Guides the AI to structure the episode around analysis rather than just factual reporting, reinforcing the goal of depth.
 
-#### 1.6. Implement Pre-Analysis Clustering (Inspired by Meridian)
+#### 1.5. Implement Pre-Analysis Clustering (Inspired by Meridian)
 
 **Problem**: The system may waste analytical resources by performing deep dives on multiple highly similar articles reporting the same core event, contributing to perceived repetition.
 **Solution**: Introduce an article clustering step *before* deep dive analysis.
@@ -144,7 +135,7 @@ The backlog items aim to address the following core user-reported problems with 
 
 The projects are listed in recommended implementation order:
 
-1.  **Quality Improvement Initiatives (Item 1.1-1.6)**: Address core quality issues by refining existing frameworks (documented in README). Implementing 1.1 (Prompt Refinement) and **1.6 (Clustering)** are likely highest priority for depth and repetition.
+1.  **Quality Improvement Initiatives (Item 1.1-1.5)**: Address core quality issues by refining existing frameworks (documented in README). Implementing 1.1 (Prompt Refinement) and **1.5 (Clustering)** are likely highest priority for depth and repetition.
 2.  **Expert Analysis Simulator (Item 2)**: Builds upon improved quality foundation to add specific analytical capabilities.
 3.  **Additive Knowledge Engine (Item 3)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
 4.  **User Authentication & Personalization (Item 4)**: Adds user-facing features.
