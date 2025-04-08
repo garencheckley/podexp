@@ -25,6 +25,7 @@ import * as contentFormatter from '../services/contentFormatter';
 import * as deepDiveResearch from '../services/deepDiveResearch';
 import * as sourceManager from '../services/sourceManager';
 import * as clusteringService from '../services/clusteringService';
+import { summarizeCluster } from '../services/clusteringService';
 
 const router = express.Router();
 
@@ -379,21 +380,46 @@ router.post('/:id/generate-episode', async (req, res) => {
     // This will involve selecting representative articles/summaries per cluster.
     // For now, we'll pass the original prioritizedTopics as a placeholder.
     
-    // 2a. Prioritize topics for deep dive research
-    console.log('Step 2a: Prioritizing topics for deep dive research');
-    // **** PLACEHOLDER: This needs modification ****
-    // Create a placeholder input using original search results for now
-    const placeholderInputForPrioritization = {
-        ...initialSearchResults,
-        combinedResearch: combinedResearchContent,
-        allSources: combinedSources
-    };
+    // Generate summaries for each cluster
+    console.log('Step 2.3: Generating summaries for topic clusters');
+    const clusterSummariesInput: clusteringService.ClusterSummaryInput[] = [];
+    if (clusterResult && clusterResult.clusters && Object.keys(clusterResult.clusters).length > 0) {
+        const clusterIds = Object.keys(clusterResult.clusters).map(Number);
+        for (const clusterId of clusterIds) {
+            const topicIds = clusterResult.clusters[clusterId];
+            if (topicIds && topicIds.length > 0) {
+                try {
+                    // Pass initialSearchResults for context if available
+                    const summary = await summarizeCluster(clusterId, topicIds, initialSearchResults);
+                    clusterSummariesInput.push({
+                        clusterId: clusterId,
+                        summary: summary,
+                        originalTopicIds: topicIds
+                    });
+                } catch (summaryError) {
+                    console.error(`Error summarizing cluster ${clusterId}, skipping:`, summaryError);
+                }
+            }
+        }
+        console.log(`Generated ${clusterSummariesInput.length} cluster summaries.`);
+    } else {
+        console.log('Skipping cluster summarization as no clusters were found or clustering failed.');
+        // POTENTIAL FALLBACK: If clustering failed or yielded no results, 
+        // we might need to revert to prioritizing original topics.
+        // For now, we proceed, potentially with an empty clusterSummariesInput.
+    }
+    
+    
+    // 2a. Prioritize topics (now clusters) for deep dive research
+    console.log('Step 2a: Prioritizing topic clusters for deep dive research');
+    // **** REMOVED PLACEHOLDER ****
+    // Pass the generated cluster summaries to the updated prioritization function
     const prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(
-      placeholderInputForPrioritization, // Pass the potentially combined results
+      clusterSummariesInput, // Pass the generated cluster summaries
       episodeAnalysis,
       targetWordCount
     );
-    console.log(`Topic prioritization complete: Selected ${prioritizedTopics.length} topics for deep research`);
+    console.log(`Topic cluster prioritization complete: Selected ${prioritizedTopics.length} clusters for deep research`);
     
     // 2b. NEW: Conduct deep dive research on prioritized topics
     console.log('Step 2b: Conducting deep dive research');

@@ -53,77 +53,90 @@ export interface DeepDiveResults {
   overallContent: string;
 }
 
+// Define the new input structure for cluster summaries
+export interface ClusterSummaryInput {
+  clusterId: number;
+  summary: string;
+  originalTopicIds: string[];
+}
+
 /**
- * Analyzes potential topics and prioritizes them for deep research
- * @param topics List of potential topics from the search orchestrator
+ * Analyzes cluster summaries and prioritizes them for deep research
+ * @param clusterSummaries Array of cluster summaries with original topic IDs
  * @param analysis Previous episode analysis
  * @param targetWordCount Target word count for the episode
- * @returns Prioritized list of topics for deep research
+ * @returns Prioritized list of topics (represented by clusters) for deep research
  */
 export async function prioritizeTopicsForDeepDive(
-  searchResults: SearchResults,
+  clusterSummaries: ClusterSummaryInput[],
   analysis: EpisodeAnalysis,
   targetWordCount: number
 ): Promise<DeepResearchTopic[]> {
   const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
-    console.log('Prioritizing topics for deep dive research');
+    console.log('Prioritizing topic clusters for deep dive research');
+
+    if (!clusterSummaries || clusterSummaries.length === 0) {
+        console.log('No cluster summaries provided for prioritization.');
+        return [];
+    }
     
-    // Calculate optimal number of topics based on target length
-    // For deeper research, we want fewer topics with more depth
+    // Calculate optimal number of topics (clusters) based on target length
     const optimalTopicCount = Math.max(
       1,
       Math.min(
-        3,  // Max 3 topics for any episode
-        Math.floor(targetWordCount / 300)  // Roughly 1 topic per 300 words
+        3,  // Max 3 topics/clusters for any episode
+        Math.floor(targetWordCount / 300)  // Roughly 1 cluster per 300 words
       )
     );
     
-    console.log(`Optimal topic count for ${targetWordCount} words: ${optimalTopicCount}`);
+    console.log(`Optimal cluster count for ${targetWordCount} words: ${optimalTopicCount}`);
     
-    // Use Gemini to prioritize and select topics
+    // Use Gemini to prioritize and select clusters
     const prioritizationPrompt = `
-      Analyze these potential topics and prioritize them for deep research.
-      We want to focus on ${optimalTopicCount} topics with maximum depth potential.
+      Analyze these topic cluster summaries and prioritize them for deep research.
+      We want to focus on ${optimalTopicCount} cluster(s) with maximum depth potential.
       
-      Potential topics:
-      ${searchResults.potentialTopics.map(t => `- ${t.topic} (relevance: ${t.relevance}/10)`).join('\n')}
+      Topic Clusters:
+      ${clusterSummaries.map(c => `- Cluster ${c.clusterId}: "${c.summary}" (Original Topics: ${c.originalTopicIds.join(', ')})`).join('\n')}
       
-      Previously covered topics:
+      Previously covered individual topics (check against 'Original Topics' above):
       ${analysis.recentTopics.map(t => `- ${t.topic} (mentioned ${t.frequency} times)`).join('\n')}
       
-      For each topic, provide:
-      1. Topic name
-      2. Importance score (1-10)
-      3. Newsworthiness score (1-10)
-      4. Depth potential score (1-10)
-      5. Rationale for selection
-      6. 3-5 key questions that deep research should answer
-      7. 3-5 search queries for multi-level research
+      For each cluster summary, provide:
+      1. Cluster ID (from the input)
+      2. Cluster Summary (from the input)
+      3. Importance score (1-10)
+      4. Newsworthiness score (1-10)
+      5. Depth potential score (1-10)
+      6. Rationale for selection (consider the cluster theme and avoidance of previously covered topics)
+      7. 3-5 key questions that deep research into this cluster's theme should answer
+      8. 3-5 broad search queries for multi-level research into this cluster's theme
       
-      Focus on selecting:
-      - Topics with high newsworthiness and depth potential
-      - Topics that haven't been extensively covered before
-      - Topics that would benefit most from in-depth exploration
-      - Topics that would provide valuable insights to listeners
+      Focus on selecting clusters:
+      - With high newsworthiness and depth potential based on their summary
+      - Whose original topics haven't been extensively covered before
+      - Whose themes would benefit most from in-depth exploration
+      - Whose themes would provide valuable insights to listeners
       
       Respond in JSON format:
       {
-        "prioritizedTopics": [
+        "prioritizedClusters": [
           {
-            "topic": "Topic name",
+            "clusterId": 1,
+            "clusterSummary": "Summary text",
             "importance": 8,
             "newsworthiness": 9,
             "depthPotential": 7,
-            "rationale": "Why this topic deserves deep research",
+            "rationale": "Why this cluster theme deserves deep research",
             "keyQuestions": ["Question 1", "Question 2", "Question 3"],
-            "searchQueries": ["Query 1", "Query 2", "Query 3"]
+            "searchQueries": ["Query for cluster theme 1", "Query 2", "Query 3"]
           },
           ...
         ]
       }
       
-      Limit your response to the top ${optimalTopicCount * 2} topics, ordered by priority.
+      Limit your response to the top ${optimalTopicCount * 2} clusters, ordered by priority.
     `;
     
     const result = await model.generateContent(prioritizationPrompt);
@@ -134,23 +147,35 @@ export async function prioritizeTopicsForDeepDive(
       const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
       const prioritizationResult = JSON.parse(cleanedResponse);
       
-      if (prioritizationResult.prioritizedTopics && Array.isArray(prioritizationResult.prioritizedTopics)) {
-        // Take only the top N topics based on optimal count
-        const topTopics = prioritizationResult.prioritizedTopics
+      if (prioritizationResult.prioritizedClusters && Array.isArray(prioritizationResult.prioritizedClusters)) {
+        // Take only the top N clusters based on optimal count
+        const topClusters = prioritizationResult.prioritizedClusters
           .slice(0, optimalTopicCount);
+          
+        // Transform the prioritized cluster data into DeepResearchTopic format
+        const deepResearchTopics: DeepResearchTopic[] = topClusters.map((cluster: any) => ({
+            topic: cluster.clusterSummary, // Use the cluster summary as the main topic name
+            importance: cluster.importance,
+            newsworthiness: cluster.newsworthiness,
+            depthPotential: cluster.depthPotential,
+            rationale: cluster.rationale,
+            keyQuestions: cluster.keyQuestions,
+            searchQueries: cluster.searchQueries,
+            // Optional: Could add clusterId or originalTopicIds here if needed later
+        }));
         
-        console.log(`Selected ${topTopics.length} topics for deep research`);
-        return topTopics;
+        console.log(`Selected ${deepResearchTopics.length} topic clusters for deep research`);
+        return deepResearchTopics;
       } else {
-        console.error('Invalid topic prioritization format:', cleanedResponse);
+        console.error('Invalid topic cluster prioritization format:', cleanedResponse);
         return [];
       }
     } catch (parseError) {
-      console.error('Error parsing topic prioritization:', parseError);
+      console.error('Error parsing topic cluster prioritization:', parseError);
       return [];
     }
   } catch (error) {
-    console.error('Error prioritizing topics for deep dive:', error);
+    console.error('Error prioritizing topic clusters for deep dive:', error);
     return [];
   }
 }

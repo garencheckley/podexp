@@ -28,6 +28,11 @@ export interface ClusterResult {
   clusterAssignments: number[]; // Array where index corresponds to article index, value is cluster index
 }
 
+// Define the new input structure for cluster summaries
+export interface ClusterSummaryInput {
+  clusterId: number;
+  summary: string;
+}
 
 /**
  * Generates embeddings for a batch of articles using Vertex AI.
@@ -193,4 +198,65 @@ export async function clusterArticles(
     embeddings, // Optionally return embeddings
     clusterAssignments: result.clusters,
   };
+}
+
+// Add Gemini client import for summarization
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { SearchResults } from './searchOrchestrator'; // Import SearchResults if needed for context
+
+// Initialize Gemini for summarization (assuming shared config)
+const genAISummarizer = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const summarizerModel = genAISummarizer.getGenerativeModel({ model: 'gemini-1.5-flash-latest' }); // Use a fast model for summaries
+
+
+/**
+ * Generates a concise summary for a cluster of topics.
+ * @param clusterId The ID of the cluster.
+ * @param topicIds List of topic IDs (or names) belonging to this cluster.
+ * @param searchContext Optional: Original search results for context lookup.
+ * @returns A promise that resolves to a string summary of the cluster.
+ */
+export async function summarizeCluster(
+  clusterId: number,
+  topicIds: string[],
+  searchContext?: SearchResults // Pass the original search results for better context
+): Promise<string> {
+  if (!topicIds || topicIds.length === 0) {
+    return `Cluster ${clusterId} - Empty`;
+  }
+
+  // Attempt to get more details if context is provided
+  let topicDetails = topicIds.join(', ');
+  if (searchContext) {
+      const detailedTopics = topicIds.map(id => {
+          const found = searchContext.potentialTopics.find(t => t.topic === id);
+          return found ? `${found.topic} (Relevance: ${found.relevance})` : id;
+      });
+      if (detailedTopics.length > 0) {
+          topicDetails = detailedTopics.join('\n - ');
+      }
+  }
+
+  console.log(`Summarizing cluster ${clusterId} with topics:\n - ${topicDetails}`);
+
+  const prompt = `
+The following topics have been grouped together into a cluster (Cluster ${clusterId}) based on semantic similarity:
+
+- ${topicDetails}
+
+Generate a single, concise title or summary (max 15 words) that captures the core theme or overarching subject of this cluster. Focus on the central idea that links these topics.
+
+Summary:
+`;
+
+  try {
+    const result = await summarizerModel.generateContent(prompt);
+    const summary = result.response.text().trim().replace(/\"/g, ''); // Remove quotes
+    console.log(`Cluster ${clusterId} summary: "${summary}"`);
+    return summary;
+  } catch (error) {
+    console.error(`Error summarizing cluster ${clusterId}:`, error);
+    // Fallback summary
+    return `Cluster ${clusterId} - ${topicIds[0] || 'Grouped Topics'}`;
+  }
 } 
