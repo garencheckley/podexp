@@ -23,16 +23,17 @@ PODCAST THEME: "${podcastPrompt}"
 For each website, provide:
 1. Full URL (including https://)
 2. Name of the source
-3. Category (News, Blog, Research, Government, etc.)
+3. Category (e.g., News, Analysis/Think Tank, Research Journal, Blog, Government, etc.)
 4. Topics it covers relevant to the podcast (comma-separated)
-5. Quality score (1-10, where 10 is highest quality)
+5. Quality score (1-10, where 10 is highest quality and indicates strong analytical depth if applicable)
 
 The sources should:
-- Be reputable and reliable
-- Provide up-to-date information
-- Cover different aspects of the podcast theme
-- Include a mix of general and specialized sources
-- Focus on sources that update frequently with recent content
+- Be reputable and reliable.
+- Include a mix of sources providing factual reporting AND sources providing deeper analysis (e.g., reputable think tanks, research institutions, well-regarded editorial sections).
+- Provide up-to-date information.
+- Cover different aspects of the podcast theme.
+- Include a mix of general and specialized sources.
+- Focus on sources that update frequently with recent content.
 
 Format each source as a JSON object in an array with these exact fields:
 { 
@@ -247,7 +248,7 @@ export async function performSourceGuidedSearch(
     const sourceQueries = [];
     const topSources = podcast.sources
       .sort((a, b) => b.qualityScore - a.qualityScore)
-      .slice(0, 5); // Use top 5 sources by quality score
+      .slice(0, 7); // Use top 7 sources by quality score
     
     for (const source of topSources) {
       for (const topic of generalTopics.slice(0, 2)) { // Use top 2 topics for each source
