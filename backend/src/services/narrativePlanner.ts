@@ -77,15 +77,15 @@ export async function createNarrativeStructure(
       2. Body sections (one for each topic):
          - Section title (should reflect the analytical angle)
          - Topic reference (which selected topic this covers)
-         - REQUIRED ANALYTICAL FRAMEWORKS (include at least 2-3 per section):
-            * "Background & Context" - providing historical or foundational understanding
-            * "Competing Perspectives" - presenting contrasting viewpoints
-            * "Causal Analysis" - explaining causes and effects
-            * "Implications & Significance" - analyzing why this matters and potential impacts
-            * "Pattern Identification" - pointing out trends, cycles, or recurring elements
-            * "Comparative Analysis" - examining similarities and differences
-            * "Future Outlook" - discussing potential developments or predictions
-         - Key insights (not just facts, but analytical points)
+         - Content approach: Describe how the topic will be presented. **Crucially, incorporate specific analytical frameworks to ensure depth.** Aim to include 2-3 of the following angles per topic, where relevant:
+            * "Background & Context": Provide necessary historical or foundational information.
+            * "Competing Perspectives": Explore different viewpoints or arguments.
+            * "Causal Analysis": Explain the causes and effects related to the topic.
+            * "Implications & Significance": Discuss why the topic matters and its potential impacts.
+            * "Underlying Trends/Patterns": Identify connections, trends, or recurring themes.
+            * "Comparative Analysis": Compare/contrast with other related events or situations.
+            * "Future Outlook": Speculate on potential future developments.
+         - Key points (focus on the *insights* derived from the analytical approach, not just raw facts)
          - Substantive transitions that form meaningful connections between topics
          - Word count allocation (based on topic depth: deep > medium > overview)
       
@@ -108,10 +108,10 @@ export async function createNarrativeStructure(
         },
         "bodySections": [
           {
-            "sectionTitle": "Compelling section title",
+            "sectionTitle": "Compelling section title reflecting the analysis",
             "topicReference": "Reference to original topic",
-            "contentApproach": "How to present this topic",
-            "keyPoints": ["Key point 1", "Key point 2", ...],
+            "contentApproach": "Description of the analytical approach, mentioning frameworks used (e.g., Causal Analysis, Competing Perspectives)",
+            "keyPoints": ["Insight 1 (e.g., The primary cause identified is...)", "Insight 2 (e.g., A key implication is...)"],
             "transitions": {
               "leadIn": "Transition into this section",
               "leadOut": "Transition to next section"
