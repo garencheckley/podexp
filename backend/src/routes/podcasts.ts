@@ -24,6 +24,7 @@ import * as narrativePlanner from '../services/narrativePlanner';
 import * as contentFormatter from '../services/contentFormatter';
 import * as deepDiveResearch from '../services/deepDiveResearch';
 import * as sourceManager from '../services/sourceManager';
+import * as clusteringService from '../services/clusteringService';
 
 const router = express.Router();
 
@@ -346,16 +347,49 @@ router.post('/:id/generate-episode', async (req, res) => {
     const sourceGuidedResults = await sourceManager.performSourceGuidedSearch(podcast, topicNames);
     console.log(`Source-guided search complete: ${sourceGuidedResults.content.length} characters, ${sourceGuidedResults.sources.length} sources`);
     
-    // Combine initial and source-guided search results
+    // Combine initial and source-guided search results (Consider how to handle duplicates if needed)
+    // For now, appending content and merging sources.
+    let combinedResearchContent = initialSearchResults.combinedResearch;
+    let combinedSources = initialSearchResults.allSources;
     if (sourceGuidedResults.content) {
-      initialSearchResults.combinedResearch += '\n\n' + sourceGuidedResults.content;
-      initialSearchResults.allSources = [...initialSearchResults.allSources, ...sourceGuidedResults.sources];
+      combinedResearchContent += '\n\n--- Source Guided Search Results ---\n' + sourceGuidedResults.content;
+      combinedSources = [...new Set([...combinedSources, ...sourceGuidedResults.sources])];
     }
+
+    // Create ArticleData for clustering from potential topics
+    const articlesToCluster: clusteringService.ArticleData[] = initialSearchResults.potentialTopics.map((topic, index) => ({
+        id: topic.topic || `topic_${index}`, // Use topic name as ID, or generate one if empty
+        content: topic.topic || '' // Use topic name as content (fallback - TODO: Improve with actual content snippets)
+    }));
+
+    // 2.2 NEW: Cluster the potential topics/articles
+    console.log('Step 2.2: Clustering potential topics');
+    let clusterResult: clusteringService.ClusterResult = { clusters: {}, noise: [], clusterAssignments: [] };
+    try {
+        clusterResult = await clusteringService.clusterArticles(articlesToCluster);
+        console.log(`Clustering complete: Found ${Object.keys(clusterResult.clusters).length} clusters.`);
+    } catch (clusterError) {
+        console.error('Error during article clustering, proceeding without clustering:', clusterError);
+        // Decide how to proceed: fall back to using all topics, or stop?
+        // For now, we will log the error and effectively skip the clustering benefits.
+        // We need to adapt the following steps to handle this potential failure.
+    }
+    
+    // TODO: Adapt the input for prioritizeTopicsForDeepDive based on clusterResult
+    // This will involve selecting representative articles/summaries per cluster.
+    // For now, we'll pass the original prioritizedTopics as a placeholder.
     
     // 2a. Prioritize topics for deep dive research
     console.log('Step 2a: Prioritizing topics for deep dive research');
+    // **** PLACEHOLDER: This needs modification ****
+    // Create a placeholder input using original search results for now
+    const placeholderInputForPrioritization = {
+        ...initialSearchResults,
+        combinedResearch: combinedResearchContent,
+        allSources: combinedSources
+    };
     const prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(
-      initialSearchResults,
+      placeholderInputForPrioritization, // Pass the potentially combined results
       episodeAnalysis,
       targetWordCount
     );

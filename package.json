@@ -12,5 +12,9 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@google-cloud/aiplatform": "^4.1.0",
+    "ml-kmeans": "^6.0.0"
   }
 }
