@@ -62,16 +62,6 @@ The backlog items aim to address the following core user-reported problems with 
     3. `generateDeepDiveQueries`: Reimplemented to use powerful model for better contrasting viewpoint generation
     4. `generateIntegratedContent` and `createOverallSynthesis`: Removed input truncation to maintain full context
 
-#### 1.3. Implement Pre-Analysis Clustering (Inspired by Meridian)
-
-**Problem**: The system may waste analytical resources by performing deep dives on multiple highly similar articles reporting the same core event, contributing to perceived repetition.
-**Solution**: Introduce an article clustering step *before* deep dive analysis.
-    1. Scrape/Process articles as currently done.
-    2. Generate embeddings for article content (e.g., using `multilingual-e5-small` or similar).
-    3. Apply dimensionality reduction (e.g., UMAP) and clustering (e.g., HDBSCAN, K-Means) to group articles into distinct story clusters.
-    4. Pass representative content, key articles, or AI-generated summaries of *clusters* (rather than individual articles) to the `deepDiveResearch` stage.
-**Rationale**: Focuses deep analysis on unique stories, reduces redundant processing, improves efficiency, and directly tackles content repetition by identifying core events vs. duplicate reporting. ([Ref: Meridian Project](https://github.com/iliane5/meridian))
-
 ### 2. Expert Analysis Simulator
 
 **Problem**: Content is often factual but lacks the analytical depth of expert commentary.
@@ -121,10 +111,9 @@ The backlog items aim to address the following core user-reported problems with 
 
 The projects are listed in recommended implementation order:
 
-1.  **Quality Improvement Initiatives (Item 1.1-1.3)**: Address core quality issues by refining existing frameworks (documented in README). Implementing 1.1 (Prompt Refinement) and **1.3 (Clustering)** are likely highest priority for depth and repetition.
-2.  **Expert Analysis Simulator (Item 2)**: Builds upon improved quality foundation to add specific analytical capabilities.
-3.  **Additive Knowledge Engine (Item 3)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
-4.  **User Authentication & Personalization (Item 4)**: Adds user-facing features.
+1.  **Expert Analysis Simulator (Item 2)**: Builds upon improved quality foundation to add specific analytical capabilities.
+2.  **Additive Knowledge Engine (Item 3)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
+3.  **User Authentication & Personalization (Item 4)**: Adds user-facing features.
 
 ## Technical Considerations
 
