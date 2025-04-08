@@ -306,8 +306,42 @@ router.post('/:id/generate-episode', async (req, res) => {
     console.log(`Generating episode for podcast: ${podcast.title}`);
     
     // Get episode length specification from request or default
-    const targetWordCount = req.body.targetWordCount || 300;
-    const lengthSpecification = `approximately ${targetWordCount} words (about ${Math.round(targetWordCount / 125)} minutes when spoken)`;
+    // We use words per minute (WPM) of 130 for conversational speech
+    const wordsPerMinute = 130;
+    
+    // Check if request specifies targetMinutes or targetWordCount
+    let targetWordCount = 300; // Default ~2.3 minutes at 130 WPM
+    
+    if (req.body.targetMinutes) {
+      // If minutes are specified, calculate words (rounded to nearest 10)
+      const minutes = parseFloat(req.body.targetMinutes);
+      if (!isNaN(minutes) && minutes > 0) {
+        targetWordCount = Math.round((minutes * wordsPerMinute) / 10) * 10;
+        console.log(`Requested ${minutes} minutes, calculated ${targetWordCount} words`);
+      }
+    } else if (req.body.targetWordCount) {
+      // If word count is directly specified, use that
+      const wordCount = parseInt(req.body.targetWordCount);
+      if (!isNaN(wordCount) && wordCount > 0) {
+        targetWordCount = wordCount;
+        console.log(`Requested ${targetWordCount} words directly`);
+      }
+    }
+    
+    // Set minimum and maximum limits
+    const minWordCount = 200;  // ~1.5 minutes
+    const maxWordCount = 2600; // ~20 minutes (reasonable limit for episodes)
+    
+    if (targetWordCount < minWordCount) {
+      console.log(`Requested word count ${targetWordCount} below minimum, using ${minWordCount}`);
+      targetWordCount = minWordCount;
+    } else if (targetWordCount > maxWordCount) {
+      console.log(`Requested word count ${targetWordCount} above maximum, using ${maxWordCount}`);
+      targetWordCount = maxWordCount;
+    }
+    
+    const targetMinutes = targetWordCount / wordsPerMinute;
+    const lengthSpecification = `approximately ${targetWordCount} words (about ${targetMinutes.toFixed(1)} minutes when spoken)`;
     console.log(`Target length: ${lengthSpecification}`);
     
     // Refresh sources if needed
@@ -557,11 +591,10 @@ router.post('/:id/generate-episode', async (req, res) => {
     console.log(`Generated content word count: ${wordCount} words`);
     
     // Compare with target word count and log the difference
-    const targetMinutes = targetWordCount / 125;
-    const estimatedMinutes = wordCount / 125;
+    const actualMinutes = wordCount / wordsPerMinute;
     console.log(`Target: ${targetWordCount} words (${targetMinutes.toFixed(1)} minutes)`);
-    console.log(`Actual: ${wordCount} words (${estimatedMinutes.toFixed(1)} minutes)`);
-    console.log(`Difference: ${wordCount - targetWordCount} words (${(estimatedMinutes - targetMinutes).toFixed(1)} minutes)`);
+    console.log(`Actual: ${wordCount} words (${actualMinutes.toFixed(1)} minutes)`);
+    console.log(`Difference: ${wordCount - targetWordCount} words (${(actualMinutes - targetMinutes).toFixed(1)} minutes)`);
     console.log(`Adherence: ${(wordCount / targetWordCount * 100).toFixed(1)}% of target length`);
     
     // Create the episode
@@ -615,6 +648,16 @@ router.post('/:id/generate-episode', async (req, res) => {
 
 // Helper function to update episode audio URL
 async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<void> {
+  if (!episodeId) {
+    console.error('Cannot update episode audio: Episode ID is undefined');
+    throw new Error('Episode ID is required to update audio URL');
+  }
+  
+  if (!audioUrl) {
+    console.error('Cannot update episode audio: Audio URL is undefined');
+    throw new Error('Audio URL is required to update episode');
+  }
+  
   try {
     await getDb().collection('episodes').doc(episodeId).update({ audioUrl });
     console.log(`Updated episode ${episodeId} with audio URL: ${audioUrl}`);
@@ -636,11 +679,31 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res)
       return res.status(404).json({ error: 'Episode not found' });
     }
     
+    // Check if the episode belongs to the specified podcast
+    if (episode.podcastId !== podcastId) {
+      return res.status(400).json({ 
+        error: 'Episode does not belong to the specified podcast',
+        message: `Episode belongs to podcast ${episode.podcastId}, not ${podcastId}`
+      });
+    }
+    
     // Check if the episode has content
     if (!episode.content) {
       return res.status(400).json({ error: 'Episode has no content to generate audio for' });
     }
     
+    // If episode already has audio, delete it first
+    if (episode.audioUrl) {
+      try {
+        console.log(`Deleting existing audio for episode ${episodeId}`);
+        await deleteAudio(podcastId, episodeId);
+      } catch (deleteError) {
+        console.error('Error deleting existing audio:', deleteError);
+        // Continue anyway - non-critical error
+      }
+    }
+    
+    console.log(`Regenerating audio for episode ${episodeId}`);
     try {
       // Generate audio for the episode
       const audioUrl = await generateAndStoreAudio(
@@ -659,11 +722,19 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res)
       });
     } catch (audioError) {
       console.error('Error regenerating audio:', audioError);
-      res.status(500).json({ error: 'Failed to regenerate audio' });
+      const errorMessage = audioError.message || 'Unknown error occurred';
+      res.status(500).json({ 
+        error: 'Failed to regenerate audio',
+        message: errorMessage,
+        details: String(audioError)
+      });
     }
   } catch (error) {
     console.error('Error regenerating audio for episode:', error);
-    res.status(500).json({ error: 'Failed to process request' });
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      message: error.message || 'Unknown error occurred'
+    });
   }
 });
 

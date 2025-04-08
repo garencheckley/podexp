@@ -67,7 +67,7 @@ export async function generateEpisode(podcastId: string, episodeLength?: number)
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      episodeLength
+      targetMinutes: episodeLength
     }),
   });
   

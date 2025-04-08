@@ -12,13 +12,13 @@ const storage = new Storage();
 const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'gcpg-452703';
 const bucketName = `${projectId}-podcast-audio`;
 
-// Ensure the bucket exists
+// Ensure the bucket exists and is public
 async function ensureBucketExists(): Promise<void> {
   try {
-    const [buckets] = await storage.getBuckets();
-    const bucketExists = buckets.some(bucket => bucket.name === bucketName);
+    console.log(`Checking if bucket ${bucketName} exists...`);
+    const [exists] = await storage.bucket(bucketName).exists();
     
-    if (!bucketExists) {
+    if (!exists) {
       console.log(`Creating bucket: ${bucketName}`);
       await storage.createBucket(bucketName, {
         location: 'us-west1',
@@ -26,7 +26,29 @@ async function ensureBucketExists(): Promise<void> {
       });
       
       // Make bucket public
+      console.log(`Making bucket ${bucketName} public...`);
       await storage.bucket(bucketName).makePublic();
+    } else {
+      // Check if the bucket is already public
+      console.log(`Bucket ${bucketName} exists, checking if it's public...`);
+      try {
+        const [policy] = await storage.bucket(bucketName).iam.getPolicy();
+        const isPublic = policy.bindings?.some(
+          binding => binding.role === 'roles/storage.objectViewer' && 
+                    binding.members?.includes('allUsers')
+        );
+        
+        if (!isPublic) {
+          console.log(`Making existing bucket ${bucketName} public...`);
+          await storage.bucket(bucketName).makePublic();
+        } else {
+          console.log(`Bucket ${bucketName} is already public.`);
+        }
+      } catch (policyError) {
+        console.error(`Error checking bucket policy: ${policyError}`);
+        // Try to make it public anyway
+        await storage.bucket(bucketName).makePublic();
+      }
     }
   } catch (error) {
     console.error('Error ensuring bucket exists:', error);
@@ -40,13 +62,28 @@ export async function generateAndStoreAudio(
   podcastId: string | undefined,
   episodeId: string | undefined
 ): Promise<string> {
+  // Validate input parameters
+  if (!text || text.trim().length === 0) {
+    throw new Error('Cannot generate audio: Text content is empty or undefined');
+  }
+  
+  if (!podcastId) {
+    throw new Error('Cannot generate audio: Podcast ID is required');
+  }
+  
+  if (!episodeId) {
+    throw new Error('Cannot generate audio: Episode ID is required');
+  }
+  
   // Ensure all parameters are strings
-  const textContent = text || '';
-  const podcast = podcastId || 'unknown';
-  const episode = episodeId || 'unknown';
+  const textContent = text.trim();
+  const podcast = podcastId;
+  const episode = episodeId;
   
   try {
-    // Ensure bucket exists
+    console.log(`Starting audio generation for podcast ${podcast}, episode ${episode}`);
+    
+    // Ensure bucket exists and is public
     await ensureBucketExists();
     
     // Check if the text exceeds the TTS API limit (5000 bytes)
@@ -73,13 +110,19 @@ export async function generateAndStoreAudio(
 
       // Generate audio
       console.log(`Generating audio for episode ${episode} in a single request`);
-      const [response] = await ttsClient.synthesizeSpeech(request);
-      
-      if (!response.audioContent) {
-        throw new Error('No audio content returned from Text-to-Speech API');
+      try {
+        const [response] = await ttsClient.synthesizeSpeech(request);
+        
+        if (!response.audioContent) {
+          throw new Error('No audio content returned from Text-to-Speech API');
+        }
+        
+        audioContent = response.audioContent as Buffer;
+        console.log(`Successfully generated audio content (${audioContent.length} bytes)`);
+      } catch (ttsError) {
+        console.error(`Error calling Text-to-Speech API: ${ttsError}`);
+        throw new Error(`Failed to generate audio: ${ttsError.message || ttsError}`);
       }
-      
-      audioContent = response.audioContent as Buffer;
     } else {
       // If text exceeds the limit, split it into smaller chunks
       console.log(`Text exceeds TTS API limit. Splitting into chunks for episode ${episode}`);
@@ -128,18 +171,24 @@ export async function generateAndStoreAudio(
           },
         };
         
-        const [response] = await ttsClient.synthesizeSpeech(request);
-        
-        if (!response.audioContent) {
-          throw new Error(`No audio content returned for chunk ${i+1}`);
+        try {
+          const [response] = await ttsClient.synthesizeSpeech(request);
+          
+          if (!response.audioContent) {
+            throw new Error(`No audio content returned for chunk ${i+1}`);
+          }
+          
+          audioChunks.push(response.audioContent as Buffer);
+          console.log(`Successfully processed chunk ${i+1}/${chunks.length}`);
+        } catch (chunkError) {
+          console.error(`Error processing chunk ${i+1}: ${chunkError}`);
+          throw new Error(`Failed to generate audio for chunk ${i+1}: ${chunkError.message || chunkError}`);
         }
-        
-        audioChunks.push(response.audioContent as Buffer);
       }
       
       // Combine the audio chunks
       audioContent = Buffer.concat(audioChunks);
-      console.log(`Combined ${audioChunks.length} audio chunks`);
+      console.log(`Combined ${audioChunks.length} audio chunks into ${audioContent.length} bytes`);
     }
 
     // Define the file path in the bucket
@@ -148,21 +197,27 @@ export async function generateAndStoreAudio(
     
     // Upload the audio content to GCS
     console.log(`Uploading audio to ${filePath}`);
-    await file.save(audioContent, {
-      metadata: {
-        contentType: 'audio/mp3',
-        cacheControl: 'public, max-age=31536000', // Cache for 1 year
-      },
-    });
-    
-    // Make the file publicly accessible
-    await file.makePublic();
-    
-    // Get the public URL
-    const audioUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
-    console.log(`Audio URL: ${audioUrl}`);
-    
-    return audioUrl;
+    try {
+      await file.save(audioContent, {
+        metadata: {
+          contentType: 'audio/mp3',
+          cacheControl: 'public, max-age=31536000', // Cache for 1 year
+        },
+      });
+      
+      // Make the file publicly accessible
+      await file.makePublic();
+      console.log(`Successfully uploaded and made public: ${filePath}`);
+      
+      // Get the public URL
+      const audioUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
+      console.log(`Audio URL: ${audioUrl}`);
+      
+      return audioUrl;
+    } catch (uploadError) {
+      console.error(`Error uploading audio file: ${uploadError}`);
+      throw new Error(`Failed to upload audio file: ${uploadError.message || uploadError}`);
+    }
   } catch (error) {
     console.error('Error generating or storing audio:', error);
     throw error;
