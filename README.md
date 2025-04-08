@@ -209,6 +209,46 @@ This approach delivers the following benefits:
 
 The Advanced Search Orchestration with Episode Planning implementation is particularly valuable for news-type podcasts where maintaining fresh, non-repetitive content is essential.
 
+### Pre-Analysis Clustering for Enhanced Topic Focus
+
+The system now implements an intelligent pre-analysis clustering algorithm that groups similar search results before performing deep dive research. This approach dramatically improves the focus and efficiency of the research process.
+
+#### Key Components
+
+##### 1. Content Embedding Generation
+- **Vector Representation**: Uses Google's Vertex AI text-embedding-004 model to generate high-dimensional vector representations of search results
+- **Semantic Understanding**: Captures the meaning and context of each potential topic, not just keywords
+- **Batch Processing**: Efficiently processes multiple search results in optimal batch sizes
+- **Custom Configuration**: Configurable project ID and region for deployment flexibility
+
+##### 2. K-Means Clustering Algorithm
+- **Automatic Cluster Detection**: Intelligently determines the appropriate number of clusters based on content volume
+- **Seed Consistency**: Uses consistent random seeds for reproducible clustering
+- **Noise Filtering**: Identifies and handles outlier content that doesn't fit well into clusters
+- **Parallel Processing**: Performs clustering efficiently even on large volumes of search results
+
+##### 3. AI-Powered Cluster Summarization
+- **Theme Extraction**: Identifies the central theme that ties together topics within each cluster
+- **Concise Titling**: Generates concise, accurate titles that represent the core concept of each cluster
+- **Relevance Context**: Incorporates original relevance scores when summarizing to maintain priority information
+- **Fast Model Integration**: Uses efficient models for summarization to minimize latency
+
+##### 4. Prioritization Integration
+- **Cluster-Based Prioritization**: Shifts the focus from individual topics to thematic clusters
+- **Original Context Preservation**: Maintains links to original topics for traceability
+- **Cross-Topic Analysis**: Enables analysis across related topics within the same cluster
+- **Smart Resource Allocation**: Focuses computational resources on truly distinct content areas
+
+#### Benefits
+
+- **Reduced Redundancy**: Eliminates duplicate research effort on highly similar topics
+- **Thematic Coherence**: Creates more coherent episode segments focused on distinct themes
+- **Research Efficiency**: Significantly improves research efficiency by consolidating similar content
+- **Broader Perspective**: Enables exploring diverse aspects of a theme rather than repetitive variants
+- **Resource Optimization**: Concentrates computational resources on truly unique content areas
+
+The Pre-Analysis Clustering implementation draws inspiration from techniques used in production news systems to handle high volumes of similar content, ensuring that podcast episodes maintain focus on distinct, valuable themes rather than variations of the same stories.
+
 ### Deep Dive Research Framework
 
 The system now implements a sophisticated Deep Dive Research Framework that enables podcasts to cover fewer topics with much greater depth, resulting in more substantial and valuable content. This multi-layered approach to research ensures comprehensive coverage of selected topics.
