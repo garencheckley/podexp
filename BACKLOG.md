@@ -28,39 +28,9 @@ The backlog items aim to address the following core user-reported problems with 
 
 **Context**: Despite completing the initial frameworks (Search Orchestration, Deep Dive, Differentiation - now documented in README), user feedback indicates generated news episodes can still feel repetitive, shallow, and contain "fluff" rather than insightful analysis. Code review suggests potential causes include over-reliance on faster but less capable AI models (`gemini-flash`) for complex tasks, information loss through summarization between steps, and insufficiently specific prompting for analytical depth and against filler content.
 
+**Status**: Core improvements completed (items 1.1 and 1.2 moved to README)
+
 **Goal**: Refine the existing generation pipeline to produce demonstrably deeper, more analytical, less repetitive, and less "fluffy" content.
-
-#### 1.1. Refine Core Generation Prompts ✅
-
-**Status**: Completed
-
-**Problem**: Prompts mention depth/analysis but lack explicit instructions against filler content ("fluff") and don't clearly define the *type* of analysis required (causal, comparative, etc.). The final script generation prompt focuses on integrating research rather than crafting an analytical narrative.
-**Solution**:
-    - Add explicit constraints against common filler phrases (e.g., "Avoid phrases like 'this is important', 'as we know'") to synthesis and final generation prompts.
-    - Specify the desired *type* of analysis (e.g., "Provide causal analysis," "Compare viewpoints," "Identify underlying trends," "Discuss implications").
-    - Consistently reinforce the desired host persona in key prompts.
-    - Rewrite the final integration prompt (`generateIntegratedContent`) to focus on "writing an insightful podcast script" rather than just "integrating research." Instruct it to synthesize insights *across* topics and provide analytical commentary.
-**Rationale**: Provides clearer instructions to the AI, guiding it towards the desired analytical style and away from superficial content, directly addressing "fluff" and lack of depth.
-**Implementation Notes**: Updated three key prompts:
-    1. `generateIntegratedContent`: Enhanced to focus on analytical content with specific types of analysis and anti-fluff constraints
-    2. `synthesizeLayeredResearch`: Improved to require specific analytical elements and prohibit filler phrases
-    3. `createNarrativeStructure`: Modified to explicitly include analytical section types and focus on insights rather than facts
-
-#### 1.2. Enhance Research & Synthesis Strategy ✅
-
-**Status**: Completed
-
-**Problem**: Using summaries (e.g., first 2000/6000 chars) as input for subsequent steps (contrasting viewpoints, synthesis, final integration) can lead to loss of critical details and nuance. Generating contrasting viewpoints and synthesizing across layers are complex tasks potentially underserved by the current model and prompts.
-**Solution**:
-    - Minimize summarization: Remove or drastically increase character limits when passing research content between steps. Feed more complete information, especially to the stronger model during synthesis and final generation.
-    - Improve contrasting viewpoints: Use the stronger model to generate these queries/perspectives, possibly integrating it into Layer 3 of the `deepDiveResearch`.
-    - Improve synthesis prompts (as per 1.1) and ensure the stronger model performs this step using more complete input data.
-**Rationale**: Preserves information integrity throughout the pipeline, providing the generation model with richer context, enabling deeper synthesis and analysis.
-**Implementation Notes**: Updated four key areas:
-    1. `synthesizeLayeredResearch`: Removed character limits to pass full content from all research layers
-    2. `extractKeyInsights`: Upgraded to use powerful model instead of fast model and increased input size limit
-    3. `generateDeepDiveQueries`: Reimplemented to use powerful model for better contrasting viewpoint generation
-    4. `generateIntegratedContent` and `createOverallSynthesis`: Removed input truncation to maintain full context
 
 ### 2. Expert Analysis Simulator
 

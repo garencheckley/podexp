@@ -388,6 +388,53 @@ The system now implements an optimized research and synthesis strategy that sign
 
 This enhancement directly addresses the issue of information loss that previously occurred when passing only small summaries between stages of the content generation pipeline. By ensuring that the full context and details are preserved throughout, the system now produces more insightful, comprehensive, and valuable podcast content.
 
+### Core Generation Prompts Refinement
+
+The system now implements sophisticated prompt engineering to enhance podcast content quality and reduce filler material. This improvement addresses the core issues of "fluff" content and insufficient analytical depth.
+
+#### Key Improvements
+
+##### 1. Anti-Fluff Constraints
+- **Explicit Prohibition**: Added specific instructions against common filler phrases like "it's important to note", "as we know", etc.
+- **Evidence Requirements**: Prompts now require supporting analytical points with specific evidence
+- **Redundancy Detection**: Added guidelines to avoid repetitive information and redundant statements
+- **Content Focus**: Enhanced focus on substantive information over general statements
+
+##### 2. Analytical Type Specification
+- **Detailed Analysis Types**: Explicitly specified different types of analysis required:
+  - Causal Analysis: Explaining causes and effects
+  - Comparative Analysis: Contrasting different viewpoints or approaches
+  - Contextual Analysis: Providing historical, social or political context
+  - Implication Analysis: Discussing consequences and impacts
+  - Pattern Identification: Recognizing trends and recurring elements
+- **Structured Analytical Frameworks**: Provided clear templates for different analytical approaches
+
+##### 3. Host Persona Enhancement
+- **Consistent Character**: Reinforced the desired host personality (knowledgeable, insightful, confident)
+- **Analytical Mindset**: Emphasized synthesizing complex information with clear analysis
+- **Audience-Focused**: Strengthened focus on helping listeners understand both facts and significance
+- **Natural Authority**: Enhanced guidance for authoritative but conversational tone
+
+##### 4. Integration Prompts Revision
+- **Insightful Script Focus**: Rewritten integration prompts to focus on creating insightful podcast scripts rather than just combining research
+- **Cross-Topic Synthesis**: Added instructions to identify patterns and connections across different topics
+- **Analytical Commentary**: Enhanced requirements for providing thoughtful commentary and interpretation
+- **Narrative Structure**: Improved guidelines for creating a compelling narrative flow with analytical depth
+
+#### Implementation Details
+- Updated three key prompts in the content generation pipeline:
+  1. `generateIntegratedContent`: Rewritten to focus on analytical content with specific analysis types
+  2. `synthesizeLayeredResearch`: Enhanced to require analytical elements and prohibit filler phrases
+  3. `createNarrativeStructure`: Modified to include analytical section types focusing on insights
+
+#### Benefits
+- **Higher Content Quality**: More substantive, insightful podcast content
+- **Reduced Filler**: Significantly less "fluff" and more valuable information
+- **Enhanced Depth**: Deeper exploration of topics with meaningful analysis
+- **Improved Listening Experience**: More engaging, educational content for audience
+
+These improvements directly address user-reported issues with content quality, particularly focusing on reducing filler material and enhancing analytical depth in generated podcast episodes.
+
 ## Development Workflow
 
 The development process follows these steps:
@@ -530,6 +577,8 @@ If a deployment causes issues:
    ```
 
 ### Recent Updates
+- **Core Generation Prompts Refinement**: Added explicit constraints against filler phrases, specified desired types of analysis (causal, comparative, etc.), consistently reinforced host persona, and rewrote integration prompts to focus on insightful analytical content
+- **Enhanced Research & Synthesis Strategy**: Minimized summarization by removing character limits when passing research content between steps, improved contrasting viewpoints generation using stronger models, and enhanced synthesis prompts for deeper analysis
 - Implemented Enhanced Research & Synthesis Strategy to preserve complete information throughout the content generation pipeline and improve the quality of analysis
 - Upgraded insight extraction and deep dive query generation to use more powerful AI models for better analytical quality
 - Removed character limitations between processing stages to maintain full context and detail
