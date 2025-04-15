@@ -16,7 +16,7 @@ export async function discoverSources(podcastPrompt: string): Promise<PodcastSou
     console.log('Discovering sources for podcast prompt:', podcastPrompt);
     
     const sourceDiscoveryPrompt = `
-Based on the following podcast theme, identify 10-15 authoritative websites that would be valuable sources for generating recent, high-quality content.
+Based on the following podcast theme, identify 20-30 authoritative websites that would be valuable sources for generating recent, high-quality content.
 
 PODCAST THEME: "${podcastPrompt}"
 
@@ -26,6 +26,8 @@ For each website, provide:
 3. Category (e.g., News, Analysis/Think Tank, Research Journal, Blog, Government, etc.)
 4. Topics it covers relevant to the podcast (comma-separated)
 5. Quality score (1-10, where 10 is highest quality and indicates strong analytical depth if applicable)
+6. Publishing frequency (Daily, Weekly, Monthly, etc.)
+7. Political/perspective leaning if applicable (Neutral, Left, Right, Center, etc.)
 
 The sources should:
 - Be reputable and reliable.
@@ -34,6 +36,9 @@ The sources should:
 - Cover different aspects of the podcast theme.
 - Include a mix of general and specialized sources.
 - Focus on sources that update frequently with recent content.
+- Represent diverse viewpoints and perspectives on the topic.
+- Include at least 2-3 international sources for global perspective.
+- Include a mix of mainstream and niche specialized publications.
 
 Format each source as a JSON object in an array with these exact fields:
 { 
@@ -41,7 +46,9 @@ Format each source as a JSON object in an array with these exact fields:
   "name": "Example Site", 
   "category": "News", 
   "topicRelevance": ["topic1", "topic2"], 
-  "qualityScore": 8 
+  "qualityScore": 8,
+  "frequency": "Daily",
+  "perspective": "Neutral" 
 }
 
 ONLY respond with the JSON array, nothing else before or after.
@@ -244,78 +251,135 @@ export async function performSourceGuidedSearch(
     const currentDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     const currentMonthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
     
-    // Create source-specific search queries
-    const sourceQueries = [];
-    const topSources = podcast.sources
-      .sort((a, b) => b.qualityScore - a.qualityScore)
-      .slice(0, 7); // Use top 7 sources by quality score
+    // Organize sources into categories
+    const categorizedSources = podcast.sources.reduce((acc, source) => {
+      const category = source.category || 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(source);
+      return acc;
+    }, {} as Record<string, PodcastSource[]>);
     
-    for (const source of topSources) {
-      for (const topic of generalTopics.slice(0, 2)) { // Use top 2 topics for each source
-        const sourceQuery = `site:${new URL(source.url).hostname} ${topic} ${currentMonthYear}`;
-        sourceQueries.push(sourceQuery);
+    // Rank sources within each category by qualityScore
+    Object.keys(categorizedSources).forEach(category => {
+      categorizedSources[category].sort((a, b) => b.qualityScore - a.qualityScore);
+    });
+    
+    // Ensure perspective diversity if available
+    const perspectiveGroups: Record<string, PodcastSource[]> = {};
+    podcast.sources.forEach(source => {
+      if (source.perspective) {
+        if (!perspectiveGroups[source.perspective]) perspectiveGroups[source.perspective] = [];
+        perspectiveGroups[source.perspective].push(source);
+      }
+    });
+    
+    // Create balanced query list that ensures:
+    // 1. Coverage of all topics
+    // 2. Representation from high-quality sources in each category
+    // 3. Perspective diversity where available
+    const queries: string[] = [];
+    
+    // Add topic-specific queries from high-quality sources
+    for (const topic of generalTopics) {
+      // Find sources most relevant to this topic
+      const relevantSources = podcast.sources
+        .filter(source => 
+          source.topicRelevance && 
+          source.topicRelevance.some(t => 
+            topic.toLowerCase().includes(t.toLowerCase()) || 
+            t.toLowerCase().includes(topic.toLowerCase())
+          )
+        )
+        .sort((a, b) => b.qualityScore - a.qualityScore);
+      
+      // Take top 3 most relevant sources for this topic
+      const topSourcesForTopic = relevantSources.slice(0, 3);
+      
+      for (const source of topSourcesForTopic) {
+        queries.push(`site:${new URL(source.url).hostname} ${topic} ${currentMonthYear}`);
+      }
+      
+      // If we have perspective data, ensure diverse viewpoints
+      if (Object.keys(perspectiveGroups).length > 1) {
+        const perspectives = Object.keys(perspectiveGroups);
+        // Get one source from each major perspective group for this topic
+        for (const perspective of perspectives) {
+          const sourcesWithPerspective = perspectiveGroups[perspective]
+            .filter(source => source.qualityScore >= 6) // Only use quality sources
+            .slice(0, 1); // Take the top source for this perspective
+          
+          if (sourcesWithPerspective.length > 0) {
+            const source = sourcesWithPerspective[0];
+            queries.push(`site:${new URL(source.url).hostname} ${topic} ${currentMonthYear}`);
+          }
+        }
       }
     }
     
-    // Perform searches and collect results
-    const allResults = [];
-    const allSources = [];
-    
-    // Limit to max 5 queries to avoid overloading
-    const limitedQueries = sourceQueries.slice(0, 5);
-    console.log(`Executing ${limitedQueries.length} source-specific queries`);
-    
-    for (const query of limitedQueries) {
-      console.log(`Source query: ${query}`);
-      const { content, sources } = await executeSourceQuery(query);
-      allResults.push(content);
-      allSources.push(...sources);
+    // Add category-specific queries to ensure breadth
+    // For each category, add the top source
+    for (const category in categorizedSources) {
+      const topSourceInCategory = categorizedSources[category][0];
+      if (topSourceInCategory && topSourceInCategory.qualityScore >= 7) {
+        const categoryQuery = `site:${new URL(topSourceInCategory.url).hostname} ${podcast.prompt || podcast.description} ${currentMonthYear}`;
+        queries.push(categoryQuery);
+      }
     }
     
-    // Combine all results
-    const combinedContent = allResults.join('\n\n');
-    const uniqueSources = [...new Set(allSources)];
+    // Deduplicate queries
+    const uniqueQueries = [...new Set(queries)];
+    console.log(`Generated ${uniqueQueries.length} unique source-guided queries`);
     
-    console.log(`Source-guided search complete: ${limitedQueries.length} queries, ${uniqueSources.length} sources`);
+    // Execute all queries and combine results
+    const queryResults = await Promise.all(
+      uniqueQueries.map(query => executeSourceQuery(query))
+    );
+    
+    // Combine content and sources from all query results
+    const combinedContent = queryResults
+      .map(result => result.content)
+      .filter(content => content.length > 0)
+      .join('\n\n---\n\n');
+    
+    const allSources = [...new Set(
+      queryResults.flatMap(result => result.sources)
+    )];
+    
+    console.log(`Source-guided search complete with ${allSources.length} unique sources`);
+    
     return {
       content: combinedContent,
-      sources: uniqueSources
+      sources: allSources
     };
   } catch (error) {
     console.error('Error in source-guided search:', error);
-    return { content: '', sources: [] };
+    return {
+      content: '',
+      sources: []
+    };
   }
 }
 
 /**
- * Executes a source-specific search query
- * @param query The search query with site: operator
- * @returns Search results and sources
+ * Executes a source-specific search query using Gemini with Search Grounding
+ * @param query The search query targeting a specific source
+ * @returns Content and sources from the search
  */
 async function executeSourceQuery(query: string): Promise<{content: string, sources: string[]}> {
   try {
-    // Use the existing web search function
+    console.log(`Executing source query: "${query}"`);
+    
+    // Create a model instance with the search tool configured
     const searchModel = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: POWERFUL_MODEL_ID,
       tools: [{ google_search: {} } as any], // Type cast to any to bypass TypeScript error
     });
 
-    const searchPrompt = `
-Search for recent information using this specific query: "${query}"
-
-Provide a comprehensive summary of what you find. Focus on:
-1. Recent developments or news
-2. Key facts and statistics
-3. Current trends
-
-Format the response as a coherent paragraph that could be included in a podcast script.
-`;
-
     const result = await searchModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: searchPrompt }] }],
+      contents: [{ role: 'user', parts: [{ text: query }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 4000,
       }
     });
 
@@ -324,6 +388,7 @@ Format the response as a coherent paragraph that could be included in a podcast 
     // Extract sources from grounding metadata
     let sources: string[] = [];
     try {
+      // With Gemini 2.5, grounding metadata is structured differently
       const groundingMetadata = result.response.candidates?.[0]?.groundingMetadata;
       
       if (groundingMetadata && groundingMetadata.groundingChunks && groundingMetadata.groundingChunks.length > 0) {
@@ -333,9 +398,17 @@ Format the response as a coherent paragraph that could be included in a podcast 
           .map((chunk: any) => chunk.web.uri);
       }
       
-      console.log(`Found ${sources.length} sources for source-specific query`);
+      // If no structured grounding metadata, try falling back to older methods
+      if (sources.length === 0) {
+        const citations = result.response.candidates?.[0]?.citationMetadata;
+        if (citations) {
+          sources = extractUrisFromCitations(citations);
+        }
+      }
+      
+      console.log(`Found ${sources.length} sources for source query "${query}"`);
     } catch (error) {
-      console.error('Error extracting sources:', error);
+      console.error('Error extracting sources from source query:', error);
     }
 
     return {
@@ -345,8 +418,41 @@ Format the response as a coherent paragraph that could be included in a podcast 
   } catch (error) {
     console.error('Error executing source query:', error);
     return {
-      content: `Failed to retrieve information for query: "${query}"`,
+      content: `Failed to retrieve information for source query: "${query}"`,
       sources: []
     };
   }
+}
+
+/**
+ * Helper function to extract URIs from citation metadata
+ */
+function extractUrisFromCitations(citationMetadata: any): string[] {
+  try {
+    // Try different possible structures
+    if (Array.isArray(citationMetadata.citations)) {
+      return citationMetadata.citations
+        .map((citation: any) => citation.uri || citation.url || '')
+        .filter((uri: string) => uri && uri.length > 0);
+    }
+    
+    // Alternative ways the citations might be structured
+    if (citationMetadata.citationSources && Array.isArray(citationMetadata.citationSources)) {
+      return citationMetadata.citationSources
+        .map((source: any) => source.uri || source.url || '')
+        .filter((uri: string) => uri && uri.length > 0);
+    }
+    
+    return [];
+  } catch (e) {
+    console.error('Error extracting URIs from citations:', e);
+    return [];
+  }
+}
+
+// Define the new input structure for cluster summaries
+export interface ClusterSummaryInput { 
+  clusterId: number;
+  summary: string;
+  originalTopicIds: string[];
 } 

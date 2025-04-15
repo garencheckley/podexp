@@ -73,15 +73,15 @@ export async function executeWebSearch(query: string): Promise<{content: string,
     
     // Create a model instance with the search tool configured
     const searchModel = genAI.getGenerativeModel({
-      model: FAST_MODEL_ID, // Use FAST_MODEL_ID from config instead of modelId
+      model: POWERFUL_MODEL_ID, // Use the more powerful model for better search
       tools: [googleSearchTool as any], // Type cast to any to bypass TypeScript error
     });
 
     const result = await searchModel.generateContent({
       contents: [{ role: 'user', parts: [{ text: query }] }],
       generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2000,
+        temperature: 0.2, // Slightly increased temperature for more diverse responses
+        maxOutputTokens: 4000, // Doubled the max tokens for more comprehensive results
       }
     });
 
@@ -90,7 +90,7 @@ export async function executeWebSearch(query: string): Promise<{content: string,
     // Extract sources from grounding metadata
     let sources: string[] = [];
     try {
-      // With Gemini 2.0, grounding metadata is structured differently
+      // With Gemini 2.5, grounding metadata is structured differently
       const groundingMetadata = result.response.candidates?.[0]?.groundingMetadata;
       
       if (groundingMetadata && groundingMetadata.groundingChunks && groundingMetadata.groundingChunks.length > 0) {

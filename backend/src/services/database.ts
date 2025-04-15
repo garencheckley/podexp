@@ -21,6 +21,8 @@ export interface PodcastSource {
   category: string;
   topicRelevance: string[];
   qualityScore: number;
+  frequency?: string;
+  perspective?: string;
   lastUsed?: string;
 }
 

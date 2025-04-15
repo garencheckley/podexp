@@ -4,10 +4,9 @@ import {
 } from '@google-cloud/aiplatform';
 import { kmeans } from 'ml-kmeans';
 import * as protobuf from 'protobufjs'; // Required for helpers.fromValue type checking
+import { GCLOUD_PROJECT, GCLOUD_LOCATION } from '../config';
 
-// --- Configuration (Replace with your actual values) ---
-const GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'YOUR_PROJECT_ID'; // Replace or set env variable
-const GCLOUD_LOCATION = process.env.GCLOUD_LOCATION || 'us-central1'; // Replace or set env variable
+// --- Configuration ---
 const EMBEDDING_MODEL = 'text-embedding-004';
 // --- End Configuration ---
 
@@ -32,6 +31,7 @@ export interface ClusterResult {
 export interface ClusterSummaryInput {
   clusterId: number;
   summary: string;
+  originalTopicIds: string[];
 }
 
 /**
@@ -45,14 +45,7 @@ async function generateEmbeddings(
   if (!articles || articles.length === 0) {
     return [];
   }
-   if (GCLOUD_PROJECT === 'YOUR_PROJECT_ID') {
-    console.warn('Warning: GCLOUD_PROJECT is not set. Using placeholder.');
-    // Optionally return dummy data or throw error depending on desired handling
-    // For now, let's throw an error to prevent unexpected behavior
-     throw new Error('GCLOUD_PROJECT environment variable or placeholder not configured.');
-  }
-
-
+   
   console.log(`Generating embeddings for ${articles.length} articles using model ${EMBEDDING_MODEL}...`);
 
   const endpoint = `projects/${GCLOUD_PROJECT}/locations/${GCLOUD_LOCATION}/publishers/google/models/${EMBEDDING_MODEL}`;

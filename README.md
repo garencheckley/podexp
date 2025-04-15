@@ -345,6 +345,40 @@ The system now features an enhanced display for source attribution in news-based
 
 This improvement makes the source attribution section more readable and professional, enhancing the overall user experience while maintaining the important credibility that source attribution provides to news-based podcasts.
 
+### Enhanced Trusted Sources System
+
+The system now features a significantly improved trusted sources system for more comprehensive and balanced content generation:
+
+#### Expanded Source Database
+- **Increased Source Count**: Expanded from 10-15 to 20-30 trusted sources per podcast
+- **Enhanced Source Metadata**: Added publishing frequency and perspective/viewpoint classification
+- **Diverse Perspectives**: Sources are now explicitly categorized by perspective (e.g., Left, Center, Right, Neutral) to ensure balanced coverage
+- **International Coverage**: Includes at least 2-3 international sources to provide global perspectives
+- **Quality Metrics**: Maintains rigorous quality scoring (1-10 scale) for all sources
+
+#### Advanced Source-Guided Search
+- **Perspective Balancing**: Automatically selects sources from different perspective categories to ensure viewpoint diversity
+- **Category-Specific Selection**: Intelligently selects top sources from each content category (News, Analysis, Research, etc.)
+- **Topic-Source Matching**: Matches topics with the most relevant sources based on topical expertise
+- **Efficient Query Generation**: Creates optimized site-specific search queries for maximum relevance
+- **Multiple Source Coverage**: Ensures each topic is researched using at least 3 high-quality sources
+
+#### Enhanced Search Technology
+- **Gemini 2.5 Pro Integration**: Uses the powerful `gemini-2.5-pro-preview-03-25` model for all search operations
+- **Increased Token Capacity**: Doubled token capacity from 2000 to 4000 for more comprehensive search results
+- **Enhanced Search Grounding**: Fully leverages Google Search Grounding for factually accurate information
+- **Improved Source Attribution**: Better extraction and formatting of source URLs from search results
+- **Parallel Processing**: Efficiently executes multiple source-specific searches in parallel
+
+#### Benefits
+- **Higher Content Quality**: More diverse, authoritative, and comprehensive information
+- **Multiple Perspectives**: Better representation of different viewpoints on complex topics
+- **Balanced Reporting**: Ensures coverage from various perspectives to avoid bias
+- **Enhanced Factual Accuracy**: More authoritative sources with higher quality verification
+- **Greater Content Depth**: More sources enable deeper exploration of topics
+
+This enhanced trusted sources system ensures podcast content is grounded in diverse, high-quality sources, providing listeners with comprehensive, balanced, and accurate information.
+
 ### Enhanced User Interface Features
 
 The system now includes several UI enhancements to improve the user experience:
