@@ -5,6 +5,16 @@ export interface Podcast {
   prompt: string;
   podcastType?: string;
   created_at?: string;
+  sources?: PodcastSource[];
+}
+
+export interface PodcastSource {
+  url: string;
+  name: string;
+  category: string;
+  topicRelevance: string[];
+  qualityScore: number;
+  lastUsed?: string;
 }
 
 export interface Episode {

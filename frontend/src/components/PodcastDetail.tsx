@@ -21,6 +21,7 @@ const PodcastDetail = () => {
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [episodeLength, setEpisodeLength] = useState(3); // Default to 3 minutes
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
+  const [showTrustedSources, setShowTrustedSources] = useState(false);
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -206,6 +207,10 @@ const PodcastDetail = () => {
     }));
   };
 
+  const toggleTrustedSources = () => {
+    setShowTrustedSources(!showTrustedSources);
+  };
+
   // Helper function to format date with time
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -271,6 +276,61 @@ const PodcastDetail = () => {
         
         <div className="podcast-type-badge">
           <span className="badge news">News from the web</span>
+        </div>
+        
+        <div className="podcast-sources-section">
+          <div className="sources-header">
+            <h3>Trusted Sources</h3>
+            <button 
+              onClick={toggleTrustedSources} 
+              className="toggle-button"
+              aria-label={showTrustedSources ? "Hide sources" : "Show sources"}
+            >
+              {showTrustedSources ? "Hide sources" : "Show sources"}
+            </button>
+          </div>
+          
+          {showTrustedSources && podcast.sources && podcast.sources.length > 0 && (
+            <div className="trusted-sources-list">
+              <table className="sources-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Category</th>
+                    <th>Topics</th>
+                    <th>Quality</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {podcast.sources.map((source, index) => (
+                    <tr key={index}>
+                      <td>
+                        <a href={source.url} target="_blank" rel="noopener noreferrer">
+                          {source.name}
+                        </a>
+                      </td>
+                      <td>{source.category}</td>
+                      <td>{source.topicRelevance.join(', ')}</td>
+                      <td>
+                        <div className="quality-bar" style={{ 
+                          width: `${source.qualityScore * 10}%`,
+                          backgroundColor: source.qualityScore >= 8 ? '#4CAF50' : source.qualityScore >= 5 ? '#FFC107' : '#F44336'
+                        }}></div>
+                        <span className="quality-score">{source.qualityScore}/10</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="sources-info">
+                These sources are automatically discovered based on the podcast theme and used to find relevant content when generating episodes.
+              </p>
+            </div>
+          )}
+          
+          {showTrustedSources && (!podcast.sources || podcast.sources.length === 0) && (
+            <p className="no-sources">No trusted sources configured for this podcast.</p>
+          )}
         </div>
         
         <div className="podcast-prompt-section">
