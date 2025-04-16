@@ -1089,3 +1089,77 @@ a:hover {
   color: #e65100;
   font-size: 0.95rem;
 }
+
+/* Episode Content Tabs */
+.episode-content-tabs {
+  margin-top: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tabs-header {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f5f5f5;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  color: #666;
+}
+
+.tab-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-button.active {
+  border-bottom-color: #2196f3;
+  color: #2196f3;
+  background-color: #fff;
+}
+
+.tab-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tab-content {
+  padding: 1rem;
+  background-color: #fff;
+}
+
+.transcript-tab,
+.generation-log-tab {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.log-not-available {
+  padding: 2rem;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.generation-log-tab .generation-log-viewer {
+  padding: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+}
+
+/* Adjust the episode actions menu */
+.episode-actions .actions-menu {
+  width: 180px;
+}
+
+.episode-actions .more-button {
+  z-index: 1;
+}

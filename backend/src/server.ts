@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { initializeFirebase } from './services/database';
 import podcastRoutes from './routes/podcasts';
 import adminRoutes from './routes/admin';
+import episodeLogRoutes from './routes/episodeLogs';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,7 @@ app.get('/', (req, res) => {
 // Import and use route handlers
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', episodeLogRoutes);
 
 // Start server with error handling
 const server = app.listen(port, '0.0.0.0', () => {

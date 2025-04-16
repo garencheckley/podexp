@@ -24,7 +24,40 @@ The backlog items aim to address the following core user-reported problems with 
 
 ## Prioritized Project Backlog
 
-### 1. Quality Improvement Initiatives
+### 1. Episode Generation Logging and Dashboard
+
+**Problem**: The episode generation process lacks transparency and visibility into how topics are selected, prioritized, and developed.
+**Solution**: Implement comprehensive logging throughout the episode generation pipeline and create a user-facing dashboard to visualize the decision-making process.
+**Components**:
+- **Structured Logging System**:
+  - Create a robust `EpisodeGenerationLog` data structure to capture detailed information at each step
+  - Enhance existing generation stages to document decisions and reasoning
+  - Implement timing metrics for performance analysis
+  - Store logs alongside episode data in Firestore
+- **Frontend Dashboard View**:
+  - Add a "Generation Log" tab to episode detail pages
+  - Create an interactive timeline visualization of the generation process
+  - Implement expandable sections for each generation stage with detailed information
+  - Display key metrics and decision points with explanations
+- **Log Detail Components**:
+  - Topic Selection: Show which topics were considered vs. selected with reasoning
+  - Clustering Visualization: Display how related topics were grouped
+  - Research Path: Show the progression from initial to deep research
+  - Source Attribution: Clearly document which sources influenced which sections
+**Expected Outcomes**:
+- **Transparency**: Clear visibility into the AI's decision-making process
+- **Debugging**: Easier identification of issues in topic selection or research
+- **Trust**: Better understanding of how content is generated and sourced
+- **Learning**: Insights into how content evolves through the generation pipeline
+- **Quality Improvements**: Better ability to diagnose and address content quality issues
+**Goals**:
+- Provide complete visibility into the episode creation process
+- Document the thought process and logic at each step
+- Track which topics are shown, chosen, and developed
+- Capture timing metrics to identify bottlenecks
+- Enable better understanding of the AI's content strategies
+
+### 2. Quality Improvement Initiatives
 
 **Context**: Despite completing the initial frameworks (Search Orchestration, Deep Dive, Differentiation - now documented in README), user feedback indicates generated news episodes can still feel repetitive, shallow, and contain "fluff" rather than insightful analysis. Code review suggests potential causes include over-reliance on faster but less capable AI models (`gemini-flash`) for complex tasks, information loss through summarization between steps, and insufficiently specific prompting for analytical depth and against filler content.
 
@@ -32,7 +65,7 @@ The backlog items aim to address the following core user-reported problems with 
 
 **Goal**: Refine the existing generation pipeline to produce demonstrably deeper, more analytical, less repetitive, and less "fluffy" content.
 
-### 2. Expert Analysis Simulator
+### 3. Expert Analysis Simulator
 
 **Problem**: Content is often factual but lacks the analytical depth of expert commentary.
 **Solution**: Go beyond reporting facts to include expert-level analysis and viewpoint contrast.
@@ -47,7 +80,7 @@ The backlog items aim to address the following core user-reported problems with 
 - Better explanation of implications and significance
 - Content that answers "why" and "what it means" not just "what happened"
 
-### 3. Additive Knowledge Engine
+### 4. Additive Knowledge Engine
 
 **Problem**: Episodes often repeat information rather than building upon previous knowledge.
 **Solution**: Ensure new episodes build upon rather than repeat previous knowledge. **Refined approach:** Implement explicit continuity tracking.
@@ -58,7 +91,7 @@ The backlog items aim to address the following core user-reported problems with 
 - Mechanisms to distinguish between "updates to existing topics" and "entirely new topics."
 **Rationale**: Provides a direct mechanism for episode-to-episode continuity, reduces repetition of established information, and enables progressive knowledge building, mimicking how a human host would recall previous discussions. ([Ref: Meridian's Previous Day TLDR concept](https://github.com/iliane5/meridian))
 
-### 4. User Authentication & Personalization
+### 5. User Authentication & Personalization
 
 **Problem**: Currently, all podcasts are publicly accessible, with no way to restrict access or personalize the experience.
 **Solution**: Implement user authentication and podcast ownership to create a personalized podcast experience.
@@ -81,9 +114,9 @@ The backlog items aim to address the following core user-reported problems with 
 
 The projects are listed in recommended implementation order:
 
-1.  **Expert Analysis Simulator (Item 2)**: Builds upon improved quality foundation to add specific analytical capabilities.
-2.  **Additive Knowledge Engine (Item 3)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
-3.  **User Authentication & Personalization (Item 4)**: Adds user-facing features.
+1.  **Expert Analysis Simulator (Item 3)**: Builds upon improved quality foundation to add specific analytical capabilities.
+2.  **Additive Knowledge Engine (Item 4)**: Further enhances differentiation and context using cross-episode knowledge, leveraging the refined approach with TLDR context.
+3.  **User Authentication & Personalization (Item 5)**: Adds user-facing features.
 
 ## Technical Considerations
 

@@ -60,29 +60,31 @@ export async function createEpisode(
   return response.json();
 }
 
-export async function generateEpisode(podcastId: string, episodeLength?: number): Promise<Episode> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}/generate-episode`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      targetMinutes: episodeLength
-    }),
-  });
-  
-  if (!response.ok) {
-    // Try to extract the detailed error message from the response
-    try {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to generate episode');
-    } catch (parseError) {
-      // If we can't parse the response as JSON, use the status text
-      throw new Error(`Failed to generate episode: ${response.statusText}`);
+/**
+ * Generate a new episode for a podcast
+ * @param podcastId The ID of the podcast
+ * @param options Generation options
+ * @returns The generated episode and generation log ID
+ */
+export async function generateEpisode(podcastId: string, options: { targetMinutes?: number; targetWordCount?: number } = {}): Promise<{ episode: Episode; generationLogId: string }> {
+  try {
+    const response = await fetch(`${API_URL}/podcasts/${podcastId}/generate-episode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(options),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate episode: ${response.status} ${response.statusText}`);
     }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating episode:', error);
+    throw error;
   }
-  
-  return response.json();
 }
 
 export async function regenerateAudio(podcastId: string, episodeId: string): Promise<Episode> {
@@ -140,4 +142,97 @@ export async function updatePodcast(
   }
   
   return response.json();
+}
+
+/**
+ * Interface for episode generation log stage data
+ */
+export interface EpisodeGenerationStage {
+  processingTimeMs: number;
+  [key: string]: any;
+}
+
+/**
+ * Interface for episode generation decision
+ */
+export interface EpisodeGenerationDecision {
+  stage: string;
+  decision: string;
+  reasoning: string;
+  alternatives: string[];
+  timestamp: string;
+}
+
+/**
+ * Interface for episode generation log
+ */
+export interface EpisodeGenerationLog {
+  id: string;
+  podcastId: string;
+  episodeId: string | null;
+  timestamp: string;
+  duration: {
+    totalMs: number;
+    stageBreakdown: {
+      episodeAnalysis: number;
+      initialSearch: number;
+      clustering: number;
+      prioritization: number;
+      deepResearch: number;
+      contentGeneration: number;
+      audioGeneration: number;
+    }
+  };
+  stages: {
+    episodeAnalysis: EpisodeGenerationStage | null;
+    initialSearch: EpisodeGenerationStage | null;
+    clustering: EpisodeGenerationStage | null;
+    prioritization: EpisodeGenerationStage | null;
+    deepResearch: EpisodeGenerationStage | null;
+    contentGeneration: EpisodeGenerationStage | null;
+    audioGeneration: EpisodeGenerationStage | null;
+  };
+  decisions: EpisodeGenerationDecision[];
+  status: 'in_progress' | 'completed' | 'failed';
+  error?: string;
+}
+
+/**
+ * Get an episode generation log by ID
+ * @param logId The generation log ID
+ * @returns The episode generation log
+ */
+export async function getEpisodeGenerationLog(logId: string): Promise<EpisodeGenerationLog> {
+  try {
+    const response = await fetch(`${API_URL}/episode-logs/${logId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch episode generation log: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching episode generation log:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get episode generation log for a specific episode
+ * @param episodeId The episode ID
+ * @returns The episode generation log
+ */
+export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promise<EpisodeGenerationLog> {
+  try {
+    const response = await fetch(`${API_URL}/episodes/${episodeId}/generation-log`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch episode generation log: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching episode generation log for episode:', error);
+    throw error;
+  }
 } 

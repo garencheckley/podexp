@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
 import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast } from '../services/api';
 import AudioPlayer from './AudioPlayer';
+import GenerationLogViewer from './GenerationLogViewer';
 
 const PodcastDetail = () => {
   const { podcastId } = useParams<{ podcastId: string }>();
@@ -22,6 +23,8 @@ const PodcastDetail = () => {
   const [episodeLength, setEpisodeLength] = useState(3); // Default to 3 minutes
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const [showTrustedSources, setShowTrustedSources] = useState(false);
+  const [episodeGenerationLogs, setEpisodeGenerationLogs] = useState<Record<string, string>>({});
+  const [activeEpisodeTabs, setActiveEpisodeTabs] = useState<Record<string, 'transcript' | 'log'>>({});
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -85,8 +88,14 @@ const PodcastDetail = () => {
     setError(null);
     setGenerating(true);
     try {
-      const newEpisode = await generateEpisode(podcastId, episodeLength);
-      setEpisodes(prevEpisodes => [newEpisode, ...prevEpisodes]);
+      const result = await generateEpisode(podcastId, { targetMinutes: episodeLength });
+      setEpisodes(prevEpisodes => [result.episode, ...prevEpisodes]);
+      
+      // Store the generation log ID in the episode's metadata
+      setEpisodeGenerationLogs(prev => ({
+        ...prev,
+        [result.episode.id!]: result.generationLogId
+      }));
     } catch (err) {
       // Show the detailed error message from the API
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate episode. Please try again later.';
@@ -209,6 +218,24 @@ const PodcastDetail = () => {
 
   const toggleTrustedSources = () => {
     setShowTrustedSources(!showTrustedSources);
+  };
+
+  const toggleEpisodeTab = (episodeId: string, tab: 'transcript' | 'log') => {
+    setActiveEpisodeTabs(prev => ({
+      ...prev,
+      [episodeId]: tab
+    }));
+    
+    // Automatically expand the episode when switching to a tab
+    if (!expandedEpisodes[episodeId]) {
+      setExpandedEpisodes(prev => ({
+        ...prev,
+        [episodeId]: true
+      }));
+    }
+    
+    // Close menu after tab switch
+    setOpenMenuId(null);
   };
 
   // Helper function to format date with time
@@ -473,6 +500,22 @@ const PodcastDetail = () => {
                         {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
                       </div>
                       
+                      {episodeGenerationLogs[episode.id!] && (
+                        <div 
+                          className="menu-item"
+                          onClick={() => {
+                            if (episode.id) {
+                              toggleEpisodeTab(episode.id, 'log');
+                              if (!expandedEpisodes[episode.id]) {
+                                toggleEpisodeContent(episode.id);
+                              }
+                            }
+                          }}
+                        >
+                          View Generation Log
+                        </div>
+                      )}
+                      
                       {episode.audioUrl && (
                         <a 
                           href={episode.audioUrl} 
@@ -504,57 +547,91 @@ const PodcastDetail = () => {
               
               <p className="episode-description">{episode.description}</p>
               
-              <div className="episode-content" style={{ display: expandedEpisodes[episode.id!] ? 'block' : 'none' }}>
-                {episode.content.split('\n').map((paragraph, i) => (
-                  <p key={i}>{paragraph}</p>
-                ))}
-                
-                {episode.sources && episode.sources.length > 0 && (
-                  <div className="episode-sources">
-                    <div className="sources-header">
-                      <h4>Sources:</h4>
-                      <button 
-                        onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
-                        className="toggle-sources-button"
-                        aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                      >
-                        {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                      </button>
-                    </div>
-                    
-                    {expandedSources[episode.id!] && (
-                      <ul>
-                        {episode.sources.map((source, index) => (
-                          <li key={index}>
-                            <a href={source} target="_blank" rel="noopener noreferrer">
-                              {(() => {
-                                try {
-                                  const url = new URL(source);
-                                  // Check if it's a vertexaisearch URL (which isn't very useful to display)
-                                  if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
-                                    return `Reference ${index + 1}`;
-                                  }
-                                  // For normal URLs, show the hostname with protocol stripped
-                                  return url.hostname;
-                                } catch (e) {
-                                  // If URL parsing fails, just show the source directly
-                                  return source;
-                                }
-                              })()}
-                            </a>
-                          </li>
+              {expandedEpisodes[episode.id!] && (
+                <div className="episode-content-tabs">
+                  <div className="tabs-header">
+                    <button 
+                      className={`tab-button ${activeEpisodeTabs[episode.id!] !== 'log' ? 'active' : ''}`}
+                      onClick={() => episode.id && toggleEpisodeTab(episode.id, 'transcript')}
+                    >
+                      Transcript
+                    </button>
+                    <button 
+                      className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
+                      onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
+                      disabled={!episodeGenerationLogs[episode.id!]}
+                    >
+                      Generation Log
+                    </button>
+                  </div>
+                  
+                  <div className="tab-content">
+                    {activeEpisodeTabs[episode.id!] === 'log' ? (
+                      <div className="generation-log-tab">
+                        {episodeGenerationLogs[episode.id!] ? (
+                          <GenerationLogViewer logId={episodeGenerationLogs[episode.id!]} />
+                        ) : (
+                          <div className="log-not-available">
+                            <p>Generation log not available for this episode.</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="transcript-tab">
+                        {episode.content.split('\n').map((paragraph, i) => (
+                          <p key={i}>{paragraph}</p>
                         ))}
-                      </ul>
-                    )}
-                    
-                    {!expandedSources[episode.id!] && (
-                      <p className="sources-summary">
-                        {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
-                      </p>
+                        
+                        {episode.sources && episode.sources.length > 0 && (
+                          <div className="episode-sources">
+                            <div className="sources-header">
+                              <h4>Sources:</h4>
+                              <button 
+                                onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
+                                className="toggle-sources-button"
+                                aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                              >
+                                {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                              </button>
+                            </div>
+                            
+                            {expandedSources[episode.id!] && (
+                              <ul>
+                                {episode.sources.map((source, index) => (
+                                  <li key={index}>
+                                    <a href={source} target="_blank" rel="noopener noreferrer">
+                                      {(() => {
+                                        try {
+                                          const url = new URL(source);
+                                          // Check if it's a vertexaisearch URL (which isn't very useful to display)
+                                          if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
+                                            return `Reference ${index + 1}`;
+                                          }
+                                          // For normal URLs, show the hostname with protocol stripped
+                                          return url.hostname;
+                                        } catch (e) {
+                                          // If URL parsing fails, just show the source directly
+                                          return source;
+                                        }
+                                      })()}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            
+                            {!expandedSources[episode.id!] && (
+                              <p className="sources-summary">
+                                {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               
               <div className="episode-meta">
                 Created: {episode.created_at && 

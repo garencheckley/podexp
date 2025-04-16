@@ -287,117 +287,6 @@ The system now implements a sophisticated Deep Dive Research Framework that enab
 - **Expert-Level Analysis**: Content includes the type of analysis typically found in expert commentary
 - **Educational Value**: Podcasts become more valuable knowledge resources on specific topics
 
-### Enhanced Analytical Depth with Refined Prompting
-
-The system now implements sophisticated prompt engineering to significantly enhance the analytical depth and reduce "fluff" content in generated podcast episodes. This improvement targets key areas of the generation pipeline to produce more insightful, substantive content.
-
-#### Core Components
-
-##### 1. Targeted Analytical Frameworks
-- **Causal Analysis**: Prompts explicitly require explanation of causes and effects related to main developments
-- **Comparative Analysis**: Instructions to compare different viewpoints, approaches, or alternatives
-- **Contextual Analysis**: Requirements to explain historical, social, economic, or political context
-- **Implication Analysis**: Focus on the consequences and impacts of developments
-- **Pattern Identification**: Identification of trends, cycles, or recurring elements
-
-##### 2. Anti-Fluff Mechanisms
-- **Filler Phrase Elimination**: Explicit constraints against common filler phrases (e.g., "it's important to note," "as we can see," "it's worth mentioning")
-- **Evidence Requirements**: Instructions to support analytical points with specific evidence
-- **Redundancy Prevention**: Guidelines to avoid repetitive information or redundant statements
-- **Meaningful Transitions**: Requirements for substantive connections between topics rather than superficial transitions
-
-##### 3. Enhanced Host Persona
-- **Defined Personality**: Clear definition of the host as confident, knowledgeable, and thoughtful
-- **Analytical Mindset**: Emphasis on synthesizing complex information with clear analysis
-- **Audience Consideration**: Focus on helping listeners understand both what happened and why it matters
-- **Balanced Authority**: Guidance to be authoritative but conversational, never condescending
-
-##### 4. Narrative Structure Requirements
-- **Analytical Section Types**: Required frameworks including "Background & Context," "Competing Perspectives," "Analysis & Implications," "Future Outlook"
-- **Key Insights Focus**: Emphasis on analytical points rather than mere facts
-- **Cross-Topic Synthesis**: Instructions to identify patterns and connections across topics
-- **Depth-Oriented Structure**: Organization that encourages analytical depth rather than surface-level coverage
-
-#### Benefits
-- **Reduced Filler Content**: Significantly less "fluff" and more substantive information
-- **Deeper Analysis**: More thorough exploration of topics with meaningful insights
-- **Multiple Perspectives**: Better representation of contrasting viewpoints on complex issues
-- **Enhanced Clarity**: Clearer explanation of significance and implications
-- **Improved Listening Experience**: More valuable, insightful content for audience engagement and learning
-
-### Hybrid AI Model Strategy
-
-To address quality concerns such as lack of depth, repetition, and "fluff" (as outlined in Backlog Item 1.1), the system now employs a hybrid AI model strategy. This involves:
-
-- **Powerful Model (`gemini-2.5-pro-exp-03-25`)**: Used for complex tasks requiring deep reasoning, nuanced analysis, and high-quality generation. This includes topic prioritization, research synthesis, content differentiation analysis, narrative planning, and final script generation.
-- **Fast Model (`gemini-2.0-flash`)**: Used for simpler, speed-sensitive tasks where cost-effectiveness is also important. This includes initial search query generation, preliminary topic identification from search results, and executing grounded web searches.
-
-This approach matches AI model capabilities to task complexity, aiming to improve the overall quality, depth, and analytical rigor of the generated podcast content while managing computational resources effectively.
-
-### Improved Source Attribution Display
-The system now features an enhanced display for source attribution in news-based podcasts:
-
-- **User-Friendly References**: API search URLs are now displayed as "Reference 1", "Reference 2", etc. instead of raw URLs
-- **Enhanced Visual Design**: Sources section uses a cleaner, more attractive styling with bullet points and subtle hover effects
-- **Flexible URL Handling**: System intelligently detects and formats different types of source URLs
-- **Error Handling**: Robust error handling for malformed or unexpected URL formats
-- **Mobile Responsive**: Source attribution section is fully responsive for all screen sizes
-
-This improvement makes the source attribution section more readable and professional, enhancing the overall user experience while maintaining the important credibility that source attribution provides to news-based podcasts.
-
-### Enhanced Trusted Sources System
-
-The system now features a significantly improved trusted sources system for more comprehensive and balanced content generation:
-
-#### Expanded Source Database
-- **Increased Source Count**: Expanded from 10-15 to 20-30 trusted sources per podcast
-- **Enhanced Source Metadata**: Added publishing frequency and perspective/viewpoint classification
-- **Diverse Perspectives**: Sources are now explicitly categorized by perspective (e.g., Left, Center, Right, Neutral) to ensure balanced coverage
-- **International Coverage**: Includes at least 2-3 international sources to provide global perspectives
-- **Quality Metrics**: Maintains rigorous quality scoring (1-10 scale) for all sources
-
-#### Advanced Source-Guided Search
-- **Perspective Balancing**: Automatically selects sources from different perspective categories to ensure viewpoint diversity
-- **Category-Specific Selection**: Intelligently selects top sources from each content category (News, Analysis, Research, etc.)
-- **Topic-Source Matching**: Matches topics with the most relevant sources based on topical expertise
-- **Efficient Query Generation**: Creates optimized site-specific search queries for maximum relevance
-- **Multiple Source Coverage**: Ensures each topic is researched using at least 3 high-quality sources
-
-#### Enhanced Search Technology
-- **Gemini 2.5 Pro Integration**: Uses the powerful `gemini-2.5-pro-preview-03-25` model for all search operations
-- **Increased Token Capacity**: Doubled token capacity from 2000 to 4000 for more comprehensive search results
-- **Enhanced Search Grounding**: Fully leverages Google Search Grounding for factually accurate information
-- **Improved Source Attribution**: Better extraction and formatting of source URLs from search results
-- **Parallel Processing**: Efficiently executes multiple source-specific searches in parallel
-
-#### Benefits
-- **Higher Content Quality**: More diverse, authoritative, and comprehensive information
-- **Multiple Perspectives**: Better representation of different viewpoints on complex topics
-- **Balanced Reporting**: Ensures coverage from various perspectives to avoid bias
-- **Enhanced Factual Accuracy**: More authoritative sources with higher quality verification
-- **Greater Content Depth**: More sources enable deeper exploration of topics
-
-This enhanced trusted sources system ensures podcast content is grounded in diverse, high-quality sources, providing listeners with comprehensive, balanced, and accurate information.
-
-### Enhanced User Interface Features
-
-The system now includes several UI enhancements to improve the user experience:
-
-#### Auto-Play Functionality
-- **Automatic Playback**: When clicking the "Play Episode" button, audio now automatically begins playing instead of just loading the player
-- **Smooth Transitions**: Audio state is properly reset when switching between episodes
-- **Error Handling**: Graceful fallback for browsers with autoplay restrictions
-- **Playback Controls**: Maintain all existing controls (play/pause, skip forward/backward, progress tracking)
-
-#### Improved Date and Time Display
-- **Relative Time Indicators**: Episode creation dates now show relative time (e.g., "2 mins ago", "3 hours ago", "2 days ago")
-- **Detailed Timestamps**: Full date and time information is displayed alongside relative time
-- **Format**: "Created: X mins/hours/days ago (MM/DD/YYYY at HH:MM AM/PM)"
-- **Dynamic Updates**: Relative time indicators accurately reflect the passage of time
-- **Intelligent Formatting**: Automatically uses appropriate singular/plural forms (e.g., "1 minute ago" vs "2 minutes ago")
-
-These UI improvements enhance usability and provide more intuitive information to users, making the podcast experience more engaging and user-friendly.
-
 ### Enhanced Research & Synthesis Strategy
 
 The system now implements an optimized research and synthesis strategy that significantly improves information preservation throughout the content generation pipeline:
@@ -421,6 +310,53 @@ The system now implements an optimized research and synthesis strategy that sign
 - **Enhanced Content Quality**: The end result is podcast content with greater depth, analytical rigor, and balanced perspectives
 
 This enhancement directly addresses the issue of information loss that previously occurred when passing only small summaries between stages of the content generation pipeline. By ensuring that the full context and details are preserved throughout, the system now produces more insightful, comprehensive, and valuable podcast content.
+
+### Episode Generation Logging and Dashboard
+
+The system now features comprehensive logging and visualization of the episode generation process, providing unprecedented transparency into how AI creates podcast content:
+
+#### Key Features
+
+##### 1. Detailed Generation Logs
+- **Multi-Stage Tracking**: Captures detailed information at each stage of the generation process:
+  - Episode Analysis: Previous topics and themes analyzed
+  - Initial Search: Search queries used and topics discovered
+  - Topic Clustering: How similar topics are grouped into thematic clusters
+  - Topic Prioritization: Decision process for selecting topics to focus on
+  - Deep Research: Layered research from surface to in-depth analysis
+  - Content Generation: How the final script is created and structured
+  - Audio Generation: Conversion of text to natural-sounding speech
+- **Decision Documentation**: Records specific decisions made at key points with reasoning
+- **Performance Metrics**: Tracks processing time for each stage to identify bottlenecks
+- **Source Attribution**: Clearly documents which sources influenced which content sections
+
+##### 2. Interactive Timeline Dashboard
+- **Visual Process Map**: Presents the generation process as an interactive timeline
+- **Stage-by-Stage Breakdown**: Expandable sections for each generation stage
+- **Time Distribution**: Visual representation of time spent in each stage
+- **Decision Points**: Highlights key decisions made during generation
+
+##### 3. Detailed Stage Views
+- **Topic Selection Insights**: Shows which topics were considered, selected, and why
+- **Clustering Visualization**: Displays how related topics were grouped
+- **Prioritization Reasoning**: Explains why certain topics received deeper coverage
+- **Research Path**: Shows the progression from initial to deep research
+- **Content Creation Logic**: Explains how the script was structured and composed
+
+##### 4. Implementation Details
+- **Structured Logging**: Comprehensive `EpisodeGenerationLog` data structure captures all aspects of generation
+- **Tabbed Interface**: Easy access to logs via a tabbed interface in the episode view
+- **Persistent Storage**: Generation logs stored alongside episodes for future reference
+- **Responsive Design**: Dashboard adapts to different screen sizes for mobile and desktop viewing
+
+#### Benefits
+- **Transparency**: Clear visibility into the AI's decision-making process
+- **Debugging**: Easier identification of issues in topic selection or research
+- **Trust**: Better understanding of how content is generated and sourced
+- **Learning**: Insights into how content evolves through the generation pipeline
+- **Quality Improvements**: Better ability to diagnose and address content quality issues
+
+This feature provides podcast creators with unprecedented insight into the AI generation process, helping them understand how topics are selected, researched, and developed into podcast episodes. It transforms the "black box" of AI content generation into a transparent, explainable process that builds trust and enables continuous improvement.
 
 ### Core Generation Prompts Refinement
 
