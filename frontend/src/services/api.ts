@@ -204,13 +204,18 @@ export interface EpisodeGenerationLog {
  */
 export async function getEpisodeGenerationLog(logId: string): Promise<EpisodeGenerationLog> {
   try {
+    console.log('Fetching generation log by ID:', logId);
     const response = await fetch(`${API_URL}/episode-logs/${logId}`);
+    
+    console.log('Generation log response status:', response.status, response.statusText);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch episode generation log: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('Received generation log data:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching episode generation log:', error);
     throw error;
@@ -224,13 +229,18 @@ export async function getEpisodeGenerationLog(logId: string): Promise<EpisodeGen
  */
 export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promise<EpisodeGenerationLog> {
   try {
+    console.log('Fetching generation log for episode ID:', episodeId);
     const response = await fetch(`${API_URL}/episodes/${episodeId}/generation-log`);
+    
+    console.log('Generation log by episode response status:', response.status, response.statusText);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch episode generation log: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('Received generation log data for episode:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching episode generation log for episode:', error);
     throw error;

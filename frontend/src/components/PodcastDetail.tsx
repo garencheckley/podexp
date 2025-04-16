@@ -89,13 +89,34 @@ const PodcastDetail = () => {
     setGenerating(true);
     try {
       const result = await generateEpisode(podcastId, { targetMinutes: episodeLength });
+      console.log('Generated episode result:', result);
+      console.log('Generation log ID received:', result.generationLogId);
+      
+      // Make sure we have a valid episode id and generation log id
+      if (!result.episode.id || !result.generationLogId) {
+        console.error('Missing episode ID or generation log ID in response');
+      }
+      
       setEpisodes(prevEpisodes => [result.episode, ...prevEpisodes]);
       
       // Store the generation log ID in the episode's metadata
-      setEpisodeGenerationLogs(prev => ({
-        ...prev,
-        [result.episode.id!]: result.generationLogId
-      }));
+      if (result.episode.id && result.generationLogId) {
+        console.log(`Setting generation log ID ${result.generationLogId} for episode ${result.episode.id}`);
+        setEpisodeGenerationLogs(prev => {
+          const updated = {
+            ...prev,
+            [result.episode.id!]: result.generationLogId
+          };
+          console.log('Updated episodeGenerationLogs:', updated);
+          return updated;
+        });
+        
+        // Initialize the tab state to transcript by default
+        setActiveEpisodeTabs(prev => ({
+          ...prev,
+          [result.episode.id!]: 'transcript'
+        }));
+      }
     } catch (err) {
       // Show the detailed error message from the API
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate episode. Please try again later.';
@@ -221,6 +242,9 @@ const PodcastDetail = () => {
   };
 
   const toggleEpisodeTab = (episodeId: string, tab: 'transcript' | 'log') => {
+    console.log('Toggling tab for episode:', episodeId, 'to:', tab);
+    console.log('Generation log ID for this episode:', episodeGenerationLogs[episodeId]);
+    
     setActiveEpisodeTabs(prev => ({
       ...prev,
       [episodeId]: tab

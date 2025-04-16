@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EpisodeGenerationLog, EpisodeGenerationDecision } from '../services/api';
+import { EpisodeGenerationLog, EpisodeGenerationDecision, getEpisodeGenerationLog, getEpisodeGenerationLogByEpisode } from '../services/api';
 import '../styles/GenerationLogViewer.css';
 
 interface GenerationLogViewerProps {
@@ -26,22 +26,25 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
           throw new Error('Either logId or episodeId must be provided');
         }
         
-        let response;
+        console.log('Fetching generation log with:', { logId, episodeId });
+        
+        let data: EpisodeGenerationLog;
         
         if (logId) {
-          response = await fetch(`/api/episode-logs/${logId}`);
+          console.log('Fetching by logId:', logId);
+          data = await getEpisodeGenerationLog(logId);
+        } else if (episodeId) {
+          console.log('Fetching by episodeId:', episodeId);
+          data = await getEpisodeGenerationLogByEpisode(episodeId);
         } else {
-          response = await fetch(`/api/episodes/${episodeId}/generation-log`);
+          throw new Error('No valid ID provided for fetching generation log');
         }
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch generation log: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
+        console.log('Received log data:', data);
         setLog(data);
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Unknown error');
+        console.error('Error fetching generation log:', error);
         setError(error.message);
         if (onError) {
           onError(error);
