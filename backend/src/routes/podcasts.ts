@@ -264,27 +264,44 @@ router.post('/:podcastId/episodes', async (req, res) => {
     });
     
     // Generate audio for the episode
-    try {
-      // TypeScript non-null assertions for properties we know exist at this point
-      const audioUrl = await generateAndStoreAudio(
-        episode.content!, 
-        episode.podcastId!, 
-        episode.id!
-      );
-      
-      // Update the episode with the audio URL
-      await updateEpisodeAudio(episode.id!, audioUrl);
-      
-      // Return the episode with the audio URL
-      res.status(201).json({
-        ...episode,
-        audioUrl
-      });
-    } catch (audioError) {
-      console.error('Error generating audio:', audioError);
-      // Still return the episode even if audio generation fails
-      res.status(201).json(episode);
-    }
+    const audioStartTime = Date.now();
+    console.log('Generating audio for the episode...');
+    const audioUrl = await generateAndStoreAudio(
+      episode.content!, 
+      req.params.podcastId!, 
+      episode.id!
+    );
+    
+    // Update the episode with the audio URL
+    await updateEpisodeAudio(episode.id!, audioUrl);
+    
+    // Update the generation log with episode ID
+    const logService = require('../services/logService');
+    const generationLog = logService.createEpisodeGenerationLog(req.params.podcastId);
+    generationLog.episodeId = episode.id;
+    console.log(`Setting episode ID ${episode.id} in generation log ${generationLog.id}`);
+    await logService.saveEpisodeGenerationLog(generationLog);
+    
+    // Update log with audio generation
+    generationLog.stages.audioGeneration = {
+      audioFileSize: 0, // Would need to get this information
+      audioDuration: generationLog.stages.contentGeneration?.estimatedDuration || 0,
+      processingTimeMs: Date.now() - audioStartTime
+    };
+    generationLog.duration.stageBreakdown.audioGeneration = Date.now() - audioStartTime;
+    generationLog.duration.totalMs += Date.now() - audioStartTime;
+    
+    // Mark log as completed
+    generationLog.status = 'completed';
+    await logService.saveEpisodeGenerationLog(generationLog);
+    
+    // Respond with the saved episode including audio URL
+    episode.audioUrl = audioUrl;
+    
+    res.status(201).json({
+      episode: episode,
+      generationLogId: generationLog.id
+    });
   } catch (error) {
     console.error('Error creating episode:', error);
     res.status(500).json({ error: 'Failed to create episode' });
@@ -835,6 +852,11 @@ router.post('/:id/generate-episode', async (req, res) => {
       last_updated: new Date().toISOString()
     });
     
+    // Update the generation log with episode ID
+    const updatedLog = logService.setEpisodeId(generationLog, episode.id);
+    console.log(`Setting episode ID ${episode.id} in generation log ${updatedLog.id}`);
+    await logService.saveEpisodeGenerationLog(updatedLog);
+    
     // Generate audio for the episode
     const audioStartTime = Date.now();
     console.log('Generating audio for the episode...');
@@ -848,24 +870,24 @@ router.post('/:id/generate-episode', async (req, res) => {
     await updateEpisodeAudio(episode.id!, audioUrl);
     
     // Update log with audio generation
-    generationLog.stages.audioGeneration = {
+    updatedLog.stages.audioGeneration = {
       audioFileSize: 0, // Would need to get this information
-      audioDuration: generationLog.stages.contentGeneration?.estimatedDuration || 0,
+      audioDuration: updatedLog.stages.contentGeneration?.estimatedDuration || 0,
       processingTimeMs: Date.now() - audioStartTime
     };
-    generationLog.duration.stageBreakdown.audioGeneration = Date.now() - audioStartTime;
-    generationLog.duration.totalMs += Date.now() - audioStartTime;
+    updatedLog.duration.stageBreakdown.audioGeneration = Date.now() - audioStartTime;
+    updatedLog.duration.totalMs += Date.now() - audioStartTime;
     
     // Mark log as completed
-    generationLog.status = 'completed';
-    await logService.saveEpisodeGenerationLog(generationLog);
+    updatedLog.status = 'completed';
+    await logService.saveEpisodeGenerationLog(updatedLog);
     
     // Respond with the saved episode including audio URL
     episode.audioUrl = audioUrl;
     
     res.status(201).json({
       episode: episode,
-      generationLogId: generationLog.id
+      generationLogId: updatedLog.id
     });
   } catch (error) {
     console.error('Error generating episode:', error);
