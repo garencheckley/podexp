@@ -118,8 +118,11 @@ const PodcastDetail = () => {
     setError(null);
     setGenerating(true);
     try {
+      console.log('Generating episode for podcast:', podcastId, 'with length:', episodeLength);
       const result = await generateEpisode(podcastId, { targetMinutes: episodeLength });
-      console.log('Generated episode result:', result);
+      console.log('Generated episode result (full):', JSON.stringify(result, null, 2));
+      console.log('Episode ID:', result.episode.id);
+      console.log('Generation log ID:', result.generationLogId);
       
       // Make sure we have a valid episode id and generation log id
       if (!result.episode.id || !result.generationLogId) {
@@ -128,10 +131,14 @@ const PodcastDetail = () => {
         console.log(`Setting generation log ID ${result.generationLogId} for episode ${result.episode.id}`);
         
         // Update episodeGenerationLogs state
-        setEpisodeGenerationLogs(prev => ({
-          ...prev,
-          [result.episode.id!]: result.generationLogId
-        }));
+        setEpisodeGenerationLogs(prev => {
+          const updated = {
+            ...prev,
+            [result.episode.id!]: result.generationLogId
+          };
+          console.log('Updated episodeGenerationLogs state:', updated);
+          return updated;
+        });
         
         // Initialize the tab state to transcript by default
         setActiveEpisodeTabs(prev => ({
