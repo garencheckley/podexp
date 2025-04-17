@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 import GenerationLogViewer from './GenerationLogViewer';
 
@@ -44,6 +44,36 @@ const PodcastDetail = () => {
       });
       
       setEpisodes(sortedEpisodes);
+      
+      // Attempt to load generation logs for all episodes
+      
+      // Initialize all tabs to transcript by default
+      const initialTabStates: Record<string, 'transcript' | 'log'> = {};
+      
+      for (const episode of sortedEpisodes) {
+        if (episode.id) {
+          initialTabStates[episode.id] = 'transcript';
+          
+          // Try to fetch the generation log for this episode in the background
+          getEpisodeGenerationLogByEpisode(episode.id)
+            .then(log => {
+              if (log && log.id) {
+                console.log(`Found generation log ${log.id} for episode ${episode.id}`);
+                setEpisodeGenerationLogs(prev => ({
+                  ...prev,
+                  [episode.id!]: log.id
+                }));
+              }
+            })
+            .catch(err => {
+              console.log(`No generation log found for episode ${episode.id}:`, err);
+            });
+        }
+      }
+      
+      // Set initial tab states
+      setActiveEpisodeTabs(initialTabStates);
+      
       setError(null);
     } catch (err) {
       setError('Failed to fetch podcast data. Please try again later.');
@@ -90,26 +120,18 @@ const PodcastDetail = () => {
     try {
       const result = await generateEpisode(podcastId, { targetMinutes: episodeLength });
       console.log('Generated episode result:', result);
-      console.log('Generation log ID received:', result.generationLogId);
       
       // Make sure we have a valid episode id and generation log id
       if (!result.episode.id || !result.generationLogId) {
         console.error('Missing episode ID or generation log ID in response');
-      }
-      
-      setEpisodes(prevEpisodes => [result.episode, ...prevEpisodes]);
-      
-      // Store the generation log ID in the episode's metadata
-      if (result.episode.id && result.generationLogId) {
+      } else {
         console.log(`Setting generation log ID ${result.generationLogId} for episode ${result.episode.id}`);
-        setEpisodeGenerationLogs(prev => {
-          const updated = {
-            ...prev,
-            [result.episode.id!]: result.generationLogId
-          };
-          console.log('Updated episodeGenerationLogs:', updated);
-          return updated;
-        });
+        
+        // Update episodeGenerationLogs state
+        setEpisodeGenerationLogs(prev => ({
+          ...prev,
+          [result.episode.id!]: result.generationLogId
+        }));
         
         // Initialize the tab state to transcript by default
         setActiveEpisodeTabs(prev => ({
@@ -117,6 +139,9 @@ const PodcastDetail = () => {
           [result.episode.id!]: 'transcript'
         }));
       }
+      
+      // Add new episode to the list
+      setEpisodes(prevEpisodes => [result.episode, ...prevEpisodes]);
     } catch (err) {
       // Show the detailed error message from the API
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate episode. Please try again later.';
@@ -583,7 +608,8 @@ const PodcastDetail = () => {
                     <button 
                       className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
                       onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
-                      disabled={!episodeGenerationLogs[episode.id!]}
+                      disabled={!episodeGenerationLogs[episode.id!]} 
+                      title={!episodeGenerationLogs[episode.id!] ? "Generation log not available" : ""}
                     >
                       Generation Log
                     </button>
@@ -593,7 +619,14 @@ const PodcastDetail = () => {
                     {activeEpisodeTabs[episode.id!] === 'log' ? (
                       <div className="generation-log-tab">
                         {episodeGenerationLogs[episode.id!] ? (
-                          <GenerationLogViewer logId={episodeGenerationLogs[episode.id!]} />
+                          <GenerationLogViewer 
+                            logId={episodeGenerationLogs[episode.id!]} 
+                            onError={(error) => {
+                              console.error("Error loading generation log:", error);
+                              // Reset to transcript tab on error
+                              toggleEpisodeTab(episode.id!, 'transcript');
+                            }}
+                          />
                         ) : (
                           <div className="log-not-available">
                             <p>Generation log not available for this episode.</p>
