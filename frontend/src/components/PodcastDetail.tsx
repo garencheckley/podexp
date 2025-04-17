@@ -605,14 +605,14 @@ const PodcastDetail = () => {
                     >
                       Transcript
                     </button>
-                    <button 
-                      className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
-                      onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
-                      disabled={!episodeGenerationLogs[episode.id!]} 
-                      title={!episodeGenerationLogs[episode.id!] ? "Generation log not available" : ""}
-                    >
-                      Generation Log
-                    </button>
+                    {episodeGenerationLogs[episode.id!] && (
+                      <button 
+                        className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
+                        onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
+                      >
+                        Generation Log
+                      </button>
+                    )}
                   </div>
                   
                   <div className="tab-content">
