@@ -22,6 +22,10 @@ The system follows a client-server architecture with the following components:
 ### Database
 - Google Cloud Firestore for storing podcast and episode data
 - NoSQL document database with collections for podcasts and episodes
+- **Required Indexes**: Custom composite indexes for query performance
+  - See `firestore.indexes.json` for required index definitions
+  - Deploy indexes using `./deploy-indexes.sh` script
+  - Essential for queries combining filters with sorting
 
 ### Storage
 - Google Cloud Storage for storing generated audio files
@@ -491,7 +495,16 @@ The recommended approach is to use Google Cloud Build, which handles the Docker 
      --allow-unauthenticated
    ```
 
-3. **Environment Variables**: 
+3. **Firestore Indexes**: 
+   - Before the first deployment, ensure Firestore indexes are created:
+   ```
+   # Deploy required Firestore indexes
+   ./deploy-indexes.sh
+   ```
+   - Indexes are critical for queries that combine filtering and ordering
+   - Without proper indexes, certain queries will fail with FAILED_PRECONDITION errors
+
+4. **Environment Variables**: 
    - Key environment variables are set in the Dockerfile and during deployment
    - The service account credentials are included in the build
    - Additional environment variables can be set during deployment with `--set-env-vars`
@@ -558,6 +571,12 @@ The frontend deployment follows a similar process:
 4. **Debugging Deployed Services**:
    - Use Cloud Logging to view logs: `gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=podcast-backend"`
    - Set up Error Reporting in Google Cloud Console
+
+5. **Firestore Query Errors**:
+   - If you see "FAILED_PRECONDITION: The query requires an index" errors:
+   - Ensure all required indexes are deployed using `./deploy-indexes.sh`
+   - Check the Firebase console to verify index creation is complete
+   - Index creation may take several minutes to complete
 
 ### Configuration Updates
 
