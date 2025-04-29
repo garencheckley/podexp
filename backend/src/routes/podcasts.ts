@@ -427,7 +427,7 @@ router.post('/:id/generate-episode', async (req, res) => {
     // 1. Review existing episodes
     console.log('Step 1: Analyzing existing episodes');
     const analysisStartTime = Date.now();
-    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId, 10);
+    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
     const analysisEndTime = Date.now();
     const analysisProcessingTime = analysisEndTime - analysisStartTime;
     console.log(`Analysis complete: Found ${episodeAnalysis.episodeCount} episodes, ${episodeAnalysis.recentTopics.length} topics`);
@@ -840,6 +840,20 @@ router.post('/:id/generate-episode', async (req, res) => {
       created_at: new Date().toISOString()
     };
     
+    // Generate bullet points for the episode
+    try {
+      console.log('Generating bullet points for the episode...');
+      const bulletPoints = await contentFormatter.generateEpisodeBulletPoints(
+        episodeData.title,
+        finalContent
+      );
+      episodeData.bulletPoints = bulletPoints;
+      console.log(`Generated ${bulletPoints.length} bullet points for the episode`);
+    } catch (bulletPointError) {
+      console.error('Error generating bullet points:', bulletPointError);
+      // Continue without bullet points if there's an error - non-critical
+    }
+    
     // Only add narrative structure if it exists
     if (narrativeForStorage) {
       episodeData.narrativeStructure = narrativeForStorage;
@@ -1019,6 +1033,114 @@ router.patch('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating podcast:', error);
     res.status(500).json({ error: 'Failed to update podcast' });
+  }
+});
+
+// Generate bullet points for all episodes in a podcast (migration route)
+router.post('/:podcastId/generate-bullet-points', async (req, res) => {
+  try {
+    const { podcastId } = req.params;
+    console.log(`POST /api/podcasts/${podcastId}/generate-bullet-points`);
+    
+    // Get all episodes for this podcast
+    const episodes = await getEpisodesByPodcastId(podcastId);
+    
+    if (episodes.length === 0) {
+      return res.status(404).json({ message: 'No episodes found for this podcast' });
+    }
+    
+    console.log(`Found ${episodes.length} episodes. Generating bullet points...`);
+    
+    // Process episodes in batches to avoid overwhelming the Gemini API
+    const batchSize = 5;
+    const results = {
+      total: episodes.length,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      details: []
+    };
+    
+    // Process in batches
+    for (let i = 0; i < episodes.length; i += batchSize) {
+      const batch = episodes.slice(i, i + batchSize);
+      console.log(`Processing batch ${i/batchSize + 1} (${batch.length} episodes)...`);
+      
+      // Process each episode in the batch concurrently
+      await Promise.all(batch.map(async (episode) => {
+        try {
+          results.processed++;
+          
+          // Skip episodes that already have bullet points
+          if (episode.bulletPoints && Array.isArray(episode.bulletPoints) && episode.bulletPoints.length > 0) {
+            console.log(`Episode ${episode.id} already has bullet points, skipping`);
+            results.succeeded++;
+            results.details.push({
+              episodeId: episode.id,
+              title: episode.title,
+              status: 'skipped',
+              message: 'Already has bullet points'
+            });
+            return;
+          }
+          
+          // Skip episodes without content
+          if (!episode.content) {
+            console.log(`Episode ${episode.id} has no content, skipping`);
+            results.failed++;
+            results.details.push({
+              episodeId: episode.id,
+              title: episode.title,
+              status: 'failed',
+              message: 'No content available'
+            });
+            return;
+          }
+          
+          // Generate bullet points
+          console.log(`Generating bullet points for episode ${episode.id}: ${episode.title}`);
+          const bulletPoints = await contentFormatter.generateEpisodeBulletPoints(
+            episode.title,
+            episode.content
+          );
+          
+          // Update the episode with bullet points
+          await getDb().collection('episodes').doc(episode.id).update({
+            bulletPoints: bulletPoints
+          });
+          
+          console.log(`Updated episode ${episode.id} with ${bulletPoints.length} bullet points`);
+          results.succeeded++;
+          results.details.push({
+            episodeId: episode.id,
+            title: episode.title,
+            status: 'success',
+            bulletPointCount: bulletPoints.length
+          });
+        } catch (error) {
+          console.error(`Error processing episode ${episode.id}:`, error);
+          results.failed++;
+          results.details.push({
+            episodeId: episode.id,
+            title: episode.title,
+            status: 'failed',
+            message: error.message || 'Unknown error'
+          });
+        }
+      }));
+      
+      // Add a small delay between batches to avoid rate limiting
+      if (i + batchSize < episodes.length) {
+        console.log('Waiting 2 seconds before processing next batch...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    console.log(`Bullet point generation complete: ${results.succeeded} succeeded, ${results.failed} failed`);
+    res.json(results);
+  } catch (error) {
+    console.error('Error generating bullet points:', error);
+    res.status(500).json({ error: 'Failed to generate bullet points' });
   }
 });
 

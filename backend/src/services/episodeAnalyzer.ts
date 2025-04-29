@@ -45,92 +45,108 @@ export async function analyzeExistingEpisodes(podcastId: string, limit = 15): Pr
       };
     }
 
-    // Initialize collection objects
-    const topicFrequency = new Map<string, number>();
-    const coveredSources = new Set<string>();
-    const keyThemes = new Set<string>();
+    // Collect all sources from episodes
+    const allSources = new Set<string>();
     
-    // Process each episode to extract information
-    for (const episode of episodes) {
-      // Skip episodes without content
-      if (!episode.content) {
-        console.log(`Episode ${episode.id} has no content, skipping analysis`);
-        continue;
-      }
-      
-      // Collect sources if they exist
-      if (episode.sources && Array.isArray(episode.sources)) {
-        episode.sources.forEach(source => coveredSources.add(source));
-      }
-      
-      // Use Gemini to analyze the episode content
-      console.log(`Analyzing content for episode ${episode.id}`);
-      const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
-      
-      // Truncate content if it's very long to avoid token limits
-      const contentForAnalysis = episode.content.length > 10000 
-        ? episode.content.substring(0, 10000) 
-        : episode.content;
-      
-      const analysisPrompt = `
-        Analyze this podcast episode and extract:
-        1. Main topics covered (maximum 5)
-        2. Key themes or narratives
-        
-        Episode title: ${episode.title}
-        Episode content:
-        ${contentForAnalysis}
-        
-        Respond in JSON format:
-        {
-          "topics": ["topic1", "topic2"...],
-          "themes": ["theme1", "theme2"...]
+    // Prepare episode summaries for a consolidated analysis
+    const episodeSummaries = episodes
+      .filter(episode => episode.content || episode.bulletPoints) // Accept episodes with either content or bulletPoints
+      .map(episode => {
+        // Collect sources if they exist
+        if (episode.sources && Array.isArray(episode.sources)) {
+          episode.sources.forEach(source => allSources.add(source));
         }
-      `;
+        
+        // Prepare content representation - prefer bullet points if available
+        let contentRepresentation = '';
+        if (episode.bulletPoints && Array.isArray(episode.bulletPoints) && episode.bulletPoints.length > 0) {
+          // Use bullet points for more efficient representation
+          contentRepresentation = `BULLET POINT SUMMARY:\n${episode.bulletPoints.map(bullet => `• ${bullet}`).join('\n')}`;
+        } else if (episode.content) {
+          // Fall back to content preview if no bullet points
+          contentRepresentation = episode.content.substring(0, 1000) + '...';
+        }
+        
+        // Create a brief summary of the episode for the consolidated analysis
+        return {
+          id: episode.id,
+          title: episode.title,
+          description: episode.description || '',
+          contentRepresentation: contentRepresentation,
+          created_at: episode.created_at || ''
+        };
+      });
+    
+    // Create a consolidated prompt for analyzing all episodes together
+    const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+    const analysisPrompt = `
+      Analyze these podcast episodes collectively and extract:
+      1. Main topics covered across all episodes (maximum 10)
+      2. Frequency of each topic (how many episodes mention this topic)
+      3. Key recurring themes or narratives across episodes
       
+      Episodes:
+      ${episodeSummaries.map((ep, idx) => `
+        EPISODE ${idx + 1}:
+        Title: ${ep.title}
+        Date: ${ep.created_at}
+        Content: ${ep.contentRepresentation}
+      `).join('\n\n')}
+      
+      Respond in JSON format:
+      {
+        "topics": [
+          {"topic": "topic1", "frequency": 3},
+          {"topic": "topic2", "frequency": 2},
+          ...
+        ],
+        "themes": ["theme1", "theme2", ...]
+      }
+      
+      Ensure the "frequency" represents how many different episodes mention each topic.
+    `;
+    
+    try {
+      console.log(`Sending consolidated analysis request for ${episodeSummaries.length} episodes`);
+      const result = await model.generateContent(analysisPrompt);
+      const responseText = result.response.text();
+      
+      // Parse the JSON response
       try {
-        const result = await model.generateContent(analysisPrompt);
-        const responseText = result.response.text();
+        // Clean up potential markdown formatting
+        const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+        const analysisResult = JSON.parse(cleanedResponse);
         
-        // Parse the JSON response
-        try {
-          // Clean up potential markdown formatting
-          const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
-          const analysisResult = JSON.parse(cleanedResponse);
-          
-          // Update topic frequency
-          if (analysisResult.topics && Array.isArray(analysisResult.topics)) {
-            analysisResult.topics.forEach((topic: string) => {
-              topicFrequency.set(topic, (topicFrequency.get(topic) || 0) + 1);
-            });
-          }
-          
-          // Update themes
-          if (analysisResult.themes && Array.isArray(analysisResult.themes)) {
-            analysisResult.themes.forEach((theme: string) => keyThemes.add(theme));
-          }
-        } catch (parseError) {
-          console.error(`Error parsing analysis result for episode ${episode.id}:`, parseError);
-        }
-      } catch (genError) {
-        console.error(`Error generating analysis for episode ${episode.id}:`, genError);
+        return {
+          // Use the topics directly from the consolidated analysis
+          recentTopics: analysisResult.topics || [],
+          coveredSources: Array.from(allSources),
+          recurrentThemes: analysisResult.themes || [],
+          episodeCount: episodes.length
+        };
+      } catch (parseError) {
+        console.error('Error parsing consolidated analysis result:', parseError);
+        // Make a best-effort response with the episode count even if parsing fails
+        return {
+          recentTopics: [],
+          coveredSources: Array.from(allSources),
+          recurrentThemes: [],
+          episodeCount: episodes.length
+        };
       }
+    } catch (genError) {
+      console.error('Error generating consolidated analysis:', genError);
+      // Make a best-effort response with the episode count even if Gemini API fails
+      return {
+        recentTopics: [],
+        coveredSources: Array.from(allSources),
+        recurrentThemes: [],
+        episodeCount: episodes.length
+      };
     }
-    
-    // Convert to array and sort by frequency
-    const sortedTopics = Array.from(topicFrequency.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([topic, frequency]) => ({ topic, frequency }));
-    
-    return {
-      recentTopics: sortedTopics,
-      coveredSources: Array.from(coveredSources),
-      recurrentThemes: Array.from(keyThemes),
-      episodeCount: episodes.length
-    };
   } catch (error) {
     console.error('Error analyzing existing episodes:', error);
-    // Return empty analysis on error
+    // Return empty analysis on database error
     return {
       recentTopics: [],
       coveredSources: [],

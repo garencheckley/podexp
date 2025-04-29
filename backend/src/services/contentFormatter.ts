@@ -120,4 +120,90 @@ Structure Summary:
 - Conclusion: ${narrativeStructure.conclusion.wordCount} words
 - Total: ${narrativeStructure.overallWordCount} words
   `;
+}
+
+/**
+ * Generates a concise bullet point summary for an episode
+ * @param episodeTitle The title of the episode
+ * @param episodeContent The full content of the episode
+ * @returns An array of bullet points (3-5) summarizing the key points of the episode
+ */
+export async function generateEpisodeBulletPoints(episodeTitle: string, episodeContent: string): Promise<string[]> {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+  
+  try {
+    console.log(`Generating bullet points for episode: ${episodeTitle}`);
+    
+    // Create a prompt for bullet point generation
+    const bulletPointPrompt = `
+      Create 3-5 concise bullet points that summarize the key points of this podcast episode.
+      Each bullet point should capture a distinct and important aspect of the content.
+      
+      Episode Title: ${episodeTitle}
+      
+      Episode Content:
+      ${episodeContent.substring(0, 15000)} ${episodeContent.length > 15000 ? '...' : ''}
+      
+      Respond with ONLY the bullet points in a JSON array format:
+      ["Bullet point 1", "Bullet point 2", "Bullet point 3"]
+      
+      Guidelines for good bullet points:
+      - Focus on the most important information
+      - Be specific and informative
+      - Keep each bullet point to 1-2 sentences
+      - Cover different aspects of the content
+      - Don't repeat information
+    `;
+    
+    const result = await model.generateContent(bulletPointPrompt);
+    const responseText = result.response.text();
+    
+    // Parse the JSON response
+    try {
+      // Clean up potential markdown formatting
+      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
+      const bulletPoints = JSON.parse(cleanedResponse);
+      
+      // Ensure we have at least 3 and at most 5 bullet points
+      if (Array.isArray(bulletPoints) && bulletPoints.length >= 3 && bulletPoints.length <= 5) {
+        return bulletPoints;
+      } else {
+        // If the response doesn't match our expected format, extract bullet points manually
+        const extractedBullets = responseText
+          .split('\n')
+          .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+          .map(line => line.trim().replace(/^[-*]\s*/, ''))
+          .filter(line => line.length > 10); // Ensure substantive bullets
+        
+        if (extractedBullets.length >= 3) {
+          return extractedBullets.slice(0, 5); // Limit to 5 bullets
+        }
+        
+        // Fallback if we couldn't extract properly formatted bullets
+        console.warn(`Could not parse bullet points properly for ${episodeTitle}. Generating generic ones.`);
+        return [
+          `Summary of "${episodeTitle}"`,
+          "Key points from the episode content",
+          "Main takeaways from the discussion"
+        ];
+      }
+    } catch (parseError) {
+      console.error('Error parsing bullet points:', parseError);
+      // Fallback for parsing errors
+      return [
+        `Summary of "${episodeTitle}"`,
+        "Key points from the episode content",
+        "Main takeaways from the discussion"
+      ];
+    }
+  } catch (error) {
+    console.error('Error generating bullet points:', error);
+    // Fallback for generation errors
+    return [
+      `Summary of "${episodeTitle}"`,
+      "Key points from the episode content",
+      "Main takeaways from the discussion"
+    ];
+  }
 } 

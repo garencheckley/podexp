@@ -35,6 +35,7 @@ export interface Episode {
   audioUrl?: string;
   sources?: string[];
   created_at?: string;
+  bulletPoints?: string[];
   narrativeStructure?: {
     introduction: {
       wordCount: number;
