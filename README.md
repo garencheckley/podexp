@@ -86,6 +86,7 @@ interface Episode {
   audioUrl?: string;
   sources?: string[];
   created_at: string;
+  bulletPoints?: string[];
 }
 ```
 
@@ -102,6 +103,7 @@ interface Episode {
 - `POST /api/podcasts/:podcastId/episodes` - Create a new episode
 - `POST /api/podcasts/:podcastId/generate-episode` - Generate a new episode using AI
 - `DELETE /api/podcasts/:podcastId/episodes/:episodeId` - Delete an episode and its audio file
+- `POST /api/podcasts/:podcastId/generate-bullet-points` - Generate bullet points for an episode
 
 ## Key Components
 
@@ -405,6 +407,49 @@ The system now implements sophisticated prompt engineering to enhance podcast co
 
 These improvements directly address user-reported issues with content quality, particularly focusing on reducing filler material and enhancing analytical depth in generated podcast episodes.
 
+### Episode Analysis Optimization
+
+The system now implements a more efficient and insightful approach to analyzing previous podcast episodes, providing better content differentiation for new episodes.
+
+#### Consolidated Episode Analysis
+
+Previous versions of the system analyzed each episode individually with separate Gemini API calls, which could lead to:
+- Multiple potential failure points
+- Inconsistent analysis between episodes
+- An inability to detect patterns across episodes
+
+The new consolidated approach:
+- Analyzes all episodes together in a single Gemini API call
+- Provides better cross-episode pattern recognition
+- Significantly reduces API call failures
+- Identifies topic frequencies more accurately across all content
+
+#### Bullet Point Summaries
+
+Each episode now includes 3-5 concise bullet points that summarize its key content:
+
+- **Automatic Generation**: Bullet points are automatically created when episodes are generated
+- **Content Optimization**: This approach significantly reduces the token count needed for analysis
+- **Efficiency**: Episodes with bullet points use these summaries for analysis instead of full content
+- **Migration**: Existing episodes can be updated with bullet points using a dedicated endpoint
+
+#### Implementation Details
+
+- **Episode Interface**: Added `bulletPoints?: string[]` field to the Episode interface
+- **Bullet Point Generation**: New function generates 3-5 concise summaries per episode
+- **Analysis Flexibility**: Episode analyzer accepts episodes with either content or bullet points
+- **Migration Endpoint**: Added `POST /api/podcasts/:podcastId/generate-bullet-points` to handle existing episodes
+
+#### Benefits
+
+- **Improved Reliability**: More robust episode analysis with fewer API failures
+- **Better Insights**: Improved ability to identify patterns and themes across episodes
+- **Enhanced Differentiation**: New episodes are more effectively differentiated from previous content
+- **Resource Efficiency**: Reduced token usage and API costs through bullet point optimization
+- **Faster Analysis**: More efficient processing of previous episode content
+
+This feature enhances the core episode generation process by making the analysis of previous episodes more reliable, efficient, and insightful, leading to better differentiated content in new episodes.
+
 ## Development Workflow
 
 The development process follows these steps:
@@ -560,4 +605,7 @@ If a deployment causes issues:
 - Improved error handling for API calls
 - Enhanced podcast source management with the implementation of source discovery and source-guided search
 - Improved audio player with automatic playback when clicking "Play Episode" button
-- Enhanced episode creation date display to show both relative time (e.g., "2 mins ago") and full date-time information 
+- Enhanced episode creation date display to show both relative time (e.g., "2 mins ago") and full date-time information
+- Improved episode analysis with consolidated approach: replaced multiple individual Gemini API calls with a single consolidated call for better reliability and cross-episode insights
+- Added bullet point summaries for episodes: each episode now stores 3-5 concise bullet points summarizing key content, optimizing subsequent episode analysis
+- Added migration endpoint to generate bullet points for existing episodes: `POST /api/podcasts/:podcastId/generate-bullet-points` 
