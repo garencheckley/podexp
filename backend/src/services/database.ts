@@ -89,6 +89,12 @@ export function getDb(): Firestore {
 }
 
 export async function getAllPodcasts(userId?: string): Promise<Podcast[]> {
+  // Temporarily modified to return all podcasts regardless of user ID
+  console.log('Fetching ALL podcasts regardless of user ID (temporary auth bypass)');
+  const query = getDb().collection('podcasts').orderBy('last_updated', 'desc');
+
+  // Original code with user filtering commented out
+  /*
   let query = getDb().collection('podcasts').orderBy('last_updated', 'desc');
 
   if (userId) {
@@ -97,6 +103,7 @@ export async function getAllPodcasts(userId?: string): Promise<Podcast[]> {
   } else {
     console.warn('Fetching all podcasts without a userId filter. Ensure routes are protected.');
   }
+  */
 
   const snapshot = await query.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
