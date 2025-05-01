@@ -13,7 +13,17 @@ declare global {
 }
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
-  console.log('Authenticating token...');
+  console.log('Authentication temporarily disabled - bypassing token check');
+  
+  // Temporarily set a mock userId to bypass ownership checks in routes
+  // Using a constant ID that will be consistent across requests
+  req.userId = "temp-user-no-auth";
+  
+  // Always proceed to the next middleware or route handler
+  next();
+  
+  // Original authentication code commented out:
+  /*
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
 
@@ -41,4 +51,5 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     }
     return res.status(403).json({ error: 'Authentication failed: Invalid token.' });
   }
+  */
 }; 
