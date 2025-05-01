@@ -5,6 +5,7 @@ let db: Firestore | null = null;
 
 export interface Podcast {
   id?: string;
+  userId?: string;
   title: string;
   description: string;
   prompt?: string;
@@ -87,11 +88,17 @@ export function getDb(): Firestore {
   return db;
 }
 
-export async function getAllPodcasts(): Promise<Podcast[]> {
-  console.log('Fetching all podcasts...');
-  const snapshot = await getDb().collection('podcasts')
-    .orderBy('last_updated', 'desc')
-    .get();
+export async function getAllPodcasts(userId?: string): Promise<Podcast[]> {
+  let query = getDb().collection('podcasts').orderBy('last_updated', 'desc');
+
+  if (userId) {
+    console.log(`Fetching podcasts for user ID: ${userId}`);
+    query = query.where('userId', '==', userId);
+  } else {
+    console.warn('Fetching all podcasts without a userId filter. Ensure routes are protected.');
+  }
+
+  const snapshot = await query.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
 }
 
@@ -188,7 +195,7 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
  */
 export async function updatePodcast(
   podcastId: string, 
-  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources'>>
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources' | 'userId'>>
 ): Promise<void> {
   console.log(`Updating podcast ${podcastId}:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);

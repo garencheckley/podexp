@@ -26,6 +26,7 @@ import * as deepDiveResearch from '../services/deepDiveResearch';
 import * as sourceManager from '../services/sourceManager';
 import * as clusteringService from '../services/clusteringService';
 import { summarizeCluster } from '../services/clusteringService';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -33,11 +34,17 @@ const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
 
-// Get all podcasts
-router.get('/', async (req, res) => {
+// Get all podcasts (Protected - Now filters by user)
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    console.log('GET /api/podcasts');
-    const podcasts = await getAllPodcasts();
+    // Add userId check (belt-and-suspenders after middleware)
+    if (!req.userId) {
+      console.error('Error getting podcasts: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`GET /api/podcasts for user ${req.userId}`);
+    // Pass the userId to the database function
+    const podcasts = await getAllPodcasts(req.userId); 
     res.json(podcasts);
   } catch (error) {
     console.error('Error getting podcasts:', error);
@@ -45,13 +52,23 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get podcast by ID
-router.get('/:id', async (req, res) => {
+// Get podcast by ID (Protected)
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    console.log(`GET /api/podcasts/${req.params.id}`);
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error getting podcast: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`GET /api/podcasts/${req.params.id} for user ${req.userId}`);
     const podcast = await getPodcast(req.params.id);
     if (!podcast) {
       return res.status(404).json({ error: 'Podcast not found' });
+    }
+    // Authorization check: Does the podcast belong to the user?
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to access podcast ${req.params.id} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
     }
     res.json(podcast);
   } catch (error) {
@@ -60,11 +77,17 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create podcast
-router.post('/', async (req, res) => {
+// Create podcast (Protected)
+router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('POST /api/podcasts', req.body);
     
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error creating podcast: No userId found on request. Auth middleware might have failed.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+
     // If title is not provided, generate one using Gemini
     if (!req.body.title) {
       console.log('No title provided, generating one using Gemini...');
@@ -142,8 +165,10 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
       }
     }
     
-    console.log('Creating podcast with title:', req.body.title);
-    const podcast = await createPodcast(req.body);
+    console.log('Creating podcast with title:', req.body.title, 'for user:', req.userId);
+    // Include the userId when calling createPodcast
+    const podcastData = { ...req.body, userId: req.userId }; 
+    const podcast = await createPodcast(podcastData); 
     console.log('Created podcast:', podcast);
     
     // Discover sources for the new podcast
@@ -175,11 +200,29 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
   }
 });
 
-// Get episodes by podcast ID
-router.get('/:podcastId/episodes', async (req, res) => {
+// Get episodes by podcast ID (Protected)
+router.get('/:podcastId/episodes', authenticateToken, async (req, res) => {
   try {
-    console.log(`GET /api/podcasts/${req.params.podcastId}/episodes`);
-    const episodes = await getEpisodesByPodcastId(req.params.podcastId);
+    const { podcastId } = req.params;
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error getting episodes: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`GET /api/podcasts/${podcastId}/episodes for user ${req.userId}`);
+
+    // Check if user owns the podcast first
+    const podcast = await getPodcast(podcastId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to access episodes for podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
+    }
+
+    // Proceed to get episodes if authorized
+    const episodes = await getEpisodesByPodcastId(podcastId);
     res.json(episodes);
   } catch (error) {
     console.error('Error getting episodes:', error);
@@ -187,12 +230,29 @@ router.get('/:podcastId/episodes', async (req, res) => {
   }
 });
 
-// Delete episode
-router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
+// Delete episode (Protected)
+router.delete('/:podcastId/episodes/:episodeId', authenticateToken, async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}/episodes/${req.params.episodeId}`);
     
     const { podcastId, episodeId } = req.params;
+
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error deleting episode: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting delete by user ${req.userId}`);
+
+    // Authorization Check: Verify user owns the parent podcast
+    const podcast = await getPodcast(podcastId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' }); // Or maybe 400 Bad Request if episodeId implies podcastId
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to delete episode ${episodeId} from podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own the parent podcast' });
+    }
     
     // Get the episode to check if it exists and has an audio URL
     const episode = await getEpisode(episodeId);
@@ -215,17 +275,28 @@ router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
   }
 });
 
-// Delete podcast
-router.delete('/:podcastId', async (req, res) => {
+// Delete podcast (Protected)
+router.delete('/:podcastId', authenticateToken, async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}`);
     
     const { podcastId } = req.params;
-    
-    // Get the podcast to check if it exists
+
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error deleting podcast: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting delete by user ${req.userId}`);
+
+    // Authorization Check: Verify user owns the podcast
     const podcast = await getPodcast(podcastId);
     if (!podcast) {
       return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to delete podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
     }
     
     // Get all episodes for this podcast
@@ -247,10 +318,28 @@ router.delete('/:podcastId', async (req, res) => {
   }
 });
 
-// Create episode
-router.post('/:podcastId/episodes', async (req, res) => {
+// Create episode (Protected)
+router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
   try {
     console.log(`POST /api/podcasts/${req.params.podcastId}/episodes`, req.body);
+    const { podcastId } = req.params;
+
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error creating episode: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting create by user ${req.userId}`);
+
+    // Authorization Check: Verify user owns the parent podcast
+    const podcast = await getPodcast(podcastId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to create episode for podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own the parent podcast' });
+    }
     
     // Create the episode
     const episode = await createEpisode({
@@ -268,14 +357,14 @@ router.post('/:podcastId/episodes', async (req, res) => {
     console.log('Generating audio for the episode...');
     const audioUrl = await generateAndStoreAudio(
       episode.content!, 
-      req.params.podcastId!, 
+      podcast.id!, 
       episode.id!
     );
     
     // Update the episode with the audio URL
     await updateEpisodeAudio(episode.id!, audioUrl);
     
-    // Update the generation log with episode ID
+    // Update log with audio generation
     const logService = require('../services/logService');
     const generationLog = logService.createEpisodeGenerationLog(req.params.podcastId);
     generationLog.episodeId = episode.id;
@@ -308,18 +397,25 @@ router.post('/:podcastId/episodes', async (req, res) => {
   }
 });
 
-// Generate a new episode for a podcast
-router.post('/:id/generate-episode', async (req, res) => {
+// Generate a new episode for a podcast (Protected)
+router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
   try {
     const { id: podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-episode`);
+    
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error generating episode: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting generate by user ${req.userId}`);
     
     // Create a new episode generation log
     const logService = require('../services/logService');
     const generationLog = logService.createEpisodeGenerationLog(podcastId);
     console.log(`Created episode generation log: ${generationLog.id}`);
     
-    // Get the podcast
+    // Get the podcast & Authorize
     const podcast = await getPodcast(podcastId);
     if (!podcast) {
       const errorMsg = 'Podcast not found';
@@ -327,6 +423,15 @@ router.post('/:id/generate-episode', async (req, res) => {
         logService.failLog(generationLog, errorMsg)
       );
       return res.status(404).json({ error: errorMsg });
+    }
+    // Authorization Check
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to generate episode for podcast ${podcastId} owned by ${podcast.userId}`);
+      const errorMsg = 'Forbidden: You do not own this podcast';
+      await logService.saveEpisodeGenerationLog(
+        logService.failLog(generationLog, errorMsg)
+      );
+      return res.status(403).json({ error: errorMsg });
     }
     
     console.log(`Generating episode for podcast: ${podcast.title}`);
@@ -909,7 +1014,7 @@ router.post('/:id/generate-episode', async (req, res) => {
   }
 });
 
-// Helper function to update episode audio URL
+// Helper function to update episode audio URL (Internal use, not a route)
 async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<void> {
   if (!episodeId) {
     console.error('Cannot update episode audio: Episode ID is undefined');
@@ -930,24 +1035,33 @@ async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<
   }
 }
 
-// Regenerate audio for an existing episode
-router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res) => {
+// Regenerate audio for an existing episode (Protected)
+router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToken, async (req, res) => {
   try {
     const { podcastId, episodeId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`);
+    
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error regenerating audio: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting regenerate by user ${req.userId}`);
+
+    // Authorization Check: Verify user owns the parent podcast
+    const podcast = await getPodcast(podcastId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to regenerate audio for episode ${episodeId} from podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own the parent podcast' });
+    }
     
     // Get the episode
     const episode = await getEpisode(episodeId);
     if (!episode) {
       return res.status(404).json({ error: 'Episode not found' });
-    }
-    
-    // Check if the episode belongs to the specified podcast
-    if (episode.podcastId !== podcastId) {
-      return res.status(400).json({ 
-        error: 'Episode does not belong to the specified podcast',
-        message: `Episode belongs to podcast ${episode.podcastId}, not ${podcastId}`
-      });
     }
     
     // Check if the episode has content
@@ -1001,14 +1115,27 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res)
   }
 });
 
-// Update podcast details
-router.patch('/:id', async (req, res) => {
+// Update podcast details (Protected)
+router.patch('/:id', authenticateToken, async (req, res) => {
   try {
-    console.log(`PATCH /api/podcasts/${req.params.id}`, req.body);
+    const { id: podcastId } = req.params; // Use common variable name
+    console.log(`PATCH /api/podcasts/${podcastId}`, req.body);
+
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error updating podcast: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting update by user ${req.userId}`);
     
-    const podcast = await getPodcast(req.params.id);
+    // Authorization Check: Verify user owns the podcast
+    const podcast = await getPodcast(podcastId);
     if (!podcast) {
       return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to update podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
     }
 
     // Only allow updating certain fields
@@ -1025,10 +1152,10 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
     
-    await updatePodcast(req.params.id, updates);
+    await updatePodcast(podcastId, updates);
     
     // Get the updated podcast
-    const updatedPodcast = await getPodcast(req.params.id);
+    const updatedPodcast = await getPodcast(podcastId);
     res.json(updatedPodcast);
   } catch (error) {
     console.error('Error updating podcast:', error);
@@ -1036,11 +1163,28 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Generate bullet points for all episodes in a podcast (migration route)
-router.post('/:podcastId/generate-bullet-points', async (req, res) => {
+// Generate bullet points for all episodes in a podcast (migration route) (Protected)
+router.post('/:podcastId/generate-bullet-points', authenticateToken, async (req, res) => {
   try {
     const { podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-bullet-points`);
+
+    // Add userId check
+    if (!req.userId) {
+      console.error('Error generating bullet points: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Attempting generate by user ${req.userId}`);
+
+    // Authorization Check: Verify user owns the podcast
+    const podcast = await getPodcast(podcastId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    if (podcast.userId !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to generate bullet points for podcast ${podcastId} owned by ${podcast.userId}`);
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
+    }
     
     // Get all episodes for this podcast
     const episodes = await getEpisodesByPodcastId(podcastId);
