@@ -91,40 +91,70 @@ export function getDb(): Firestore {
 }
 
 export async function getAllPodcasts(userId?: string): Promise<Podcast[]> {
-  console.log('Getting podcasts with auth check');
+  console.log('Getting podcasts with simplified auth check logic');
   
   if (!userId) {
     console.warn('No userId provided. Only fetching public podcasts.');
-    const query = getDb().collection('podcasts')
+    // Fetch only public podcasts if no user is logged in
+    const publicQuery = getDb().collection('podcasts')
       .where('visibility', '==', 'public')
       .orderBy('last_updated', 'desc');
-    const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
+    const publicSnapshot = await publicQuery.get();
+    return publicSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
   }
   
-  // If userId (email) is provided, get all podcasts owned by this user + public podcasts from others
   console.log(`Fetching podcasts for user email: ${userId}`);
-  
-  // Get podcasts owned by this user
-  const userPodcastsQuery = getDb().collection('podcasts')
-    .where('ownerEmail', '==', userId)
-    .orderBy('last_updated', 'desc');
-  
-  const userPodcastsSnapshot = await userPodcastsQuery.get();
-  const userPodcasts = userPodcastsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
-  
-  // Get public podcasts from other users
-  const publicPodcastsQuery = getDb().collection('podcasts')
-    .where('visibility', '==', 'public')
-    .where('ownerEmail', '!=', userId)
-    .orderBy('ownerEmail', 'asc') // Required for inequality query
-    .orderBy('last_updated', 'desc');
-  
-  const publicPodcastsSnapshot = await publicPodcastsQuery.get();
-  const publicPodcasts = publicPodcastsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
-  
-  // Combine both sets
-  return [...userPodcasts, ...publicPodcasts];
+  let allVisiblePodcasts: Podcast[] = [];
+  const podcastMap = new Map<string, Podcast>();
+
+  try {
+    // 1. Get podcasts owned by this user
+    console.log(`Querying podcasts owned by ${userId}`);
+    const userPodcastsQuery = getDb().collection('podcasts')
+      .where('ownerEmail', '==', userId)
+      .orderBy('last_updated', 'desc');
+    const userPodcastsSnapshot = await userPodcastsQuery.get();
+    userPodcastsSnapshot.forEach(doc => {
+      const podcast = { id: doc.id, ...doc.data() } as Podcast;
+      if (!podcastMap.has(doc.id)) {
+        podcastMap.set(doc.id, podcast);
+      }
+    });
+    console.log(`Found ${userPodcastsSnapshot.size} podcasts owned by user.`);
+
+    // 2. Get all public podcasts (regardless of owner)
+    console.log('Querying all public podcasts');
+    const publicPodcastsQuery = getDb().collection('podcasts')
+      .where('visibility', '==', 'public')
+      .orderBy('last_updated', 'desc'); // Simpler query, might fetch duplicates of owned ones
+    const publicPodcastsSnapshot = await publicPodcastsQuery.get();
+    publicPodcastsSnapshot.forEach(doc => {
+      const podcast = { id: doc.id, ...doc.data() } as Podcast;
+      // Add to map only if not already present (handles de-duplication)
+      if (!podcastMap.has(doc.id)) {
+        podcastMap.set(doc.id, podcast);
+      }
+    });
+    console.log(`Found ${publicPodcastsSnapshot.size} public podcasts in total.`);
+
+    // Convert map values back to an array
+    allVisiblePodcasts = Array.from(podcastMap.values());
+
+    // Optional: Sort the final combined list by last_updated again, as combining might change order
+    allVisiblePodcasts.sort((a, b) => {
+      const dateA = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+      const dateB = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+      return dateB - dateA; // Descending order
+    });
+
+  } catch (error) {
+    console.error('Error fetching podcasts with simplified logic:', error);
+    // Re-throw the error to be caught by the route handler
+    throw error; 
+  }
+
+  console.log(`Returning ${allVisiblePodcasts.length} unique podcasts visible to user ${userId}`);
+  return allVisiblePodcasts;
 }
 
 export async function getPodcast(id: string, userEmail?: string): Promise<Podcast | null> {

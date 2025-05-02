@@ -47,10 +47,14 @@ router.get('/', async (req, res) => {
     }
     console.log(`GET /api/podcasts for user ${req.userId}`);
     // Pass the userId to the database function
-    const podcasts = await getAllPodcasts(req.userId); 
+    const podcasts = await getAllPodcasts(req.userId);
     res.json(podcasts);
-  } catch (error) {
-    console.error('Error getting podcasts:', error);
+  } catch (error: any) { // Explicitly type error as any
+    // Log individual properties to avoid potential truncation
+    console.error('Detailed error getting podcasts:');
+    console.error(`Error Name: ${error.name}`);
+    console.error(`Error Message: ${error.message}`);
+    console.error(`Error Stack: ${error.stack}`);
     res.status(500).json({ error: 'Failed to get podcasts' });
   }
 });
@@ -58,32 +62,24 @@ router.get('/', async (req, res) => {
 // Get podcast by ID (Protected)
 router.get('/:id', async (req, res) => {
   try {
-    // User ID check temporarily disabled
-    console.log(`GET /api/podcasts/${req.params.id} - Auth check bypassed`);
-    const podcast = await getPodcast(req.params.id);
-    if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' });
-    }
-    
-    // Authorization check disabled (temporarily)
-    /*
     // Add userId check
     if (!req.userId) {
       console.error('Error getting podcast: No userId found on request.');
       return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
     }
-    console.log(`GET /api/podcasts/${req.params.id} for user ${req.userId}`);
-    const podcast = await getPodcast(req.params.id);
-    if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' });
-    }
-    // Authorization check: Does the podcast belong to the user?
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to access podcast ${req.params.id} owned by ${podcast.userId}`);
-      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
-    }
-    */
     
+    console.log(`GET /api/podcasts/${req.params.id} for user ${req.userId}`);
+    
+    // Pass userEmail (from req.userId) to the database function for auth check
+    const podcast = await getPodcast(req.params.id, req.userId); 
+    
+    if (!podcast) {
+      // If podcast is null here, it means either not found OR access denied by DB function
+      // DB function logs the specific reason (not found vs. access denied)
+      return res.status(404).json({ error: 'Podcast not found or access denied' }); 
+    }
+    
+    // No need for separate auth check here, as getPodcast handles it
     res.json(podcast);
   } catch (error) {
     console.error('Error getting podcast:', error);
@@ -218,10 +214,7 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
 router.get('/:podcastId/episodes', async (req, res) => {
   try {
     const { podcastId } = req.params;
-    console.log(`GET /api/podcasts/${podcastId}/episodes - Auth check bypassed`);
     
-    // Ownership check temporarily disabled
-    /*
     // Add userId check
     if (!req.userId) {
       console.error('Error getting episodes: No userId found on request.');
@@ -229,23 +222,15 @@ router.get('/:podcastId/episodes', async (req, res) => {
     }
     console.log(`GET /api/podcasts/${podcastId}/episodes for user ${req.userId}`);
 
-    // Check if user owns the podcast first
-    const podcast = await getPodcast(podcastId);
+    // Check if user owns the podcast first (or if it's public)
+    // Pass userEmail to getPodcast for the check
+    const podcast = await getPodcast(podcastId, req.userId);
     if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' });
-    }
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to access episodes for podcast ${podcastId} owned by ${podcast.userId}`);
-      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
-    }
-    */
-    
-    // Check if podcast exists
-    const podcast = await getPodcast(podcastId);
-    if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' });
+      // getPodcast returns null if not found OR access denied
+      return res.status(404).json({ error: 'Podcast not found or access denied' });
     }
     
+    // If the podcast exists and user has access, fetch the episodes
     const episodes = await getEpisodesByPodcastId(podcastId);
     res.json(episodes);
   } catch (error) {
@@ -439,18 +424,18 @@ router.post('/:id/generate-episode', async (req, res) => {
     const generationLog = logService.createEpisodeGenerationLog(podcastId);
     console.log(`Created episode generation log: ${generationLog.id}`);
     
-    // Get the podcast & Authorize
-    const podcast = await getPodcast(podcastId);
+    // Get the podcast & Authorize - Pass userId (email) for access check
+    const podcast = await getPodcast(podcastId, req.userId);
     if (!podcast) {
-      const errorMsg = 'Podcast not found';
+      const errorMsg = 'Podcast not found or access denied'; // Updated error message
       await logService.saveEpisodeGenerationLog(
         logService.failLog(generationLog, errorMsg)
       );
       return res.status(404).json({ error: errorMsg });
     }
-    // Authorization Check
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to generate episode for podcast ${podcastId} owned by ${podcast.userId}`);
+    // Authorization Check - Compare ownerEmail with userId (email)
+    if (podcast.ownerEmail !== req.userId) { 
+      console.warn(`Forbidden: User ${req.userId} attempted to generate episode for podcast ${podcastId} owned by ${podcast.ownerEmail}`);
       const errorMsg = 'Forbidden: You do not own this podcast';
       await logService.saveEpisodeGenerationLog(
         logService.failLog(generationLog, errorMsg)
@@ -862,19 +847,25 @@ router.post('/:id/generate-episode', async (req, res) => {
       };
     } else {
       // Fall back to the standard flow if deep research didn't yield results
-      console.log('Falling back to standard episode planning flow');
+      console.log('[Generator] Falling back to standard episode planning flow');
       
       // 3. Have Gemini decide on topics and depth (standard flow)
-      console.log('Step 3: Planning episode content');
-      const episodePlan = await searchOrchestrator.planEpisodeContent(
-        podcast, 
-        episodeAnalysis, 
-        initialSearchResults
-      );
-      console.log(`Episode plan created: "${episodePlan.episodeTitle}" with ${episodePlan.selectedTopics.length} topics`);
+      console.log('[Generator] Step 3: Planning episode content (searchOrchestrator.planEpisodeContent)');
+      let episodePlan;
+      try {
+          episodePlan = await searchOrchestrator.planEpisodeContent(
+            podcast, 
+            episodeAnalysis, 
+            initialSearchResults
+          );
+          console.log(`[Generator] Episode plan created: "${episodePlan.episodeTitle}" with ${episodePlan.selectedTopics.length} topics`);
+      } catch (planError) {
+          console.error('[Generator] Error during episode planning:', planError);
+          throw new Error('Episode planning failed.'); // Rethrow to be caught by main handler
+      }
       
       // 3a. Create enhanced narrative structure with word allocation
-      console.log('Step 3a: Creating detailed narrative structure');
+      console.log('[Generator] Step 3a: Creating detailed narrative structure (narrativePlanner.createNarrativeStructure)');
       
       // Convert episodePlan to DetailedResearchResults for narrativePlanner
       const preliminaryResearchResults: narrativePlanner.DetailedResearchResults = {
@@ -888,24 +879,40 @@ router.post('/:id/generate-episode', async (req, res) => {
         }))
       };
       
-      narrativeStructure = await narrativePlanner.createNarrativeStructure(
-        preliminaryResearchResults,
-        'medium' // Use medium length as default
-      );
-      console.log(`Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
+      try {
+          narrativeStructure = await narrativePlanner.createNarrativeStructure(
+            preliminaryResearchResults,
+            'medium' // Use medium length as default
+          );
+          console.log(`[Generator] Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
+      } catch (narrativeError) {
+          console.error('[Generator] Error creating narrative structure:', narrativeError);
+          throw new Error('Narrative structure creation failed.');
+      }
       
       // 4. Perform deep research with contrasting viewpoints
-      console.log('Step 4: Performing deep research on selected topics');
-      researchResults = await searchOrchestrator.performDeepResearch(episodePlan);
-      console.log(`Research complete: ${researchResults.topicResearch.length} topics researched, ${researchResults.allSources.length} sources`);
+      console.log('[Generator] Step 4: Performing deep research on selected topics (searchOrchestrator.performDeepResearch)');
+      try {
+          researchResults = await searchOrchestrator.performDeepResearch(episodePlan);
+          console.log(`[Generator] Research complete: ${researchResults.topicResearch.length} topics researched, ${researchResults.allSources.length} sources`);
+      } catch (researchError) {
+          console.error('[Generator] Error during deep research:', researchError);
+          throw new Error('Deep research failed.');
+      }
       
       // 5. Generate structured content following the narrative plan
-      console.log('Step 5: Generating structured content following narrative plan');
-      const structuredContent = await contentFormatter.generateStructuredContent(
-        researchResults,
-        narrativeStructure
-      );
-      console.log(`Structured content generated (${structuredContent.split(/\s+/).length} words)`);
+      console.log('[Generator] Step 5: Generating structured content (contentFormatter.generateStructuredContent)');
+      let structuredContent;
+      try {
+          structuredContent = await contentFormatter.generateStructuredContent(
+            researchResults,
+            narrativeStructure
+          );
+          console.log(`[Generator] Structured content generated (${structuredContent.split(/\s+/).length} words)`);
+      } catch (contentGenError) {
+          console.error('[Generator] Error generating structured content:', contentGenError);
+          throw new Error('Structured content generation failed.'); // This is likely the synthesis failure point
+      }
       
       // Generate episode title and description
       generatedContent = {
@@ -916,12 +923,19 @@ router.post('/:id/generate-episode', async (req, res) => {
     }
     
     // 6. Ensure content differentiation
-    console.log('Step 6: Validating content differentiation');
-    const validationResult = await contentDifferentiator.validateContentDifferentiation(
-      generatedContent.content,
-      episodeAnalysis
-    );
-    console.log(`Validation complete: Similarity score ${validationResult.similarityScore}, passing: ${validationResult.isPassing}`);
+    console.log('[Generator] Step 6: Validating content differentiation (contentDifferentiator.validateContentDifferentiation)');
+    let validationResult;
+    try {
+        validationResult = await contentDifferentiator.validateContentDifferentiation(
+          generatedContent.content,
+          episodeAnalysis
+        );
+        console.log(`[Generator] Validation complete: Similarity score ${validationResult.similarityScore}, passing: ${validationResult.isPassing}`);
+    } catch (validationError) {
+        console.error('[Generator] Error during content differentiation validation:', validationError);
+        // Non-critical, proceed with original content if validation fails
+        validationResult = { isPassing: true, similarityScore: -1, improvedContent: null }; 
+    }
     
     // Use the final content (either original or improved version if needed)
     const finalContent = validationResult.improvedContent || generatedContent.content;
@@ -938,27 +952,34 @@ router.post('/:id/generate-episode', async (req, res) => {
         finalContent,
         narrativeStructure
       );
-      console.log(`Adherence evaluation complete: overall score ${updatedNarrativeStructure.adherenceMetrics.overallAdherence}`);
       
-      // Create adherence feedback for storage
-      adherenceFeedback = contentFormatter.createAdherenceFeedback(updatedNarrativeStructure);
-      console.log(adherenceFeedback);
+      // Safely access adherenceMetrics
+      if (updatedNarrativeStructure.adherenceMetrics) {
+           console.log(`Adherence evaluation complete: overall score ${updatedNarrativeStructure.adherenceMetrics.overallAdherence}`);
+           // Create adherence feedback for storage
+           adherenceFeedback = contentFormatter.createAdherenceFeedback(updatedNarrativeStructure);
+           console.log(adherenceFeedback);
       
-      // Format narrative structure for storage
-      narrativeForStorage = {
-        introduction: {
-          wordCount: updatedNarrativeStructure.introduction.wordCount,
-          approach: updatedNarrativeStructure.introduction.approach
-        },
-        bodySections: updatedNarrativeStructure.bodySections.map(section => ({
-          sectionTitle: section.sectionTitle,
-          wordCount: section.wordCount
-        })),
-        conclusion: {
-          wordCount: updatedNarrativeStructure.conclusion.wordCount
-        },
-        adherenceMetrics: updatedNarrativeStructure.adherenceMetrics
-      };
+           // Format narrative structure for storage
+           narrativeForStorage = {
+             introduction: {
+               wordCount: updatedNarrativeStructure.introduction.wordCount,
+               approach: updatedNarrativeStructure.introduction.approach
+             },
+             bodySections: updatedNarrativeStructure.bodySections.map(section => ({
+               sectionTitle: section.sectionTitle,
+               wordCount: section.wordCount
+             })),
+             conclusion: {
+               wordCount: updatedNarrativeStructure.conclusion.wordCount
+             },
+             adherenceMetrics: updatedNarrativeStructure.adherenceMetrics
+           };
+      } else {
+          console.warn('Adherence metrics were not generated by evaluateContentAdherence.');
+          narrativeForStorage = null; // Ensure narrativeForStorage is null if metrics are missing
+          adherenceFeedback = 'Adherence evaluation did not produce metrics.';
+      }
     }
     
     // Count words

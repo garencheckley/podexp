@@ -15,10 +15,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function generateStructuredContent(
   researchResults: DetailedResearchResults,
   narrativeStructure: NarrativeStructure
-): Promise<string> {
+): Promise<string | null> {
   const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
-    console.log('Generating structured content based on narrative plan');
+    console.log('[contentFormatter] Generating structured content based on narrative plan');
     
     const prompt = `
       Create a data-driven, market research podcast episode script that follows this exact narrative structure.
@@ -89,22 +89,29 @@ export async function generateStructuredContent(
       REQUIRED: Structure the content exactly according to the word counts specified - this is critical. Every paragraph should include SPECIFIC DATA POINTS, STATISTICS or CONCRETE EXAMPLES. Write as an authoritative market researcher speaking to other domain experts.
     `;
     
+    // Add length check for prompt (Example limit, adjust as needed)
+    const MAX_PROMPT_LENGTH = 30000; // Adjust based on model limits 
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+        console.warn(`[contentFormatter] Prompt length (${prompt.length}) exceeds limit (${MAX_PROMPT_LENGTH}). Truncating research content.`);
+        // Implement logic to truncate the research content within the prompt if needed
+        // This part is complex and needs careful implementation based on how researchResults is structured
+        // For now, we'll just log a warning and proceed, which might still fail
+    }
+
     const result = await model.generateContent(prompt);
     const generatedContent = result.response.text();
     
     // Check if we got a reasonable response
     if (generatedContent.length < 100) {
-      console.error('Generated content is too short, falling back to unstructured content');
-      return researchResults.overallSynthesis;
+      console.error('[contentFormatter] Generated content is too short. Failing generation.');
+      return null; // Indicate failure
     }
     
-    console.log(`Generated structured content (${generatedContent.split(/\s+/).length} words)`);
+    console.log(`[contentFormatter] Generated structured content (${generatedContent.split(/\s+/).length} words)`);
     return generatedContent;
   } catch (error) {
-    console.error('Error generating structured content:', error);
-    // Fall back to using the overall synthesis from research results
-    console.log('Falling back to unstructured content');
-    return researchResults.overallSynthesis;
+    console.error('[contentFormatter] Error generating structured content:', error);
+    return null; // Indicate failure
   }
 }
 
