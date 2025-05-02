@@ -254,12 +254,15 @@ router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
     console.log(`Attempting delete by user ${req.userId}`);
 
     // Authorization Check: Verify user owns the parent podcast
-    const podcast = await getPodcast(podcastId);
+    // MUST pass req.userId here for getPodcast to perform visibility/ownership check
+    const podcast = await getPodcast(podcastId, req.userId); 
     if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' }); // Or maybe 400 Bad Request if episodeId implies podcastId
+      // Correctly handles both "Not Found" and "Access Denied" from getPodcast
+      return res.status(404).json({ error: 'Podcast not found or access denied' }); 
     }
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to delete episode ${episodeId} from podcast ${podcastId} owned by ${podcast.userId}`);
+    // Check ownerEmail against authenticated user email
+    if (podcast.ownerEmail !== req.userId) { 
+      console.warn(`Forbidden: User ${req.userId} attempted to delete episode ${episodeId} from podcast ${podcastId} owned by ${podcast.ownerEmail}`);
       return res.status(403).json({ error: 'Forbidden: You do not own the parent podcast' });
     }
     
@@ -299,12 +302,12 @@ router.delete('/:podcastId', async (req, res) => {
     console.log(`Attempting delete by user ${req.userId}`);
 
     // Authorization Check: Verify user owns the podcast
-    const podcast = await getPodcast(podcastId);
+    const podcast = await getPodcast(podcastId, req.userId);
     if (!podcast) {
       return res.status(404).json({ error: 'Podcast not found' });
     }
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to delete podcast ${podcastId} owned by ${podcast.userId}`);
+    if (podcast.ownerEmail !== req.userId) {
+      console.warn(`Forbidden: User ${req.userId} attempted to delete podcast ${podcastId} owned by ${podcast.ownerEmail}`);
       return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
     }
     
@@ -1186,23 +1189,30 @@ router.patch('/:id', async (req, res) => {
     }
     console.log(`Attempting update by user ${req.userId}`);
     
-    // Authorization Check: Verify user owns the podcast
-    const podcast = await getPodcast(podcastId);
+    // Authorization Check: Verify user owns the podcast OR podcast is public
+    // MUST pass req.userId here for getPodcast to perform visibility/ownership check
+    const podcast = await getPodcast(podcastId, req.userId); 
     if (!podcast) {
-      return res.status(404).json({ error: 'Podcast not found' });
+      // This now correctly handles both "Not Found" and "Access Denied" from getPodcast
+      return res.status(404).json({ error: 'Podcast not found or access denied' });
     }
-    if (podcast.userId !== req.userId) {
-      console.warn(`Forbidden: User ${req.userId} attempted to update podcast ${podcastId} owned by ${podcast.userId}`);
+    // Explicit check: ONLY the owner can PATCH, even if public
+    if (podcast.ownerEmail !== req.userId) { 
+      console.warn(`Forbidden: User ${req.userId} attempted to update podcast ${podcastId} owned by ${podcast.ownerEmail}`);
       return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
     }
 
-    // Only allow updating certain fields
-    const allowedFields = ['title', 'description', 'prompt', 'podcastType'];
-    const updates: Record<string, any> = {};
-    
-    for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+    // Only allow updating certain fields (add visibility)
+    const allowedFields = ['title', 'description', 'prompt', 'podcastType', 'visibility'];
+    const updates: Partial<Podcast> = {};
+    for (const key in req.body) {
+      if (allowedFields.includes(key)) {
+        // Basic validation for visibility
+        if (key === 'visibility' && req.body[key] !== 'public' && req.body[key] !== 'private') {
+          console.warn(`Invalid visibility value received: ${req.body[key]}`);
+          continue; // Skip invalid visibility value
+        }
+        updates[key] = req.body[key];
       }
     }
     
