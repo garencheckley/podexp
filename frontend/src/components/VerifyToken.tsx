@@ -23,11 +23,13 @@ const VerifyToken: React.FC = () => {
         
         if (success) {
           setStatus('success');
-          
-          // Redirect to home page after a short delay
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
+          // Don't wait - navigate immediately after successful verification
+          // The AuthContext check will handle the state update on the home page
+          console.log('Token verified via JS flow, navigating immediately.');
+          navigate('/'); 
+          // setTimeout(() => {
+          //   navigate('/');
+          // }, 2000); 
         } else {
           setStatus('error');
         }

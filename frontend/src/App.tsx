@@ -15,10 +15,14 @@ const AppHeader: React.FC = () => {
   return (
     <header className="app-header">
       <h1>Garen's Podcast Generator</h1>
-      {isAuthenticated && (
+      {isAuthenticated ? (
         <button className="logout-button" onClick={logout}>
           Log Out
         </button>
+      ) : (
+        <Link to="/login" className="login-button">
+          Log In
+        </Link>
       )}
     </header>
   );
@@ -42,18 +46,15 @@ function AppContent() {
       <AppHeader />
       <main className="app-content">
         <Routes>
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/auth/verify" element={<VerifyToken />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <PodcastList />
-            </ProtectedRoute>
-          } />
-          <Route path="/podcasts/:podcastId" element={
-            <ProtectedRoute>
-              <PodcastDetail />
-            </ProtectedRoute>
-          } />
+          {/* Make Podcast List public */}
+          <Route path="/" element={<PodcastList />} /> 
+          {/* Make Podcast Detail public */}
+          <Route path="/podcasts/:podcastId" element={<PodcastDetail />} /> 
+          
+          {/* Protected Routes */}
           <Route path="/create-podcast" element={
             <ProtectedRoute>
               <CreatePodcastForm />

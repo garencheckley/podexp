@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import nodemailer from 'nodemailer';
 import { getDb } from '../services/database';
+import { authenticateTokenOptional } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -160,6 +161,18 @@ router.get('/logout', (req, res) => {
       : 'http://localhost:5173');
   
   res.redirect(`${baseUrl}/login`);
+});
+
+// Authentication Status Endpoint
+router.get('/status', authenticateTokenOptional, (req, res) => {
+  // authenticateTokenOptional attempts to set req.userId if a valid token/cookie/header exists
+  if (req.userId) {
+    console.log('Auth status check: User authenticated with email:', req.userId);
+    res.json({ authenticated: true, email: req.userId });
+  } else {
+    console.log('Auth status check: User not authenticated.');
+    res.json({ authenticated: false, email: null });
+  }
 });
 
 export default router; 

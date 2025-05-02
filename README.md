@@ -512,6 +512,7 @@ The recommended approach is to use Google Cloud Build, which handles the Docker 
    - Key environment variables are set in the Dockerfile and during deployment
    - The service account credentials are included in the build
    - Additional environment variables can be set during deployment with `--set-env-vars`
+   - **Important**: Ensure the `GEMINI_API_KEY` is set correctly for the `podcast-backend` service. This key is required for content generation. If deploying manually, include `--set-env-vars=GEMINI_API_KEY=<YOUR_API_KEY>` in the `gcloud run deploy` command. Refer to your local `backend/.env` file for the key if needed, but **do not commit the `.env` file** to source control.
 
 ### Backend Deployment (Alternative: Local Docker)
 
@@ -617,6 +618,7 @@ If a deployment causes issues:
    ```
 
 ### Recent Updates
+- **Authorization Logic Fixes**: Corrected authorization checks in backend routes for updating podcast details (`PATCH /api/podcasts/:id`), deleting episodes (`DELETE /api/podcasts/:podcastId/episodes/:episodeId`), and deleting podcasts (`DELETE /api/podcasts/:podcastId`) to ensure proper owner verification using `ownerEmail` and correct handling of private resources.
 - **Stable Hybrid Email Authentication**: Finalized and stabilized the hybrid authentication system. It uses secure cookies with a JavaScript (localStorage/header) fallback, resolving cross-domain issues and ensuring reliable login across different environments. See `AUTH_README.md` for full details.
 - **User Authentication**: Implemented user authentication using Firebase Authentication and Google Sign-In. Protected relevant backend endpoints and filtered data based on user ownership. Added login/logout functionality to the frontend.
 - **Core Generation Prompts Refinement**: Added explicit constraints against filler phrases, specified desired types of analysis (causal, comparative, etc.), consistently reinforced host persona, and rewrote integration prompts to focus on insightful analytical content

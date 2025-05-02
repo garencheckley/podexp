@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Podcast } from '../types';
-import { getAllPodcasts, deletePodcast } from '../services/api';
+import { getAllPodcasts, deletePodcast, updatePodcastVisibility } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import VisibilityToggle from './VisibilityToggle';
 
 const PodcastList = () => {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
@@ -12,6 +11,7 @@ const PodcastList = () => {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showDeleteMenu, setShowDeleteMenu] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
+  const { isAuthenticated, userEmail, isLoading: authIsLoading } = useAuth();
 
   const fetchPodcasts = async () => {
     try {
@@ -28,8 +28,9 @@ const PodcastList = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchPodcasts();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleCreatePodcast = () => {
     navigate('/create-podcast');
@@ -63,19 +64,7 @@ const PodcastList = () => {
     }));
   };
 
-  const getUserEmailFromCookie = (): string | undefined => {
-    return document.cookie
-      .split('; ')
-      .find(row => row.startsWith('userEmail='))
-      ?.split('=')[1];
-  };
-  
-  const isUserOwner = (podcast: Podcast): boolean => {
-    const userEmail = getUserEmailFromCookie();
-    return userEmail === podcast.ownerEmail;
-  };
-
-  if (loading) {
+  if (authIsLoading) {
     return (
       <div className="container">
         <div className="loading">
@@ -85,16 +74,36 @@ const PodcastList = () => {
     );
   }
 
+  const handleVisibilityChange = async (podcastId: string, newVisibility: 'public' | 'private') => {
+    const originalPodcasts = [...podcasts];
+    setPodcasts(prevPodcasts =>
+      prevPodcasts.map(p =>
+        p.id === podcastId ? { ...p, visibility: newVisibility } : p
+      )
+    );
+    setError(null);
+
+    try {
+      await updatePodcastVisibility(podcastId, newVisibility);
+    } catch (err) {
+      console.error('Failed to update visibility:', err);
+      setError(`Failed to update visibility for podcast ${podcastId}. Please try refreshing.`);
+      setPodcasts(originalPodcasts);
+    }
+  };
+
   return (
     <div className="container">
       <div className="header">
-        <h2>My Podcasts</h2>
-        <button 
-          onClick={handleCreatePodcast}
-          className="create-button"
-        >
-          + Create New Podcast
-        </button>
+        <h2>{isAuthenticated ? 'My Podcasts' : 'Public Podcasts'}</h2>
+        {isAuthenticated && (
+          <button 
+            onClick={handleCreatePodcast}
+            className="create-button"
+          >
+            + Create New Podcast
+          </button>
+        )}
       </div>
 
       {error && (
@@ -110,62 +119,82 @@ const PodcastList = () => {
         </div>
       )}
 
-      {podcasts.length === 0 ? (
+      {loading && !authIsLoading && podcasts.length === 0 && <p>Loading podcasts...</p>}
+
+      {!loading && podcasts.length === 0 ? (
         <div className="empty-state">
-          <h3>No podcasts yet</h3>
-          <p>Create your first podcast to get started!</p>
-          <button onClick={handleCreatePodcast} className="create-button">
-            Create Your First Podcast
-          </button>
+          <h3>{isAuthenticated ? 'No podcasts yet' : 'No public podcasts found'}</h3>
+          {isAuthenticated ? (
+            <>
+             <p>Create your first podcast to get started!</p>
+             <button onClick={handleCreatePodcast} className="create-button">
+               Create Your First Podcast
+             </button>
+            </>
+          ) : (
+            <p>Log in to create your own podcasts.</p>
+          )}
         </div>
       ) : (
         <div className="podcast-list">
-          {podcasts.map(podcast => (
-            <div key={podcast.id} className="podcast-card">
-              <div className="podcast-card-content">
-                <h2>{podcast.title}</h2>
-                
-                <VisibilityToggle
-                  podcastId={podcast.id || ''}
-                  initialVisibility={podcast.visibility || 'private'}
-                  isOwner={isUserOwner(podcast)}
-                  onUpdate={(newVisibility) => {
-                    setPodcasts(prevPodcasts => 
-                      prevPodcasts.map(p => 
-                        p.id === podcast.id ? { ...p, visibility: newVisibility } : p
-                      )
-                    );
-                  }}
-                />
-                
-                <p>{podcast.description}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                  <Link to={`/podcasts/${podcast.id}`}>
-                    <button>View Episodes</button>
-                  </Link>
+          {podcasts.map(podcast => {
+            const isOwner = isAuthenticated && userEmail === podcast.ownerEmail;
+            return (
+              <div key={podcast.id} className="podcast-card">
+                <div className="podcast-card-content">
+                  <h2>{podcast.title}</h2>
                   
-                  <div className="more-actions">
-                    <button 
-                      onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
-                      className="more-button"
-                      aria-label="Show delete option"
-                    >
-                      ⋮
-                    </button>
+                  <div className="visibility-toggle-section list-toggle">
+                     <label className="visibility-toggle-label">
+                       <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
+                       {isOwner && (
+                         <div className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              id={`visibility-toggle-list-${podcast.id}`}
+                              checked={podcast.visibility === 'public'}
+                              onChange={(e) => handleVisibilityChange(podcast.id!, e.target.checked ? 'public' : 'private')}
+                            />
+                            <span className="slider round"></span>
+                         </div>
+                       )}
+                     </label>
+                     {!isOwner && podcast.visibility === 'private' && (
+                         <p className="visibility-note">This podcast is private.</p>
+                     )}
+                  </div>
+                  
+                  <p>{podcast.description}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                    <Link to={`/podcasts/${podcast.id}`}>
+                      <button>View Episodes</button>
+                    </Link>
                     
-                    <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
-                      <div 
-                        className="menu-item delete"
-                        onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
-                      >
-                        {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
+                    {isOwner && (
+                      <div className="more-actions">
+                        <button 
+                          onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
+                          className="more-button"
+                          aria-label="Show delete option"
+                        >
+                          ⋮
+                        </button>
+                        
+                        <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
+                          <div 
+                            className="menu-item delete"
+                            onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
+                          >
+                            {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

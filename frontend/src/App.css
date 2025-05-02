@@ -74,3 +74,105 @@
 .loading-container .loading-spinner {
   margin-bottom: 16px;
 }
+
+/* --- Visibility Toggle Styles --- */
+.visibility-toggle-section {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.visibility-toggle-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.visibility-toggle-label span:first-child {
+  margin-right: 10px;
+  font-weight: 500;
+}
+
+/* The switch - the box around the slider */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px; /* Adjust width */
+  height: 28px; /* Adjust height */
+  margin-left: 10px;
+}
+
+/* Hide default HTML checkbox */
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px; /* Adjust size */
+  width: 20px;  /* Adjust size */
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3; /* Blue when checked */
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(22px); /* Adjust move distance */
+  -ms-transform: translateX(22px);
+  transform: translateX(22px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.updating-indicator {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: #888;
+}
+
+.visibility-note {
+  font-size: 0.9em;
+  color: #666;
+  margin-top: 0.5rem;
+  margin-left: 0; /* Align with label */
+}
+/* --- End Visibility Toggle Styles --- */

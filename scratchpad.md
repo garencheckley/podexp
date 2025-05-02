@@ -215,3 +215,71 @@ The hybrid email authentication system is now fully functional. Key aspects and 
     *   **Firestore Index Errors:** Check backend logs (stderr) for `FAILED_PRECONDITION`. Use the link provided in the error or manually create the required composite index in the Firebase console.
 
 See `AUTH_README.md` for a more comprehensive overview of the authentication flow. 
+
+---
+
+## Recent Activities - Hybrid Auth Implementation & Deployment (May 2nd)
+
+*   **Hybrid Authentication System**: Implemented and deployed a robust hybrid authentication system supporting both secure, `SameSite=None` cookies and header-based authentication (using localStorage as a fallback) to ensure cross-browser and cross-domain compatibility.
+    *   **Backend**:
+        *   Fixed cookie configuration (`secure: true`, `sameSite: 'none'`).
+        *   Enhanced CORS configuration.
+        *   Updated `/verify` endpoint for dual auth methods.
+        *   Modified authentication middleware to check both cookies and `Authorization` headers.
+    *   **Frontend**:
+        *   Added localStorage for email storage fallback.
+        *   Updated API service for dual auth methods.
+        *   Improved token verification and handling.
+*   **Database Migration**: Successfully ran a migration script to update the `ownerEmail` field for all existing podcasts to `garencheckley@gmail.com`.
+*   **Deployment**: Deployed updated backend and frontend services to Cloud Run.
+*   **Documentation**: Updated `README.md` with details on the new authentication system, deployment procedures, and recent changes. 
+
+---
+
+## Debugging Synthesis Failure (May 2nd)
+
+*   **Issue**: Episode generation failed with a generic "Synthesis failed" message on the frontend.
+*   **Troubleshooting Steps**:
+    *   Checked Cloud Run logs for `podcast-backend` around the failure time; no specific errors found initially.
+    *   Enhanced error logging in `contentFormatter.ts` to capture more details from the Gemini API error object.
+    *   Examined `narrativePlanner.ts` and the episode generation route in `podcasts.ts`.
+    *   Re-deployed the backend with enhanced logging.
+    *   Checked Cloud Run service environment variables using `gcloud run services describe`.
+*   **Root Cause**: The `GEMINI_API_KEY` environment variable was not set in the deployed Cloud Run service environment for `podcast-backend`, preventing successful calls to the Gemini API during the content synthesis step.
+*   **Resolution**: 
+    *   Located the API key in the local `backend/.env` file.
+    *   Re-deployed the `podcast-backend` service using `gcloud run deploy`, explicitly setting the `GEMINI_API_KEY` using the `--set-env-vars` flag.
+*   **Result**: Episode generation is now working correctly. 
+
+---
+
+## Visibility Toggle & Deletion Fixes (May 2nd)
+
+*   **Feature Added**: Implemented a public/private visibility toggle on the `PodcastDetail` page.
+    *   Added backend endpoint logic (`PATCH /api/podcasts/:id`) to allow owners to update the `visibility` field.
+    *   Added frontend API function (`updatePodcastVisibility`) and UI toggle component in `PodcastDetail.tsx`.
+*   **Bug Fix (Visibility Update)**: Resolved a 404 error when updating visibility for private podcasts. The `PATCH /api/podcasts/:id` handler was incorrectly calling `getPodcast` without the user's email, causing the authorization check within `getPodcast` to fail for private podcasts.
+    *   **Fix**: Passed `req.userId` to the `getPodcast` call within the `PATCH` handler.
+*   **Bug Fix (Episode Deletion)**: Resolved a 401 Unauthorized error when deleting episodes. The `DELETE /api/podcasts/:podcastId/episodes/:episodeId` handler was using the incorrect `addAuthHeaders` setup in the frontend API call, potentially omitting the necessary `X-User-Email` header for the localStorage auth fallback.
+    *   **Fix**: Updated the `deleteEpisode` function in `frontend/src/services/api.ts` to use the `addAuthHeaders` helper.
+*   **Bug Fix (Podcast Deletion)**: Resolved a 401/403 error when deleting podcasts. The `DELETE /api/podcasts/:podcastId` handler had incorrect authorization logic, calling `getPodcast` without `req.userId` and comparing against `podcast.userId` instead of `podcast.ownerEmail`.
+    *   **Fix**: Updated the handler to pass `req.userId` to `getPodcast` and compare `podcast.ownerEmail === req.userId`. 
+
+## Session Summary (YYYY-MM-DD) - Hybrid Authentication Implementation & Deployment
+
+*   **Implemented Hybrid Authentication:** Developed a dual authentication system supporting both secure HttpOnly cookies and localStorage-based token handling.
+    *   **Backend:**
+        *   Configured secure cookie settings (`secure: true`, `sameSite: 'none'`).
+        *   Enhanced CORS to allow necessary headers/origins for cross-domain requests.
+        *   Updated `/verify` endpoint to handle both cookie and Authorization header.
+        *   Modified authentication middleware to check both sources.
+    *   **Frontend:**
+        *   Added localStorage fallback for token storage.
+        *   Updated API service to send token via header when cookies are unavailable/blocked.
+        *   Refined token verification logic on the client-side.
+*   **Database Update:** Ran migration script to set `ownerEmail` for all existing podcasts to `garencheckley@gmail.com`.
+*   **Documentation:** Updated `README.md` with details about the new authentication system and deployment steps.
+*   **Deployment:**
+    *   Successfully deployed the updated backend to Cloud Run (`podcast-backend`).
+    *   Successfully deployed the updated frontend to Cloud Run (`podcast-frontend`).
+*   **System Status:** Both services are live with the new hybrid authentication mechanism. 

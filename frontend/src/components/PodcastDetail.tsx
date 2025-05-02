@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 import GenerationLogViewer from './GenerationLogViewer';
 import VisibilityToggle from './VisibilityToggle';
@@ -29,9 +29,10 @@ const PodcastDetail = () => {
   const [activeEpisodeTabs, setActiveEpisodeTabs] = useState<Record<string, 'transcript' | 'log'>>({});
   const navigate = useNavigate();
   const [isOwner, setIsOwner] = useState(false);
+  const [visibilityUpdating, setVisibilityUpdating] = useState(false);
 
   // Get the current user's email (for ownership check)
-  const { isAuthenticated } = useAuth();
+  const { userEmail } = useAuth();
 
   const fetchData = async () => {
     if (!podcastId) return;
@@ -42,12 +43,7 @@ const PodcastDetail = () => {
       setPodcast(podcastData);
       
       // Check if the current user is the owner
-      const userEmail = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('userEmail='))
-        ?.split('=')[1];
-      
-      setIsOwner(userEmail === podcastData.ownerEmail);
+      setIsOwner(!!userEmail && userEmail === podcastData?.ownerEmail);
       
       // Fetch episodes
       const episodesData = await getEpisodes(podcastId);
@@ -91,16 +87,21 @@ const PodcastDetail = () => {
       
       setError(null);
     } catch (err) {
-      setError('Failed to fetch podcast data. Please try again later.');
-      console.error('Error fetching podcast data:', err);
+      // Type assertion for error handling
+      const error = err as Error;
+      setError(`Failed to fetch podcast data: ${error.message || 'Please try again later.'}`);
+      console.error('Error fetching podcast data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [podcastId]);
+    // Only fetch if podcastId is defined
+    if (podcastId) {
+        fetchData();
+    }
+  }, [podcastId, userEmail]);
 
   useEffect(() => {
     // Update promptValue when podcast data is loaded
@@ -341,6 +342,34 @@ const PodcastDetail = () => {
     return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
   };
 
+  // Handler for the INLINE visibility toggle input
+  const handleVisibilityChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!podcast || !podcast.id || !isOwner) return;
+
+    const newVisibility = event.target.checked ? 'public' : 'private';
+    const originalVisibility = podcast.visibility;
+
+    // Optimistic UI update
+    setPodcast(prev => prev ? { ...prev, visibility: newVisibility } : null);
+    setVisibilityUpdating(true);
+    setError(null); // Clear previous errors
+
+    try {
+      await updatePodcastVisibility(podcast.id, newVisibility);
+      // Update successful, state already reflects the change
+      console.log(`Podcast visibility updated to ${newVisibility}`);
+    } catch (err) {
+      // Type assertion for error handling
+      const error = err as Error;
+      console.error('Failed to update visibility:', error);
+      setError(`Failed to update visibility: ${error.message || 'Please try again.'}`);
+      // Revert optimistic update on error
+      setPodcast(prev => prev ? { ...prev, visibility: originalVisibility } : null);
+    } finally {
+      setVisibilityUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -371,18 +400,32 @@ const PodcastDetail = () => {
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
         
-        {podcast && (
-          <VisibilityToggle
-            podcastId={podcast.id || ''}
-            initialVisibility={podcast.visibility || 'private'}
-            isOwner={isOwner}
-            onUpdate={(newVisibility) => {
-              if (podcast) {
-                setPodcast({ ...podcast, visibility: newVisibility });
-              }
-            }}
-          />
+        {/* --- Visibility Toggle (Inline Implementation) --- */}
+        {/* Only show if owner */}
+        {isOwner && (
+          <div className="visibility-toggle-section">
+            <label className="visibility-toggle-label">
+              <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
+              <div className="toggle-switch">
+                 <input
+                   type="checkbox"
+                   id={`visibility-toggle-${podcast.id}`}
+                   checked={podcast.visibility === 'public'}
+                   onChange={handleVisibilityChange}
+                   disabled={visibilityUpdating}
+                 />
+                 <span className="slider round"></span>
+              </div>
+              {visibilityUpdating && <span className="updating-indicator">(updating...)</span>}
+            </label>
+            <p className="visibility-note">
+              {podcast.visibility === 'public'
+                ? 'Anyone logged in can see this podcast.'
+                : 'Only you can see this podcast.'}
+            </p>
+          </div>
         )}
+        {/* --- End Visibility Toggle --- */}
         
         <p>{podcast.description}</p>
         
@@ -445,10 +488,12 @@ const PodcastDetail = () => {
           )}
         </div>
         
+        {/* --- Edit Prompt Section --- */}
         <div className="podcast-prompt-section">
           <div className="prompt-header">
             <h3>Podcast Prompt</h3>
-            {!editingPrompt && (
+            {/* Only show Edit button if owner */}
+            {isOwner && !editingPrompt && (
               <button 
                 onClick={handleEditPrompt} 
                 className="edit-button"
@@ -458,8 +503,8 @@ const PodcastDetail = () => {
               </button>
             )}
           </div>
-          
-          {editingPrompt ? (
+          {/* Show editor only if owner and editing */}
+          {isOwner && editingPrompt ? (
             <div className="prompt-editor">
               <textarea
                 value={promptValue}
@@ -489,6 +534,7 @@ const PodcastDetail = () => {
             <p className="podcast-prompt">{podcast.prompt}</p>
           )}
         </div>
+        {/* --- End Edit Prompt Section --- */}
         
         {error && (
           <div className="error-message">
@@ -503,45 +549,51 @@ const PodcastDetail = () => {
           </div>
         )}
         
-        <div className="episode-length-control">
-          <h3>Episode Length</h3>
-          <div className="length-input-container">
-            <button 
-              className="length-button"
-              onClick={decrementEpisodeLength}
-              disabled={episodeLength <= 1 || generating}
-              aria-label="Decrease episode length"
-            >
-              -
-            </button>
-            <input
-              type="number"
-              min="1"
-              value={episodeLength}
-              onChange={handleEpisodeLengthChange}
-              className="length-input"
-              disabled={generating}
-            />
-            <button 
-              className="length-button"
-              onClick={incrementEpisodeLength}
-              disabled={generating}
-              aria-label="Increase episode length"
-            >
-              +
-            </button>
-            <span className="length-label">minutes</span>
+        {/* --- Generate Episode Section --- */}
+        {/* Only show if owner */}
+        {isOwner && (
+           <div className="episode-generation-controls">
+              <div className="episode-length-control">
+                <h3>Episode Length</h3>
+                <div className="length-input-container">
+                  <button 
+                    className="length-button"
+                    onClick={decrementEpisodeLength}
+                    disabled={episodeLength <= 1 || generating}
+                    aria-label="Decrease episode length"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={episodeLength}
+                    onChange={handleEpisodeLengthChange}
+                    className="length-input"
+                    disabled={generating}
+                  />
+                  <button 
+                    className="length-button"
+                    onClick={incrementEpisodeLength}
+                    disabled={generating}
+                    aria-label="Increase episode length"
+                  >
+                    +
+                  </button>
+                  <span className="length-label">minutes</span>
+                </div>
+                <p className="length-help">Determines the duration of the generated episode. Longer episodes will have more content.</p>
+              </div>
+              <button 
+                onClick={handleGenerateEpisode} 
+                disabled={generating}
+                style={{ marginTop: '1rem' }}
+              >
+                {generating ? 'Generating Episode...' : 'Generate New Episode'}
+              </button>
           </div>
-          <p className="length-help">Determines the duration of the generated episode. Longer episodes will have more content.</p>
-        </div>
-        
-        <button 
-          onClick={handleGenerateEpisode} 
-          disabled={generating}
-          style={{ marginTop: '1rem' }}
-        >
-          {generating ? 'Generating Episode...' : 'Generate New Episode'}
-        </button>
+        )}
+        {/* --- End Generate Episode Section --- */}
       </div>
       
       <div className="episode-list">
@@ -568,65 +620,68 @@ const PodcastDetail = () => {
                     </button>
                   )}
                   
-                  <div className="more-actions">
-                    <button 
-                      onClick={() => episode.id && toggleMenu(episode.id)}
-                      className="more-button"
-                      aria-label="More actions"
-                    >
-                      ⋮
-                    </button>
-                    
-                    <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
-                      <div 
-                        className="menu-item"
-                        onClick={() => episode.id && toggleEpisodeContent(episode.id)}
+                  {/* Only show episode menu button if owner */}
+                  {isOwner && (
+                    <div className="more-actions">
+                      <button 
+                        onClick={() => episode.id && toggleMenu(episode.id)}
+                        className="more-button"
+                        aria-label="More actions"
                       >
-                        {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
-                      </div>
-                      
-                      {episodeGenerationLogs[episode.id!] && (
+                        ⋮
+                      </button>
+                      {/* The menu itself needs no extra owner check, as button won't render */}
+                      <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
                         <div 
                           className="menu-item"
-                          onClick={() => {
-                            if (episode.id) {
-                              toggleEpisodeTab(episode.id, 'log');
-                              if (!expandedEpisodes[episode.id]) {
-                                toggleEpisodeContent(episode.id);
-                              }
-                            }
-                          }}
+                          onClick={() => episode.id && toggleEpisodeContent(episode.id)}
                         >
-                          View Generation Log
+                          {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
                         </div>
-                      )}
-                      
-                      {episode.audioUrl && (
-                        <a 
-                          href={episode.audioUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        
+                        {episodeGenerationLogs[episode.id!] && (
+                          <div 
+                            className="menu-item"
+                            onClick={() => {
+                              if (episode.id) {
+                                toggleEpisodeTab(episode.id, 'log');
+                                if (!expandedEpisodes[episode.id]) {
+                                  toggleEpisodeContent(episode.id);
+                                }
+                              }
+                            }}
+                          >
+                            View Generation Log
+                          </div>
+                        )}
+                        
+                        {episode.audioUrl && (
+                          <a 
+                            href={episode.audioUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="menu-item"
+                          >
+                            Download MP3
+                          </a>
+                        )}
+                        
+                        <div 
                           className="menu-item"
+                          onClick={() => episode.id && handleRegenerateAudio(episode.id)}
                         >
-                          Download MP3
-                        </a>
-                      )}
-                      
-                      <div 
-                        className="menu-item"
-                        onClick={() => episode.id && handleRegenerateAudio(episode.id)}
-                      >
-                        {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
-                      </div>
-                      
-                      <div 
-                        className="menu-item delete"
-                        onClick={() => episode.id && handleDeleteEpisode(episode.id)}
-                      >
-                        {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                          {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
+                        </div>
+                        
+                        <div 
+                          className="menu-item delete"
+                          onClick={() => episode.id && handleDeleteEpisode(episode.id)}
+                        >
+                          {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
               

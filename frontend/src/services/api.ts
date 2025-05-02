@@ -83,19 +83,36 @@ export async function logout(): Promise<void> {
   window.location.href = `${API_URL}/auth/logout`;
 }
 
-export async function checkAuthentication(): Promise<boolean> {
+export async function checkAuthentication(): Promise<{ status: boolean, email: string | null }> {
   try {
-    // Try to get the user's podcasts as a way to check authentication
-    const response = await fetch(`${API_URL}/podcasts`, addAuthHeaders());
-    
-    if (response.status === 401) {
-      return false;
+    // Call the new dedicated status endpoint
+    const response = await fetch(`${API_URL}/auth/status`, {
+      credentials: 'include', // Send cookies if available
+    });
+
+    if (!response.ok) {
+      // If response is not OK (e.g., 500), assume not authenticated
+      console.error(`Auth status check failed with status: ${response.status}`);
+      localStorage.removeItem(USER_EMAIL_KEY);
+      return { status: false, email: null };
     }
-    
-    return true;
+
+    const data = await response.json();
+
+    if (data.authenticated && data.email) {
+      // If authenticated and email is provided, store email and return true
+      localStorage.setItem(USER_EMAIL_KEY, data.email);
+      return { status: true, email: data.email };
+    } else {
+      // If not authenticated according to backend, clear storage and return false
+      localStorage.removeItem(USER_EMAIL_KEY);
+      return { status: false, email: null };
+    }
+
   } catch (error) {
-    console.error('Authentication check failed:', error);
-    return false;
+    console.error('Authentication check network/parse error:', error);
+    localStorage.removeItem(USER_EMAIL_KEY);
+    return { status: false, email: null };
   }
 }
 
@@ -171,22 +188,32 @@ export async function createEpisode(
  */
 export async function generateEpisode(podcastId: string, options: { targetMinutes?: number; targetWordCount?: number } = {}): Promise<{ episode: Episode; generationLogId: string }> {
   try {
-    const response = await fetch(`${API_URL}/podcasts/${podcastId}/generate-episode`, {
+    // Use addAuthHeaders to include potential X-User-Email header
+    const fetchOptions = addAuthHeaders({
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json', // Restored original headers
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(options),
-      credentials: 'include', // Include cookies with requests
     });
+    
+    console.log('Generate episode fetch options:', fetchOptions); // Log options for debugging
+
+    const response = await fetch(`${API_URL}/podcasts/${podcastId}/generate-episode`, fetchOptions);
 
     if (!response.ok) {
+      // Try to get more detailed error from response body if possible
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {}
+      console.error(`Generate episode failed: ${response.status} ${response.statusText}`, errorBody);
       throw new Error(`Failed to generate episode: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error generating episode:', error);
+    console.error('Error in generateEpisode function:', error);
     throw error;
   }
 }
@@ -213,20 +240,18 @@ export async function regenerateAudio(podcastId: string, episodeId: string): Pro
 }
 
 export async function deleteEpisode(podcastId: string, episodeId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}`, {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}`, addAuthHeaders({
     method: 'DELETE',
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   if (!response.ok) {
     throw new Error('Failed to delete episode');
   }
 }
 
 export async function deletePodcast(podcastId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, addAuthHeaders({
     method: 'DELETE',
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   if (!response.ok) {
     throw new Error('Failed to delete podcast');
   }
@@ -252,25 +277,27 @@ export async function updatePodcast(
   return response.json();
 }
 
+// New function to update podcast visibility
 export async function updatePodcastVisibility(
-  podcastId: string, 
+  podcastId: string,
   visibility: 'public' | 'private'
-): Promise<void> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}/visibility`, {
+): Promise<Podcast> { // Return the updated podcast
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, addAuthHeaders({
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ visibility }),
-    credentials: 'include',
-  });
-  
+  }));
+
   if (!response.ok) {
-    if (response.status === 403) {
-      throw new Error('You do not have permission to change this podcast\'s visibility');
-    }
-    throw new Error('Failed to update podcast visibility');
+    // Handle specific errors if needed, e.g., 403 Forbidden, 404 Not Found
+    const errorBody = await response.text();
+    console.error(`Failed to update visibility: ${response.status}`, errorBody);
+    throw new Error(`Failed to update visibility: ${response.statusText}`);
   }
+  
+  return response.json(); // Return the updated podcast data from the response
 }
 
 /**

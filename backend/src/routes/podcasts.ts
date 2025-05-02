@@ -26,27 +26,20 @@ import * as deepDiveResearch from '../services/deepDiveResearch';
 import * as sourceManager from '../services/sourceManager';
 import * as clusteringService from '../services/clusteringService';
 import { summarizeCluster } from '../services/clusteringService';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, authenticateTokenOptional } from '../middleware/auth';
 
 const router = express.Router();
-
-// Apply authentication middleware to all podcast routes
-router.use(authenticateToken);
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
 
-// Get all podcasts (Protected - Now filters by user)
-router.get('/', async (req, res) => {
+// Get all podcasts (Apply OPTIONAL auth)
+router.get('/', authenticateTokenOptional, async (req, res) => {
   try {
-    // Add userId check (belt-and-suspenders after middleware)
-    if (!req.userId) {
-      console.error('Error getting podcasts: No userId found on request.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
-    }
-    console.log(`GET /api/podcasts for user ${req.userId}`);
-    // Pass the userId to the database function
+    // req.userId will be populated by authenticateTokenOptional if user is logged in
+    console.log(`GET /api/podcasts for user ${req.userId || 'anonymous'}`);
+    // Pass potential userId to the database function
     const podcasts = await getAllPodcasts(req.userId);
     res.json(podcasts);
   } catch (error: any) { // Explicitly type error as any
@@ -59,27 +52,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get podcast by ID (Protected)
-router.get('/:id', async (req, res) => {
+// Get podcast by ID (Apply OPTIONAL auth)
+router.get('/:id', authenticateTokenOptional, async (req, res) => {
   try {
-    // Add userId check
-    if (!req.userId) {
-      console.error('Error getting podcast: No userId found on request.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
-    }
-    
-    console.log(`GET /api/podcasts/${req.params.id} for user ${req.userId}`);
-    
-    // Pass userEmail (from req.userId) to the database function for auth check
+    // req.userId will be populated by authenticateTokenOptional if user is logged in
+    console.log(`GET /api/podcasts/${req.params.id} for user ${req.userId || 'anonymous'}`);
+    // Pass potential userId to the database function
     const podcast = await getPodcast(req.params.id, req.userId); 
     
     if (!podcast) {
-      // If podcast is null here, it means either not found OR access denied by DB function
-      // DB function logs the specific reason (not found vs. access denied)
       return res.status(404).json({ error: 'Podcast not found or access denied' }); 
     }
-    
-    // No need for separate auth check here, as getPodcast handles it
     res.json(podcast);
   } catch (error) {
     console.error('Error getting podcast:', error);
@@ -88,14 +71,14 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create podcast (Protected)
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('POST /api/podcasts', req.body);
-    
-    // Add userId check
+    // Middleware ensures req.userId exists here
     if (!req.userId) {
-      console.error('Error creating podcast: No userId found on request. Auth middleware might have failed.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+      // This check is now redundant due to middleware but kept for safety
+      console.error('Error creating podcast: No userId found on request despite auth middleware.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found.' });
     }
 
     // If title is not provided, generate one using Gemini
@@ -210,27 +193,26 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
   }
 });
 
-// Get episodes by podcast ID (Protected)
-router.get('/:podcastId/episodes', async (req, res) => {
+// Get episodes by podcast ID (Apply REQUIRED auth - need to check parent access)
+router.get('/:podcastId/episodes', authenticateToken, async (req, res) => {
   try {
     const { podcastId } = req.params;
-    
-    // Add userId check
-    if (!req.userId) {
-      console.error('Error getting episodes: No userId found on request.');
+    // authenticateToken ensures req.userId is set here
+    if (!req.userId) { // Should theoretically not happen now
+      console.error('Error getting episodes: No userId found after authentication.');
       return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
     }
     console.log(`GET /api/podcasts/${podcastId}/episodes for user ${req.userId}`);
 
-    // Check if user owns the podcast first (or if it's public)
-    // Pass userEmail to getPodcast for the check
-    const podcast = await getPodcast(podcastId, req.userId);
+    // Pass userId to getPodcast for parent check
+    // Must use req.userId here for the check
+    const podcast = await getPodcast(podcastId, req.userId); 
     if (!podcast) {
-      // getPodcast returns null if not found OR access denied
+      // Handles "Not Found" or "Access Denied" from getPodcast
       return res.status(404).json({ error: 'Podcast not found or access denied' });
     }
     
-    // If the podcast exists and user has access, fetch the episodes
+    // Fetch episodes - database function doesn't need userId directly
     const episodes = await getEpisodesByPodcastId(podcastId);
     res.json(episodes);
   } catch (error) {
@@ -240,16 +222,16 @@ router.get('/:podcastId/episodes', async (req, res) => {
 });
 
 // Delete episode (Protected)
-router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
+router.delete('/:podcastId/episodes/:episodeId', authenticateToken, async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}/episodes/${req.params.episodeId}`);
     
     const { podcastId, episodeId } = req.params;
 
-    // Add userId check
-    if (!req.userId) {
-      console.error('Error deleting episode: No userId found on request.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    // Middleware ensures req.userId exists here
+    if (!req.userId) { 
+       // Redundant check
+       return res.status(403).json({ error: 'Forbidden: User ID not found.' }); 
     }
     console.log(`Attempting delete by user ${req.userId}`);
 
@@ -288,16 +270,16 @@ router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
 });
 
 // Delete podcast (Protected)
-router.delete('/:podcastId', async (req, res) => {
+router.delete('/:podcastId', authenticateToken, async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}`);
     
     const { podcastId } = req.params;
 
-    // Add userId check
-    if (!req.userId) {
-      console.error('Error deleting podcast: No userId found on request.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    // Middleware ensures req.userId exists here
+    if (!req.userId) { 
+        // Redundant check
+        return res.status(403).json({ error: 'Forbidden: User ID not found.' }); 
     }
     console.log(`Attempting delete by user ${req.userId}`);
 
@@ -331,7 +313,7 @@ router.delete('/:podcastId', async (req, res) => {
 });
 
 // Create episode (Protected)
-router.post('/:podcastId/episodes', async (req, res) => {
+router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
   try {
     console.log(`POST /api/podcasts/${req.params.podcastId}/episodes`, req.body);
     const { podcastId } = req.params;
@@ -410,7 +392,7 @@ router.post('/:podcastId/episodes', async (req, res) => {
 });
 
 // Generate a new episode for a podcast (Protected)
-router.post('/:id/generate-episode', async (req, res) => {
+router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
   try {
     const { id: podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-episode`);
@@ -1097,7 +1079,7 @@ async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<
 }
 
 // Regenerate audio for an existing episode (Protected)
-router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res) => {
+router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToken, async (req, res) => {
   try {
     const { podcastId, episodeId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`);
@@ -1177,7 +1159,7 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res)
 });
 
 // Update podcast details (Protected)
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     const { id: podcastId } = req.params; // Use common variable name
     console.log(`PATCH /api/podcasts/${podcastId}`, req.body);
@@ -1231,8 +1213,8 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Generate bullet points for all episodes in a podcast (migration route) (Protected)
-router.post('/:podcastId/generate-bullet-points', async (req, res) => {
+// Generate bullet points for all episodes in a podcast (Protected)
+router.post('/:podcastId/generate-bullet-points', authenticateToken, async (req, res) => {
   try {
     const { podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-bullet-points`);
@@ -1356,8 +1338,8 @@ router.post('/:podcastId/generate-bullet-points', async (req, res) => {
   }
 });
 
-// Update podcast visibility (Protected to owner only)
-router.patch('/:id/visibility', async (req, res) => {
+// Update podcast visibility (Protected)
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const { id: podcastId } = req.params;
     const { visibility } = req.body;
