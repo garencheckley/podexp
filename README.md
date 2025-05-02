@@ -1,6 +1,6 @@
 # Podcast Generation System
 
-> **IMPORTANT TEMPORARY CHANGE**: Authentication requirements have been temporarily disabled in both frontend and backend to allow for development. The backend middleware at `backend/src/middleware/auth.ts` has been modified to bypass authentication checks and use a mock user ID. This is a temporary measure and should be properly implemented before production use.
+> **Authentication Update**: A hybrid email-based authentication system (magic links via email) is now fully implemented. It uses secure HTTP-only cookies when possible, with a JavaScript localStorage/header fallback for broader compatibility. See `AUTH_README.md` for details.
 
 ## System Overview
 
@@ -19,7 +19,7 @@ The system follows a client-server architecture with the following components:
 - Node.js/Express server
 - Deployed on Google Cloud Run
 - Interfaces with Google Cloud services (Firestore, Storage, Text-to-Speech)
-- Provides RESTful API endpoints for the frontend
+- Provides RESTful API endpoints for the frontend, protected by the email authentication system.
 
 ### Database
 - Google Cloud Firestore for storing podcast and episode data
@@ -617,10 +617,7 @@ If a deployment causes issues:
    ```
 
 ### Recent Updates
-- **Enhanced Email Authentication System**: Implemented a hybrid authentication approach that works with both HTTP-only cookies and JavaScript-based authentication as a fallback. The system supports:
-  - Email-based magic link authentication that works across different environments
-  - Enhanced security with proper CORS and cookie settings
-  - Improved cross-domain compatibility with header-based authentication fallback
+- **Stable Hybrid Email Authentication**: Finalized and stabilized the hybrid authentication system. It uses secure cookies with a JavaScript (localStorage/header) fallback, resolving cross-domain issues and ensuring reliable login across different environments. See `AUTH_README.md` for full details.
 - **User Authentication**: Implemented user authentication using Firebase Authentication and Google Sign-In. Protected relevant backend endpoints and filtered data based on user ownership. Added login/logout functionality to the frontend.
 - **Core Generation Prompts Refinement**: Added explicit constraints against filler phrases, specified desired types of analysis (causal, comparative, etc.), consistently reinforced host persona, and rewrote integration prompts to focus on insightful analytical content
 - **Enhanced Research & Synthesis Strategy**: Minimized summarization by removing character limits when passing research content between steps, improved contrasting viewpoints generation using stronger models, and enhanced synthesis prompts for deeper analysis
