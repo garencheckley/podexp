@@ -1,11 +1,30 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import PodcastList from './components/PodcastList';
 import PodcastDetail from './components/PodcastDetail';
 import CreatePodcastForm from './components/CreatePodcastForm';
+import Login from './components/Login';
+import VerifyToken from './components/VerifyToken';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './App.css';
 
-function App() {
+const AppHeader: React.FC = () => {
+  const { isAuthenticated, logout } = useAuth();
+  
+  return (
+    <header className="app-header">
+      <h1>Garen's Podcast Generator</h1>
+      {isAuthenticated && (
+        <button className="logout-button" onClick={logout}>
+          Log Out
+        </button>
+      )}
+    </header>
+  );
+};
+
+function AppContent() {
   // Load Inter font
   useEffect(() => {
     const link = document.createElement('link');
@@ -19,19 +38,39 @@ function App() {
   }, []);
 
   return (
+    <div className="app">
+      <AppHeader />
+      <main className="app-content">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/verify" element={<VerifyToken />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <PodcastList />
+            </ProtectedRoute>
+          } />
+          <Route path="/podcasts/:podcastId" element={
+            <ProtectedRoute>
+              <PodcastDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/create-podcast" element={
+            <ProtectedRoute>
+              <CreatePodcastForm />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  return (
     <Router>
-      <div className="app">
-        <header className="app-header">
-          <h1>Garen's Podcast Generator</h1>
-        </header>
-        <main className="app-content">
-          <Routes>
-            <Route path="/" element={<PodcastList />} />
-            <Route path="/podcasts/:podcastId" element={<PodcastDetail />} />
-            <Route path="/create-podcast" element={<CreatePodcastForm />} />
-          </Routes>
-        </main>
-      </div>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }

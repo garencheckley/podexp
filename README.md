@@ -1,5 +1,7 @@
 # Podcast Generation System
 
+> **IMPORTANT TEMPORARY CHANGE**: Authentication requirements have been temporarily disabled in both frontend and backend to allow for development. The backend middleware at `backend/src/middleware/auth.ts` has been modified to bypass authentication checks and use a mock user ID. This is a temporary measure and should be properly implemented before production use.
+
 ## System Overview
 
 This project is a podcast generation system built using Google Cloud Platform services. It allows users to create podcasts, generate episodes using AI, and play them with text-to-speech audio. The system is designed to be deployed on Google Cloud Run and uses various Google Cloud services for its functionality.
@@ -495,6 +497,8 @@ The recommended approach is to use Google Cloud Build, which handles the Docker 
      --allow-unauthenticated
    ```
 
+   **IMPORTANT**: Always deploy to the `us-west1` region for consistency. Do not use other regions.
+
 3. **Firestore Indexes**: 
    - Before the first deployment, ensure Firestore indexes are created:
    ```
@@ -545,10 +549,12 @@ The frontend deployment follows a similar process:
    # Deploy the container to Cloud Run
    gcloud run deploy podcast-frontend \
      --image gcr.io/PROJECT_ID/podcast-frontend:latest \
-     --region REGION \
+     --region us-west1 \
      --platform managed \
      --allow-unauthenticated
    ```
+
+   **NOTE**: Always use the `us-west1` region for consistency with the backend.
 
 ### Common Deployment Issues and Solutions
 
@@ -611,6 +617,11 @@ If a deployment causes issues:
    ```
 
 ### Recent Updates
+- **Enhanced Email Authentication System**: Implemented a hybrid authentication approach that works with both HTTP-only cookies and JavaScript-based authentication as a fallback. The system supports:
+  - Email-based magic link authentication that works across different environments
+  - Enhanced security with proper CORS and cookie settings
+  - Improved cross-domain compatibility with header-based authentication fallback
+- **User Authentication**: Implemented user authentication using Firebase Authentication and Google Sign-In. Protected relevant backend endpoints and filtered data based on user ownership. Added login/logout functionality to the frontend.
 - **Core Generation Prompts Refinement**: Added explicit constraints against filler phrases, specified desired types of analysis (causal, comparative, etc.), consistently reinforced host persona, and rewrote integration prompts to focus on insightful analytical content
 - **Enhanced Research & Synthesis Strategy**: Minimized summarization by removing character limits when passing research content between steps, improved contrasting viewpoints generation using stronger models, and enhanced synthesis prompts for deeper analysis
 - Implemented Enhanced Research & Synthesis Strategy to preserve complete information throughout the content generation pipeline and improve the quality of analysis
@@ -627,4 +638,8 @@ If a deployment causes issues:
 - Enhanced episode creation date display to show both relative time (e.g., "2 mins ago") and full date-time information
 - Improved episode analysis with consolidated approach: replaced multiple individual Gemini API calls with a single consolidated call for better reliability and cross-episode insights
 - Added bullet point summaries for episodes: each episode now stores 3-5 concise bullet points summarizing key content, optimizing subsequent episode analysis
-- Added migration endpoint to generate bullet points for existing episodes: `POST /api/podcasts/:podcastId/generate-bullet-points` 
+- Added migration endpoint to generate bullet points for existing episodes: `POST /api/podcasts/:podcastId/generate-bullet-points`
+- **Data-Focused Content Generation**: Enhanced content generation prompts to produce more data-centric, analytical content with specific statistics, quantitative metrics, and expert market insights.
+  - Updated the content formatter to emphasize data and statistics in podcast scripts
+  - Improved narrative planning to prioritize quantitative analysis
+  - Implemented dedicated deep dive research function for comprehensive market analysis 

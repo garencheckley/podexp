@@ -30,12 +30,15 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
+// Apply authentication middleware to all podcast routes
+router.use(authenticateToken);
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro-exp-03-25' });
 
 // Get all podcasts (Protected - Now filters by user)
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     // Add userId check (belt-and-suspenders after middleware)
     if (!req.userId) {
@@ -53,7 +56,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get podcast by ID (Protected)
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     // User ID check temporarily disabled
     console.log(`GET /api/podcasts/${req.params.id} - Auth check bypassed`);
@@ -89,7 +92,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create podcast (Protected)
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     console.log('POST /api/podcasts', req.body);
     
@@ -212,7 +215,7 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
 });
 
 // Get episodes by podcast ID (Protected)
-router.get('/:podcastId/episodes', authenticateToken, async (req, res) => {
+router.get('/:podcastId/episodes', async (req, res) => {
   try {
     const { podcastId } = req.params;
     console.log(`GET /api/podcasts/${podcastId}/episodes - Auth check bypassed`);
@@ -252,7 +255,7 @@ router.get('/:podcastId/episodes', authenticateToken, async (req, res) => {
 });
 
 // Delete episode (Protected)
-router.delete('/:podcastId/episodes/:episodeId', authenticateToken, async (req, res) => {
+router.delete('/:podcastId/episodes/:episodeId', async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}/episodes/${req.params.episodeId}`);
     
@@ -297,7 +300,7 @@ router.delete('/:podcastId/episodes/:episodeId', authenticateToken, async (req, 
 });
 
 // Delete podcast (Protected)
-router.delete('/:podcastId', authenticateToken, async (req, res) => {
+router.delete('/:podcastId', async (req, res) => {
   try {
     console.log(`DELETE /api/podcasts/${req.params.podcastId}`);
     
@@ -340,7 +343,7 @@ router.delete('/:podcastId', authenticateToken, async (req, res) => {
 });
 
 // Create episode (Protected)
-router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
+router.post('/:podcastId/episodes', async (req, res) => {
   try {
     console.log(`POST /api/podcasts/${req.params.podcastId}/episodes`, req.body);
     const { podcastId } = req.params;
@@ -419,7 +422,7 @@ router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
 });
 
 // Generate a new episode for a podcast (Protected)
-router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
+router.post('/:id/generate-episode', async (req, res) => {
   try {
     const { id: podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-episode`);
@@ -872,9 +875,22 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
       
       // 3a. Create enhanced narrative structure with word allocation
       console.log('Step 3a: Creating detailed narrative structure');
+      
+      // Convert episodePlan to DetailedResearchResults for narrativePlanner
+      const preliminaryResearchResults: narrativePlanner.DetailedResearchResults = {
+        episodeTitle: episodePlan.episodeTitle,
+        overallSynthesis: episodePlan.selectedTopics.map(t => t.topic).join(', '),
+        topicResearch: episodePlan.selectedTopics.map(topic => ({
+          topic: topic.topic,
+          synthesizedContent: topic.hasOwnProperty('initialContent') ? 
+            (topic as any).initialContent : 
+            `Research on ${topic.topic} - ${topic.rationale}`
+        }))
+      };
+      
       narrativeStructure = await narrativePlanner.createNarrativeStructure(
-        episodePlan,
-        targetWordCount
+        preliminaryResearchResults,
+        'medium' // Use medium length as default
       );
       console.log(`Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
       
@@ -1057,7 +1073,7 @@ async function updateEpisodeAudio(episodeId: string, audioUrl: string): Promise<
 }
 
 // Regenerate audio for an existing episode (Protected)
-router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToken, async (req, res) => {
+router.post('/:podcastId/episodes/:episodeId/regenerate-audio', async (req, res) => {
   try {
     const { podcastId, episodeId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`);
@@ -1137,7 +1153,7 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToke
 });
 
 // Update podcast details (Protected)
-router.patch('/:id', authenticateToken, async (req, res) => {
+router.patch('/:id', async (req, res) => {
   try {
     const { id: podcastId } = req.params; // Use common variable name
     console.log(`PATCH /api/podcasts/${podcastId}`, req.body);
@@ -1185,7 +1201,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 });
 
 // Generate bullet points for all episodes in a podcast (migration route) (Protected)
-router.post('/:podcastId/generate-bullet-points', authenticateToken, async (req, res) => {
+router.post('/:podcastId/generate-bullet-points', async (req, res) => {
   try {
     const { podcastId } = req.params;
     console.log(`POST /api/podcasts/${podcastId}/generate-bullet-points`);
@@ -1306,6 +1322,39 @@ router.post('/:podcastId/generate-bullet-points', authenticateToken, async (req,
   } catch (error) {
     console.error('Error generating bullet points:', error);
     res.status(500).json({ error: 'Failed to generate bullet points' });
+  }
+});
+
+// Update podcast visibility (Protected to owner only)
+router.patch('/:id/visibility', async (req, res) => {
+  try {
+    const { id: podcastId } = req.params;
+    const { visibility } = req.body;
+    
+    // Validate input
+    if (!visibility || !['public', 'private'].includes(visibility)) {
+      return res.status(400).json({ error: 'Invalid visibility value. Must be either "public" or "private".' });
+    }
+    
+    // Get the podcast to check ownership
+    const podcast = await getPodcast(podcastId, req.userId);
+    
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    
+    // Only the owner can change visibility
+    if (podcast.ownerEmail !== req.userId) {
+      return res.status(403).json({ error: 'You do not have permission to change this podcast\'s visibility' });
+    }
+    
+    // Update the visibility
+    await updatePodcast(podcastId, { visibility });
+    
+    res.status(200).json({ message: 'Podcast visibility updated successfully', visibility });
+  } catch (error) {
+    console.error('Error updating podcast visibility:', error);
+    res.status(500).json({ error: 'Failed to update podcast visibility' });
   }
 });
 

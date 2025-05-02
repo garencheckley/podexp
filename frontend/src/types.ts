@@ -1,10 +1,15 @@
 export interface Podcast {
   id?: string;
+  userId?: string;
+  ownerEmail?: string;
+  visibility?: 'public' | 'private';
   title: string;
   description: string;
-  prompt: string;
+  prompt?: string;
   podcastType?: string;
   created_at?: string;
+  last_updated?: string;
+  episodes: Episode[];
   sources?: PodcastSource[];
 }
 

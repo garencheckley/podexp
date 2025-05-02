@@ -6,6 +6,8 @@ let db: Firestore | null = null;
 export interface Podcast {
   id?: string;
   userId?: string;
+  ownerEmail?: string;          // Email of the podcast owner
+  visibility?: "public" | "private"; // Visibility setting, defaults to "private"
   title: string;
   description: string;
   prompt?: string;
@@ -89,44 +91,81 @@ export function getDb(): Firestore {
 }
 
 export async function getAllPodcasts(userId?: string): Promise<Podcast[]> {
-  // Temporarily modified to return all podcasts regardless of user ID
-  console.log('Fetching ALL podcasts regardless of user ID (temporary auth bypass)');
-  const query = getDb().collection('podcasts').orderBy('last_updated', 'desc');
-
-  // Original code with user filtering commented out
-  /*
-  let query = getDb().collection('podcasts').orderBy('last_updated', 'desc');
-
-  if (userId) {
-    console.log(`Fetching podcasts for user ID: ${userId}`);
-    query = query.where('userId', '==', userId);
-  } else {
-    console.warn('Fetching all podcasts without a userId filter. Ensure routes are protected.');
+  console.log('Getting podcasts with auth check');
+  
+  if (!userId) {
+    console.warn('No userId provided. Only fetching public podcasts.');
+    const query = getDb().collection('podcasts')
+      .where('visibility', '==', 'public')
+      .orderBy('last_updated', 'desc');
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
   }
-  */
-
-  const snapshot = await query.get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
+  
+  // If userId (email) is provided, get all podcasts owned by this user + public podcasts from others
+  console.log(`Fetching podcasts for user email: ${userId}`);
+  
+  // Get podcasts owned by this user
+  const userPodcastsQuery = getDb().collection('podcasts')
+    .where('ownerEmail', '==', userId)
+    .orderBy('last_updated', 'desc');
+  
+  const userPodcastsSnapshot = await userPodcastsQuery.get();
+  const userPodcasts = userPodcastsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
+  
+  // Get public podcasts from other users
+  const publicPodcastsQuery = getDb().collection('podcasts')
+    .where('visibility', '==', 'public')
+    .where('ownerEmail', '!=', userId)
+    .orderBy('ownerEmail', 'asc') // Required for inequality query
+    .orderBy('last_updated', 'desc');
+  
+  const publicPodcastsSnapshot = await publicPodcastsQuery.get();
+  const publicPodcasts = publicPodcastsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Podcast));
+  
+  // Combine both sets
+  return [...userPodcasts, ...publicPodcasts];
 }
 
-export async function getPodcast(id: string): Promise<Podcast | null> {
-  console.log(`Fetching podcast with ID: ${id}`);
+export async function getPodcast(id: string, userEmail?: string): Promise<Podcast | null> {
+  console.log(`Fetching podcast with ID: ${id} for user: ${userEmail || 'anonymous'}`);
   const doc = await getDb().collection('podcasts').doc(id).get();
+  
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() } as Podcast;
+  
+  const podcast = { id: doc.id, ...doc.data() } as Podcast;
+  
+  // If user is not logged in, only return public podcasts
+  if (!userEmail && podcast.visibility !== 'public') {
+    console.log('Access denied: User not authenticated and podcast is private');
+    return null;
+  }
+  
+  // If user is logged in, return the podcast if they own it or it's public
+  if (userEmail && podcast.ownerEmail !== userEmail && podcast.visibility !== 'public') {
+    console.log('Access denied: User does not own this private podcast');
+    return null;
+  }
+  
+  return podcast;
 }
 
 export async function createPodcast(podcast: Omit<Podcast, 'id'>): Promise<Podcast> {
   console.log('Creating new podcast:', podcast);
   const now = new Date().toISOString();
-  const podcastWithTimestamps = {
+  
+  // Ensure podcast has ownerEmail (from userId) and default visibility to private
+  const podcastWithDefaults = {
     ...podcast,
+    ownerEmail: podcast.ownerEmail || podcast.userId,
+    visibility: podcast.visibility || 'private',
     created_at: now,
     last_updated: now,
-    podcastType: 'news'
+    podcastType: podcast.podcastType || 'news'
   };
-  const docRef = await getDb().collection('podcasts').add(podcastWithTimestamps);
-  return { id: docRef.id, ...podcastWithTimestamps };
+  
+  const docRef = await getDb().collection('podcasts').add(podcastWithDefaults);
+  return { id: docRef.id, ...podcastWithDefaults };
 }
 
 export async function getEpisodesByPodcastId(podcastId: string): Promise<Episode[]> {
@@ -202,7 +241,7 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
  */
 export async function updatePodcast(
   podcastId: string, 
-  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources' | 'userId'>>
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources' | 'userId' | 'ownerEmail' | 'visibility'>>
 ): Promise<void> {
   console.log(`Updating podcast ${podcastId}:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);

@@ -4,6 +4,8 @@ import { Podcast, Episode } from '../types';
 import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 import GenerationLogViewer from './GenerationLogViewer';
+import VisibilityToggle from './VisibilityToggle';
+import { useAuth } from '../contexts/AuthContext';
 
 const PodcastDetail = () => {
   const { podcastId } = useParams<{ podcastId: string }>();
@@ -26,17 +28,30 @@ const PodcastDetail = () => {
   const [episodeGenerationLogs, setEpisodeGenerationLogs] = useState<Record<string, string>>({});
   const [activeEpisodeTabs, setActiveEpisodeTabs] = useState<Record<string, 'transcript' | 'log'>>({});
   const navigate = useNavigate();
+  const [isOwner, setIsOwner] = useState(false);
+
+  // Get the current user's email (for ownership check)
+  const { isAuthenticated } = useAuth();
 
   const fetchData = async () => {
     if (!podcastId) return;
 
     try {
-      const [podcastData, episodesData] = await Promise.all([
-        getPodcast(podcastId),
-        getEpisodes(podcastId)
-      ]);
-      console.log('Fetched podcast data:', podcastData);
+      setLoading(true);
+      const podcastData = await getPodcast(podcastId);
       setPodcast(podcastData);
+      
+      // Check if the current user is the owner
+      const userEmail = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('userEmail='))
+        ?.split('=')[1];
+      
+      setIsOwner(userEmail === podcastData.ownerEmail);
+      
+      // Fetch episodes
+      const episodesData = await getEpisodes(podcastId);
+      setEpisodes(episodesData);
       
       // Sort episodes by created_at in reverse chronological order
       const sortedEpisodes = [...episodesData].sort((a, b) => {
@@ -355,6 +370,20 @@ const PodcastDetail = () => {
       
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
+        
+        {podcast && (
+          <VisibilityToggle
+            podcastId={podcast.id || ''}
+            initialVisibility={podcast.visibility || 'private'}
+            isOwner={isOwner}
+            onUpdate={(newVisibility) => {
+              if (podcast) {
+                setPodcast({ ...podcast, visibility: newVisibility });
+              }
+            }}
+          />
+        )}
+        
         <p>{podcast.description}</p>
         
         <div className="podcast-type-badge">

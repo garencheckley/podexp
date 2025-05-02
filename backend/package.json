@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "ts-node src/scripts/migrate-data.ts",
-    "migrate-podcast-types": "ts-node src/scripts/migrate-podcast-types.ts"
+    "migrate-podcast-types": "ts-node src/scripts/migrate-podcast-types.ts",
+    "migrate-visibility": "ts-node src/scripts/migrate-visibility.ts"
   },
   "keywords": [
     "podcast",
@@ -24,14 +25,20 @@
     "@google-cloud/storage": "^7.15.2",
     "@google-cloud/text-to-speech": "^5.8.1",
     "@google/generative-ai": "^0.24.0",
+    "@types/cookie-parser": "^1.4.8",
     "@types/express": "^4.17.21",
     "@types/node": "^20.11.28",
+    "@types/nodemailer": "^6.4.17",
+    "@types/uuid": "^10.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.18.3",
     "firebase-admin": "^13.2.0",
     "ml-kmeans": "^6.0.0",
-    "protobufjs": "^7.3.0"
+    "nodemailer": "^6.10.1",
+    "protobufjs": "^7.3.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

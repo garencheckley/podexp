@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Podcast } from '../types';
 import { getAllPodcasts, deletePodcast } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import VisibilityToggle from './VisibilityToggle';
 
 const PodcastList = () => {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
@@ -61,6 +63,18 @@ const PodcastList = () => {
     }));
   };
 
+  const getUserEmailFromCookie = (): string | undefined => {
+    return document.cookie
+      .split('; ')
+      .find(row => row.startsWith('userEmail='))
+      ?.split('=')[1];
+  };
+  
+  const isUserOwner = (podcast: Podcast): boolean => {
+    const userEmail = getUserEmailFromCookie();
+    return userEmail === podcast.ownerEmail;
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -108,28 +122,44 @@ const PodcastList = () => {
         <div className="podcast-list">
           {podcasts.map(podcast => (
             <div key={podcast.id} className="podcast-card">
-              <h2>{podcast.title}</h2>
-              <p>{podcast.description}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                <Link to={`/podcasts/${podcast.id}`}>
-                  <button>View Episodes</button>
-                </Link>
+              <div className="podcast-card-content">
+                <h2>{podcast.title}</h2>
                 
-                <div className="more-actions">
-                  <button 
-                    onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
-                    className="more-button"
-                    aria-label="Show delete option"
-                  >
-                    ⋮
-                  </button>
+                <VisibilityToggle
+                  podcastId={podcast.id || ''}
+                  initialVisibility={podcast.visibility || 'private'}
+                  isOwner={isUserOwner(podcast)}
+                  onUpdate={(newVisibility) => {
+                    setPodcasts(prevPodcasts => 
+                      prevPodcasts.map(p => 
+                        p.id === podcast.id ? { ...p, visibility: newVisibility } : p
+                      )
+                    );
+                  }}
+                />
+                
+                <p>{podcast.description}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                  <Link to={`/podcasts/${podcast.id}`}>
+                    <button>View Episodes</button>
+                  </Link>
                   
-                  <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
-                    <div 
-                      className="menu-item delete"
-                      onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
+                  <div className="more-actions">
+                    <button 
+                      onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
+                      className="more-button"
+                      aria-label="Show delete option"
                     >
-                      {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
+                      ⋮
+                    </button>
+                    
+                    <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
+                      <div 
+                        className="menu-item delete"
+                        onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
+                      >
+                        {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
+                      </div>
                     </div>
                   </div>
                 </div>

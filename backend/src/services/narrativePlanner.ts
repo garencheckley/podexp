@@ -1,9 +1,21 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { EpisodePlan } from './searchOrchestrator';
-import { POWERFUL_MODEL_ID } from '../config';
+import { POWERFUL_MODEL_ID, RELIABLE_MODEL_ID } from '../config';
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY || '');
+
+// Types
+export interface DetailedResearchResults {
+  episodeTitle: string;
+  overallSynthesis: string;
+  topicResearch: Array<{
+    topic: string;
+    synthesizedContent: string;
+  }>;
+}
+
+export type ContentLength = 'short' | 'medium' | 'long';
 
 /**
  * Interface for enhanced narrative structure
@@ -31,13 +43,37 @@ export interface NarrativeStructure {
     finalThoughts: string;
     wordCount: number;
   };
-  overallWordCount: number;
-  adherenceMetrics: {
+  overallWordCount?: number;
+  adherenceMetrics?: {
     structureScore: number;
     balanceScore: number;
     transitionScore: number;
     overallAdherence: number;
   };
+}
+
+/**
+ * Helper function to get word count based on content length
+ */
+function getWordCountForLength(contentLength: ContentLength): number {
+  switch (contentLength) {
+    case 'short': return 800;
+    case 'medium': return 1500;
+    case 'long': return 2500;
+    default: return 1500;
+  }
+}
+
+/**
+ * Helper function to get optimal section count based on content length
+ */
+function getOptimalSectionCount(contentLength: ContentLength): number {
+  switch (contentLength) {
+    case 'short': return 3;
+    case 'medium': return 4;
+    case 'long': return 5;
+    default: return 4;
+  }
 }
 
 /**
@@ -47,220 +83,174 @@ export interface NarrativeStructure {
  * @returns Enhanced narrative structure with detailed section planning
  */
 export async function createNarrativeStructure(
-  episodePlan: EpisodePlan,
-  targetWordCount: number
+  researchResults: DetailedResearchResults,
+  contentLength: ContentLength
 ): Promise<NarrativeStructure> {
-  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+  const model = genAI.getGenerativeModel({ model: RELIABLE_MODEL_ID });
   try {
-    console.log('Creating enhanced narrative structure for episode');
+    console.log(`Creating narrative structure for ${contentLength} content`);
+    const wordCount = getWordCountForLength(contentLength);
+    
+    // Calculate rough word count allocations
+    const introWordCount = Math.floor(wordCount * 0.15); // 15% for intro
+    const conclusionWordCount = Math.floor(wordCount * 0.1); // 10% for conclusion
+    const bodyWordCount = wordCount - introWordCount - conclusionWordCount;
+    
+    // Determine optimal number of body sections based on content length
+    const optimalSectionCount = getOptimalSectionCount(contentLength);
+    const sectionWordCount = Math.floor(bodyWordCount / optimalSectionCount);
     
     const prompt = `
-      Create a detailed narrative structure for an analytical news podcast episode based on this basic plan.
+      As a market analysis expert, create a detailed narrative structure for a data-focused podcast episode about the following topic. The structure should emphasize quantitative analysis, industry metrics, and evidence-based insights.
       
-      Episode title: ${episodePlan.episodeTitle}
+      RESEARCH CONTENT:
+      ${researchResults.overallSynthesis}
       
-      Selected topics:
-      ${episodePlan.selectedTopics.map((topic, index) => 
-        `${index + 1}. ${topic.topic} (depth: ${topic.targetDepth})`
-      ).join('\n')}
+      Topic Research Details:
+      ${researchResults.topicResearch.map(research => `
+      - ${research.topic}: ${research.synthesizedContent.substring(0, 500)}...
+      `).join('\n')}
       
-      Target total word count: ${targetWordCount} words
+      INSTRUCTIONS:
+      Create a professional narrative structure for a data-driven podcast episode with EXACTLY the following components:
       
-      Develop a complete narrative structure with these components:
+      1. Introduction section with:
+         - An attention-grabbing hook statement that mentions a surprising statistic or metric
+         - A brief explanation of what analysts should know about this topic
+         - Word count: exactly ${introWordCount} words
       
-      1. Introduction section:
-         - A compelling approach to introduce the main themes
-         - A hook to engage listeners
-         - A brief framing of why these topics matter now
-         - Word count allocation (typically a concise 10% of total)
+      2. Exactly ${optimalSectionCount} body sections, each with:
+         - A clear section title incorporating metrics or analytical terms (e.g., "Segment Growth: 43% YoY Increase in Enterprise Adoption")
+         - Reference to specific topics from the research (identify which research topic to use)
+         - Content approach emphasizing data-driven analysis, trend identification, market impact
+         - 3-5 key bullet points (as phrases) highlighting metrics, quantitative insights, and specific examples to cover
+         - A transition statement leading into the section
+         - A transition statement leading out of the section
+         - Word count: exactly ${sectionWordCount} words per section
       
-      2. Body sections (one for each topic):
-         - Section title (should reflect the analytical angle)
-         - Topic reference (which selected topic this covers)
-         - Content approach: Describe how the topic will be presented. **Crucially, incorporate specific analytical frameworks to ensure depth.** Aim to include 2-3 of the following angles per topic, where relevant:
-            * "Background & Context": Provide necessary historical or foundational information.
-            * "Competing Perspectives": Explore different viewpoints or arguments.
-            * "Causal Analysis": Explain the causes and effects related to the topic.
-            * "Implications & Significance": Discuss why the topic matters and its potential impacts.
-            * "Underlying Trends/Patterns": Identify connections, trends, or recurring themes.
-            * "Comparative Analysis": Compare/contrast with other related events or situations.
-            * "Future Outlook": Speculate on potential future developments.
-         - Key points (focus on the *insights* derived from the analytical approach, not just raw facts)
-         - Substantive transitions that form meaningful connections between topics
-         - Word count allocation (based on topic depth: deep > medium > overview)
+      3. Conclusion section with:
+         - Approach for synthesizing the key metrics and insights
+         - Final thought statement that ties back to the hook but is forward-looking
+         - Word count: exactly ${conclusionWordCount} words
       
-      3. Conclusion section:
-         - Synthesis of key insights across topics (not just summary)
-         - Broader implications or takeaways
-         - Word count allocation (typically 10% of total)
+      REQUIREMENTS:
+      - Focus on quantitative analysis and evidence-based insights
+      - Use business/market research terminology appropriate for experts
+      - Prioritize topics with the strongest data points and metrics
+      - Structure each section to follow a logical analytical progression
+      - Ensure transitions between sections create a cohesive analytical narrative
+      - Format as a valid JSON object with the structure shown below
       
-      Allocate the ${targetWordCount} words across all sections, giving more words to 
-      deeper topics and ensuring the total adds up correctly. The structure should 
-      encourage analytical depth rather than surface-level coverage.
-      
-      Respond in JSON format:
+      OUTPUT FORMAT:
+      Return a valid JSON object with this exact structure:
       {
         "introduction": {
-          "approach": "Description of introduction approach",
-          "topics": "Brief mention of topics to be covered",
-          "hook": "Engaging hook to start the episode",
-          "wordCount": 100
+          "hook": "string - engaging opening statement with a key statistic",
+          "approach": "string - how to introduce the topic",
+          "topics": "string - key points to cover in intro",
+          "wordCount": number
         },
         "bodySections": [
           {
-            "sectionTitle": "Compelling section title reflecting the analysis",
-            "topicReference": "Reference to original topic",
-            "contentApproach": "Description of the analytical approach, mentioning frameworks used (e.g., Causal Analysis, Competing Perspectives)",
-            "keyPoints": ["Insight 1 (e.g., The primary cause identified is...)", "Insight 2 (e.g., A key implication is...)"],
+            "sectionTitle": "string - analytical section title with metrics",
+            "topicReference": "string - which research topic this section draws from",
+            "contentApproach": "string - analytical approach for this section",
+            "keyPoints": ["string", "string", "string", "string", "string"],
             "transitions": {
-              "leadIn": "Transition into this section",
-              "leadOut": "Transition to next section"
+              "leadIn": "string - transition into this section",
+              "leadOut": "string - transition out of this section"
             },
-            "wordCount": 150
+            "wordCount": number
           },
-          ...
+          ... additional sections ...
         ],
         "conclusion": {
-          "summarizationApproach": "How to summarize the episode",
-          "finalThoughts": "Closing thoughts or call to action",
-          "wordCount": 100
-        },
-        "overallWordCount": ${targetWordCount}
+          "summarizationApproach": "string - how to wrap up the analysis",
+          "finalThoughts": "string - closing statement with forward-looking insight",
+          "wordCount": number
+        }
       }
     `;
     
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
+    const response = result.response.text();
     try {
-      // Clean up the response to ensure it's valid JSON
-      const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
-      const structureResult = JSON.parse(cleanedResponse);
+      const narrativeStructure = JSON.parse(response);
       
-      // Validate the basic structure and add default adherence metrics
-      if (!structureResult.introduction || 
-          !Array.isArray(structureResult.bodySections) || 
-          !structureResult.conclusion) {
-        throw new Error('Invalid narrative structure format');
+      // Quick validation
+      if (!narrativeStructure.introduction || !narrativeStructure.bodySections || !narrativeStructure.conclusion) {
+        throw new Error('Narrative structure missing required sections');
       }
       
-      // Add adherence metrics that will be updated later
-      const narrativeStructure: NarrativeStructure = {
-        ...structureResult,
-        adherenceMetrics: {
-          structureScore: 0,
-          balanceScore: 0,
-          transitionScore: 0,
-          overallAdherence: 0
-        }
-      };
-      
-      // Validate the word count allocations
-      const totalAllocated = 
-        narrativeStructure.introduction.wordCount +
-        narrativeStructure.bodySections.reduce((sum, section) => sum + section.wordCount, 0) +
-        narrativeStructure.conclusion.wordCount;
-      
-      console.log(`Narrative structure created with ${narrativeStructure.bodySections.length} body sections`);
-      console.log(`Word count allocation: ${totalAllocated}/${targetWordCount} words`);
-      
-      if (Math.abs(totalAllocated - targetWordCount) > targetWordCount * 0.05) {
-        console.warn(`Word count allocation differs significantly from target (${totalAllocated} vs ${targetWordCount})`);
-        // Fix word counts to match target exactly
-        const adjustmentFactor = targetWordCount / totalAllocated;
-        narrativeStructure.introduction.wordCount = Math.round(narrativeStructure.introduction.wordCount * adjustmentFactor);
-        narrativeStructure.conclusion.wordCount = Math.round(narrativeStructure.conclusion.wordCount * adjustmentFactor);
-        for (let i = 0; i < narrativeStructure.bodySections.length; i++) {
-          narrativeStructure.bodySections[i].wordCount = Math.round(narrativeStructure.bodySections[i].wordCount * adjustmentFactor);
-        }
-        narrativeStructure.overallWordCount = targetWordCount;
-      }
-      
+      console.log('Successfully created narrative structure');
       return narrativeStructure;
-    } catch (parseError) {
-      console.error('Error parsing narrative structure:', parseError);
-      return createFallbackNarrativeStructure(episodePlan, targetWordCount);
+    } catch (error) {
+      console.error('Error parsing narrative structure:', error);
+      throw new Error('Failed to create valid narrative structure');
     }
   } catch (error) {
     console.error('Error creating narrative structure:', error);
-    return createFallbackNarrativeStructure(episodePlan, targetWordCount);
+    
+    // Return a basic fallback structure
+    return createFallbackNarrativeStructure(researchResults, contentLength);
   }
 }
 
 /**
- * Creates a fallback narrative structure if the AI generation fails
- * @param episodePlan Basic episode plan
- * @param targetWordCount Target word count
- * @returns Basic narrative structure
+ * Fallback narrative structure in case the AI-generated one fails
  */
 function createFallbackNarrativeStructure(
-  episodePlan: EpisodePlan,
-  targetWordCount: number
+  researchResults: DetailedResearchResults,
+  contentLength: ContentLength
 ): NarrativeStructure {
   console.log('Creating fallback narrative structure');
   
   // Calculate basic word count distribution
-  const introWordCount = Math.round(targetWordCount * 0.15);
-  const conclusionWordCount = Math.round(targetWordCount * 0.15);
-  const bodyTotalWordCount = targetWordCount - introWordCount - conclusionWordCount;
+  const introWordCount = Math.round(getWordCountForLength(contentLength) * 0.15);
+  const conclusionWordCount = Math.round(getWordCountForLength(contentLength) * 0.1);
+  const bodyTotalWordCount = getWordCountForLength(contentLength) - introWordCount - conclusionWordCount;
   
   // Distribute remaining words among body sections
-  const topics = episodePlan.selectedTopics;
+  const topics = researchResults.topicResearch;
   const bodySections = topics.map((topic, index) => {
-    // Calculate word count based on depth
-    let depthMultiplier = 1;
-    if (topic.targetDepth === 'deep') depthMultiplier = 1.5;
-    if (topic.targetDepth === 'overview') depthMultiplier = 0.7;
+    // Calculate word count based on position (simpler fallback)
+    const sectionWordCount = Math.round(bodyTotalWordCount / topics.length);
     
-    // Basic weighted distribution
-    const baseWordCount = bodyTotalWordCount / topics.length;
-    const weightedWordCount = Math.round(baseWordCount * depthMultiplier);
-    
-    // Create section
     return {
-      sectionTitle: `Section on ${topic.topic}`,
+      sectionTitle: `Analysis of ${topic.topic}`,
       topicReference: topic.topic,
-      contentApproach: `Standard approach to ${topic.topic}`,
-      keyPoints: topic.angles.slice(0, 3),
+      contentApproach: "Explore key insights and implications",
+      keyPoints: [
+        "Main finding from research",
+        "Supporting evidence or data",
+        "Implications for stakeholders"
+      ],
       transitions: {
-        leadIn: index === 0 ? 
-          "Let's begin by exploring" : 
-          "Moving on to our next topic",
-        leadOut: index === topics.length - 1 ? 
-          "Having covered all our topics" : 
-          "Let's continue with our next topic"
+        leadIn: index === 0 
+          ? "Let's begin by examining" 
+          : "Moving on to another important aspect",
+        leadOut: index === topics.length - 1 
+          ? "With that analysis complete, let's summarize" 
+          : "This leads us to our next topic"
       },
-      wordCount: weightedWordCount
+      wordCount: sectionWordCount
     };
   });
-  
-  // Adjust word counts to exactly match target
-  let totalBodyWords = bodySections.reduce((sum, section) => sum + section.wordCount, 0);
-  const adjustment = bodyTotalWordCount - totalBodyWords;
-  if (adjustment !== 0 && bodySections.length > 0) {
-    bodySections[0].wordCount += adjustment;
-  }
   
   return {
     introduction: {
       approach: "Start with a clear overview of the episode topics",
-      topics: episodePlan.selectedTopics.map(t => t.topic).join(', '),
-      hook: `Today we're exploring ${episodePlan.episodeTitle}, a fascinating topic with many dimensions.`,
+      topics: researchResults.topicResearch.map(t => t.topic).join(', '),
+      hook: `Today we're exploring ${researchResults.episodeTitle}, a fascinating topic with many dimensions.`,
       wordCount: introWordCount
     },
     bodySections,
     conclusion: {
-      summarizationApproach: "Recap key points from each section",
-      finalThoughts: "Leave the listener with a final insight about the overall topic",
+      summarizationApproach: "Recap key insights and their interconnections",
+      finalThoughts: "Reflect on the broader implications for the industry",
       wordCount: conclusionWordCount
     },
-    overallWordCount: targetWordCount,
-    adherenceMetrics: {
-      structureScore: 0,
-      balanceScore: 0,
-      transitionScore: 0,
-      overallAdherence: 0
-    }
+    overallWordCount: getWordCountForLength(contentLength)
   };
 }
 

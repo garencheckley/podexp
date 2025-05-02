@@ -484,33 +484,33 @@ async function synthesizeLayeredResearch(
     });
 
     const synthesisPrompt = `
-      Synthesize the following research findings for the topic "${topic.topic}" into a cohesive, analytical narrative (approx 400-600 words).
+      Synthesize the following research findings for the topic "${topic.topic}" into a data-rich, evidence-based market research analysis (approx 400-600 words).
       
-      REQUIRED ANALYTICAL ELEMENTS:
-      1. ANSWER KEY QUESTIONS: Address all key questions provided thoroughly with evidence-based answers
-      2. CAUSAL ANALYSIS: Explain causes and effects related to the main developments in this topic
-      3. COMPARATIVE ANALYSIS: Compare different viewpoints, approaches, or alternatives when relevant
-      4. CONTEXTUAL ANALYSIS: Explain the historical, social, economic, or political context that makes this topic significant
-      5. IMPLICATION ANALYSIS: Discuss the potential consequences or impacts of the main developments
+      REQUIRED CONTENT ELEMENTS:
+      1. SPECIFIC DATA POINTS: Include concrete statistics, percentages, metrics, and quantifiable information
+      2. PRECISE EXAMPLES: Cite specific companies, products, or case studies that illustrate key points
+      3. EXPERT ANALYSIS: Interpret data patterns and implications as a market research expert would
+      4. COMPARATIVE METRICS: Use numerical comparisons (YoY changes, market share shifts, growth rates)
+      5. DOMAIN-SPECIFIC INSIGHTS: Use specialized terminology and analysis frameworks appropriate for industry experts
       
-      WRITING APPROACH:
-      - Integrate insights from all layers, with special emphasis on Layer 3 (deep research)
-      - Start with foundational understanding and build to sophisticated insights
-      - Maintain an objective yet insightful tone suitable for a news podcast
-      - Present contrasting viewpoints where they exist
-      - Identify underlying trends or patterns
+      KEY APPROACH REQUIREMENTS:
+      - Extract and highlight the MOST SPECIFIC statistical information from all research layers
+      - Ensure EVERY significant claim is supported by specific data points or concrete examples
+      - Write for an audience that already understands the domain fundamentals - focus on advanced insights
+      - Transform vague statements (e.g., "sales grew significantly") into precise ones (e.g., "sales grew 37% YoY")
+      - Connect disparate data points to reveal non-obvious patterns and implications
       
       STRICTLY AVOID:
-      - Filler phrases like "it's important to note," "as we can see," "it's worth mentioning," etc.
-      - Stating the obvious or making claims without supporting evidence
-      - Surface-level summaries without analytical depth
-      - Vague generalizations or oversimplifications
-      - Repetitive information or redundant statements
+      - Generic statements without supporting quantitative evidence
+      - Filler phrases like "it's important to note," "as we can see," "it's worth mentioning"
+      - Explaining basic concepts that domain experts would already understand
+      - Vague qualitative descriptions where specific metrics could be used
+      - Surface-level summaries without data-driven depth
       
       Research Input:
       ${synthesisInput}
 
-      Generate only the synthesized narrative text with substantive analytical content.
+      Generate only the synthesized market research analysis with emphasis on SPECIFIC DATA POINTS, STATISTICS, and CONCRETE EXAMPLES throughout.
     `;
 
     const result = await model.generateContent(synthesisPrompt);
@@ -678,31 +678,31 @@ async function generateIntegratedContent(
     });
 
     const generationPrompt = `
-      You are an expert podcast script writer crafting an INSIGHTFUL, ANALYTICAL news podcast. Your goal is to write a cohesive and engaging podcast script that goes BEYOND surface-level reporting to deliver meaningful analysis.
+      You are an expert MARKET RESEARCH ANALYST crafting a data-driven, insightful podcast. Your goal is to write a cohesive and authoritative script that delivers deep, evidence-based analysis filled with SPECIFIC DATA POINTS, STATISTICS, and CONCRETE EXAMPLES.
       
       Target total word count: ${targetWordCount} words.
       Allocate content according to the target length suggested for each topic.
       
-      HOST PERSONA: Confident, knowledgeable, and thoughtful. You synthesize complex information and present it in a clear, analytical manner. You're authoritative but conversational - never condescending. You help listeners understand not just WHAT happened but WHY it matters.
+      HOST PERSONA: Authoritative market research expert who presents sophisticated analysis backed by HARD DATA. You speak with the confidence of someone who intimately understands the domain space and is speaking to other professionals who already grasp the fundamentals - you don't waste time explaining basics that your audience already knows. Your value comes from connecting data points, identifying patterns, and extracting meaningful insights.
       
       REQUIRED CONTENT QUALITIES:
-      1. ANALYTICAL DEPTH: Don't just report facts - analyze their significance, consequences, and broader context
-      2. SYNTHETIC THINKING: Identify patterns and connections ACROSS topics when relevant
-      3. MULTIPLE PERSPECTIVES: Present contrasting viewpoints on complex issues
-      4. NUANCED COMMENTARY: Acknowledge complexity and avoid oversimplification
-      5. CAUSAL ANALYSIS: Explain causes and effects when appropriate
+      1. DATA-CENTRIC ANALYSIS: Liberally cite SPECIFIC statistics, percentages, growth rates, market sizes, and other quantifiable metrics
+      2. PRECISE EXAMPLES: Reference specific companies, products, or case studies to illustrate key points
+      3. COMPARATIVE METRICS: Use data to make meaningful comparisons (year-over-year changes, industry benchmarks, cross-sector analysis)
+      4. EXPERT SYNTHESIS: Connect disparate data points to reveal non-obvious patterns and implications
+      5. DOMAIN-SPECIFIC TERMINOLOGY: Use specialized vocabulary and industry terms appropriate to field experts
       
       CRITICAL WRITING RESTRICTIONS:
-      1. NO FILLER PHRASES: Avoid empty phrases like "it's important to note," "as we can see," "it's worth mentioning," "it's interesting that," "as mentioned earlier," etc.
-      2. NO STATING THE OBVIOUS: Don't tell listeners something is "fascinating" or "important" - demonstrate WHY it matters through analysis
-      3. NO REDUNDANCY: Never repeat information unnecessarily
-      4. NO VAGUE CLAIMS: Support analytical points with specific evidence
-      5. NO SUPERFICIAL TRANSITIONS: Make substantive connections between topics
+      1. NO GENERIC STATEMENTS: Every significant claim must be supported by specific data or concrete examples
+      2. NO DUMBING DOWN: Write for an audience that already understands the domain - focus on advanced insights
+      3. NO VAGUE CLAIMS: Instead of "sales grew significantly," say "sales grew 37% year-over-year"
+      4. NO FILLER PHRASES: Avoid empty phrases like "it's important to note," "as we can see," "it's worth mentioning"
+      5. NO OBVIOUS STATEMENTS: Don't tell listeners what they already know - focus exclusively on high-value insights
       
       CRITICAL FORMAT REQUIREMENTS:
       1. DO NOT include any speaker indicators like "Host:" or "Speaker:"
       2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
-      3. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" or "(Podcast Outro Music Fades In)"
+      3. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" 
       4. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
       5. AVOID assumptions about publication frequency (daily, weekly, monthly)
       6. Use only plain text with standard punctuation (periods, commas, question marks)
@@ -710,7 +710,7 @@ async function generateIntegratedContent(
       Synthesized Research Input:
       ${combinedResearch}
 
-      Generate ONLY the integrated podcast script content that delivers genuine insights on these topics. Focus on synthesis, analysis, and meaningful commentary.
+      Generate ONLY the integrated podcast script content. Every paragraph should include SPECIFIC DATA POINTS, STATISTICS or CONCRETE EXAMPLES. Write as an authoritative market researcher speaking to other domain experts.
     `;
 
     const result = await model.generateContent(generationPrompt);
@@ -719,5 +719,70 @@ async function generateIntegratedContent(
   } catch (error) {
     console.error('Error generating integrated podcast content:', error);
     return "Failed to generate integrated podcast content due to an internal error.";
+  }
+}
+
+export async function generateDeepResearch(
+  searchTopic: string,
+  existingResults: string,
+  maxTokenCount: number = 2500
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
+  try {
+    console.log(`Generating deep dive market analysis on: ${searchTopic}`);
+    
+    const prompt = `
+      You are a market research expert specializing in quantitative analysis and data synthesis. Using the search results about "${searchTopic}" provided below, create a comprehensive, data-rich analysis focusing on key metrics, statistics, and evidence-based insights.
+
+      RESEARCH OBJECTIVE:
+      Produce a data-centric market analysis with SPECIFIC quantitative metrics, percentages, growth rates, comparative statistics, and numerical trends relevant to "${searchTopic}". Focus on presenting substantive, actionable intelligence for business decision-makers.
+
+      SEARCH RESULTS TO ANALYZE:
+      ${existingResults}
+
+      CONTENT REQUIREMENTS:
+      1. QUANTITATIVE EMPHASIS: Every paragraph must include SPECIFIC statistics, percentages, market sizes, growth rates, or other quantifiable metrics
+      2. DATA SYNTHESIS: Connect disparate data points to reveal patterns and insights not immediately obvious from individual statistics
+      3. MARKET SEGMENTATION: Break down market data by relevant segments, geographies, or demographics where applicable
+      4. COMPETITIVE LANDSCAPE: Include specific market share figures and competitive positioning metrics when available
+      5. TREND ANALYSIS: Present data showing directional trends (growth, decline, stability) with specific time frames
+      6. FINANCIAL METRICS: Incorporate revenue figures, valuation data, funding information, or cost structures where relevant
+      7. CASE PRECEDENTS: Reference specific company examples with associated performance metrics
+
+      FORMAT REQUIREMENTS:
+      1. Write in clear, professional language suitable for business analysts and decision-makers
+      2. Present information in logically structured paragraphs, not as a numbered report
+      3. DO NOT use bullet points, tables, or other formatting elements
+      4. Cite the source of metrics whenever possible (e.g., "According to McKinsey research, the market grew 23% YoY")
+      5. Use proper business terminology and industry-specific metrics
+      6. Maintain a factual, evidence-based tone throughout
+      7. Conclude with the most significant metrics-based insights and implications
+
+      CRITICAL RESTRICTIONS:
+      1. ONLY include information that appears in the search results - do NOT invent or hallucinate statistics
+      2. NEVER say "according to the search results" or reference the prompt itself
+      3. DO NOT apologize for limitations in the data or mention gaps in information
+      4. AVOID vague phrases like "significant growth" - always provide the specific percentage or number
+      5. NEVER make claims about the present year or predict specific timelines
+      6. DO NOT add commentary on information quality or source reliability
+
+      PRODUCE A COHESIVE, DATA-RICH MARKET ANALYSIS that synthesizes the most reliable quantitative information from the search results. Focus exclusively on metrics, statistics, and evidence-based insights about "${searchTopic}".
+    `;
+    
+    const result = await model.generateContent(prompt);
+    const deepResearch = result.response.text();
+    
+    console.log(`Generated deep research content (${deepResearch.length} chars)`);
+    
+    // Truncate if necessary to respect token limits
+    if (deepResearch.length > maxTokenCount * 4) { // Rough char to token ratio
+      console.log(`Truncating deep research to fit token limit (${maxTokenCount})`);
+      return deepResearch.substring(0, maxTokenCount * 4);
+    }
+    
+    return deepResearch;
+  } catch (error) {
+    console.error('Error generating deep research:', error);
+    return `Unable to generate deep research on ${searchTopic}. The search results provided may not contain sufficient data for quantitative analysis.`;
   }
 } 

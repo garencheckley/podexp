@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+import bodyParser from 'body-parser';
 import { initializeFirebase } from './services/database';
 import podcastRoutes from './routes/podcasts';
 import adminRoutes from './routes/admin';
 import episodeLogRoutes from './routes/episodeLogs';
+import authRoutes from './routes/auth';
 
 // Load environment variables
 dotenv.config();
@@ -28,8 +31,17 @@ console.log('Starting server with configuration:', {
 });
 
 // Middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(cors());
+app.use(bodyParser.json());
+app.use(cookieParser());
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'https://podcast-frontend-827681017824.us-west1.run.app',
+    'http://localhost:5173'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'Cookie', 'Accept']
+}));
 
 // Initialize Firebase
 try {
@@ -58,6 +70,7 @@ app.get('/', (req, res) => {
 });
 
 // Import and use route handlers
+app.use('/api/auth', authRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', episodeLogRoutes);

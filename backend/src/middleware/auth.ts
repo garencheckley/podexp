@@ -1,55 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
-import * as admin from 'firebase-admin';
-import { DecodedIdToken } from 'firebase-admin/auth';
 
 // Extend the Express Request interface to include our custom user property
 declare global {
   namespace Express {
     interface Request {
-      user?: DecodedIdToken; // This will hold the decoded token payload
-      userId?: string;       // Convenience property for the user ID (uid)
+      userId?: string; // Will hold the user's email address
     }
   }
 }
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
-  console.log('Authentication temporarily disabled - bypassing token check');
+  // Log all cookies and headers for debugging
+  console.log('Auth middleware - All cookies:', req.cookies);
+  console.log('Auth middleware - Headers:', {
+    origin: req.headers.origin,
+    referer: req.headers.referer,
+    'user-agent': req.headers['user-agent'],
+    cookie: req.headers.cookie,
+    'x-user-email': req.headers['x-user-email']
+  });
   
-  // Temporarily set a mock userId to bypass ownership checks in routes
-  // Using a constant ID that will be consistent across requests
-  req.userId = "temp-user-no-auth";
+  // Try to get email from either cookie or header
+  const userEmailCookie = req.cookies?.userEmail;
+  const userEmailHeader = req.headers['x-user-email'] as string;
+  const userEmail = userEmailCookie || userEmailHeader;
   
-  // Always proceed to the next middleware or route handler
+  // If no email found, user is not authenticated
+  if (!userEmail) {
+    console.log('Authentication failed: No email cookie or header found');
+    return res.status(401).json({ error: 'Authentication required. Please log in.' });
+  }
+  
+  // Attach email to request object as userId
+  req.userId = userEmail;
+  console.log(`User authenticated with email: ${userEmail} (via ${userEmailCookie ? 'cookie' : 'header'})`);
+  
+  // Proceed to the next middleware or route handler
   next();
-  
-  // Original authentication code commented out:
-  /*
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-
-  if (!token) {
-    console.log('Authentication failed: No token provided.');
-    return res.status(401).json({ error: 'Authentication required: No token provided.' });
-  }
-
-  try {
-    // Verify the ID token using Firebase Admin SDK
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log(`Token verified successfully for user ID: ${decodedToken.uid}`);
-
-    // Attach the decoded token and user ID to the request object
-    req.user = decodedToken;
-    req.userId = decodedToken.uid;
-
-    // Proceed to the next middleware or route handler
-    next();
-  } catch (error: any) {
-    console.error('Authentication failed: Invalid token.', error);
-    // Handle specific errors if needed (e.g., token expired)
-    if (error.code === 'auth/id-token-expired') {
-      return res.status(401).json({ error: 'Authentication failed: Token expired.' });
-    }
-    return res.status(403).json({ error: 'Authentication failed: Invalid token.' });
-  }
-  */
 }; 
