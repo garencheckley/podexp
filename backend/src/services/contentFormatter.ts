@@ -110,7 +110,17 @@ export async function generateStructuredContent(
     console.log(`[contentFormatter] Generated structured content (${generatedContent.split(/\s+/).length} words)`);
     return generatedContent;
   } catch (error) {
-    console.error('[contentFormatter] Error generating structured content:', error);
+    console.error('[contentFormatter] Error generating structured content. Details:', JSON.stringify(error, null, 2));
+    // Log specific properties if available (common in API errors)
+    if (error instanceof Error) {
+      console.error('[contentFormatter] Error Name:', error.name);
+      console.error('[contentFormatter] Error Message:', error.message);
+      // console.error('[contentFormatter] Error Stack:', error.stack); // Stack might be too verbose for regular logs
+    }
+    // Attempt to log response data if it exists (some libraries attach it)
+    if (error && typeof error === 'object' && 'response' in error) {
+        console.error('[contentFormatter] Error Response Data:', JSON.stringify((error as any).response, null, 2));
+    }
     return null; // Indicate failure
   }
 }
