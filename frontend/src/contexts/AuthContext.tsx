@@ -1,55 +1,44 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { checkAuthentication, logout } from '../services/api';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { logout as apiLogout } from '../services/api';
+
+// Key for storing the user email in localStorage (mirrors api.ts)
+const USER_EMAIL_KEY = 'userEmail';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  isLoading: boolean;
   userEmail: string | null;
-  logout: () => Promise<void>;
+  login: (email: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Initialize state directly from localStorage
+  const initialEmail = localStorage.getItem(USER_EMAIL_KEY);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!initialEmail);
+  const [userEmail, setUserEmail] = useState<string | null>(initialEmail);
 
-  // Check authentication status on first render
-  useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        const authResult = await checkAuthentication();
-        setIsAuthenticated(authResult.status);
-        setUserEmail(authResult.email);
-      } catch (error) {
-        console.error('Auth verification failed:', error);
-        setIsAuthenticated(false);
-        setUserEmail(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Function to handle login (called after token verification)
+  const handleLogin = (email: string) => {
+    console.log('AuthContext: Logging in with email:', email);
+    localStorage.setItem(USER_EMAIL_KEY, email);
+    setUserEmail(email);
+    setIsAuthenticated(true);
+  };
 
-    // Add a small delay to allow cookie processing after redirect
-    const timer = setTimeout(() => {
-      verifyAuth();
-    }, 150); // Delay in milliseconds
-
-    // Cleanup timer on unmount
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleLogout = async () => {
-    await logout();
+  // Function to handle logout
+  const handleLogout = () => {
+    console.log('AuthContext: Logging out.');
+    apiLogout(); // Calls the api function (which just clears localStorage)
     setIsAuthenticated(false);
     setUserEmail(null);
   };
 
   const value = {
     isAuthenticated,
-    isLoading,
     userEmail,
+    login: handleLogin,
     logout: handleLogout,
   };
 

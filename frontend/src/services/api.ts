@@ -25,10 +25,9 @@ const getAuthHeaders = (): HeadersInit => {
 const addAuthHeaders = (options: RequestInit = {}): RequestInit => {
   return {
     ...options,
-    credentials: 'include', // Always try cookies first
     headers: {
       ...options.headers,
-      ...getAuthHeaders(), // Add JavaScript-based auth headers as fallback
+      ...getAuthHeaders(), // Add JavaScript-based auth headers (X-User-Email)
     },
   };
 };
@@ -40,7 +39,7 @@ export async function requestLogin(email: string): Promise<void> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ email }),
-    credentials: 'include', // Include cookies with requests
+    // credentials: 'include', // REMOVED - No longer needed
   });
   
   if (!response.ok) {
@@ -48,72 +47,44 @@ export async function requestLogin(email: string): Promise<void> {
   }
 }
 
-// New function to handle token verification with JS-based auth
-export async function verifyToken(token: string): Promise<boolean> {
+// Function to handle token verification solely via JSON response
+export async function verifyToken(token: string): Promise<{ success: boolean; email: string | null }> {
   try {
     const response = await fetch(`${API_URL}/auth/verify?token=${token}`, {
       headers: {
+        // Ensure we request JSON
         'Accept': 'application/json',
       },
+      // Do not send credentials (cookies) for this request
+      // credentials: 'omit', // Optional: explicitly omit if needed
     });
     
     if (!response.ok) {
-      return false;
+      console.error(`Token verification failed with status: ${response.status}`);
+      return { success: false, email: null };
     }
     
     const data = await response.json();
     if (data.success && data.email) {
-      // Store email in localStorage for JavaScript-based authentication
-      localStorage.setItem(USER_EMAIL_KEY, data.email);
-      return true;
+      // Return success and email, DO NOT set localStorage here
+      console.log('Token verification successful, returning email:', data.email);
+      return { success: true, email: data.email };
+    } else {
+      console.error('Token verification response did not contain success/email');
+      return { success: false, email: null };
     }
-    
-    return false;
   } catch (error) {
-    console.error('Token verification error:', error);
-    return false;
+    console.error('Token verification network/parse error:', error);
+    return { success: false, email: null };
   }
 }
 
-export async function logout(): Promise<void> {
+// Updated logout function - client-side only
+export function logout(): void { // No longer async, returns void
+  console.log('Performing client-side logout: clearing localStorage.');
   // Clear localStorage email
   localStorage.removeItem(USER_EMAIL_KEY);
-  
-  // Also try cookie-based logout
-  window.location.href = `${API_URL}/auth/logout`;
-}
-
-export async function checkAuthentication(): Promise<{ status: boolean, email: string | null }> {
-  try {
-    // Call the new dedicated status endpoint
-    const response = await fetch(`${API_URL}/auth/status`, {
-      credentials: 'include', // Send cookies if available
-    });
-
-    if (!response.ok) {
-      // If response is not OK (e.g., 500), assume not authenticated
-      console.error(`Auth status check failed with status: ${response.status}`);
-      localStorage.removeItem(USER_EMAIL_KEY);
-      return { status: false, email: null };
-    }
-
-    const data = await response.json();
-
-    if (data.authenticated && data.email) {
-      // If authenticated and email is provided, store email and return true
-      localStorage.setItem(USER_EMAIL_KEY, data.email);
-      return { status: true, email: data.email };
-    } else {
-      // If not authenticated according to backend, clear storage and return false
-      localStorage.removeItem(USER_EMAIL_KEY);
-      return { status: false, email: null };
-    }
-
-  } catch (error) {
-    console.error('Authentication check network/parse error:', error);
-    localStorage.removeItem(USER_EMAIL_KEY);
-    return { status: false, email: null };
-  }
+  // No backend call needed
 }
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
@@ -148,14 +119,13 @@ export async function getEpisodes(podcastId: string): Promise<Episode[]> {
 }
 
 export async function createPodcast(podcast: Partial<Pick<Podcast, 'title' | 'description' | 'prompt'>> & Pick<Podcast, 'description' | 'prompt'> & { podcastType?: string }): Promise<Podcast> {
-  const response = await fetch(`${API_URL}/podcasts`, {
+  const response = await fetch(`${API_URL}/podcasts`, addAuthHeaders({
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json', // Restored original headers
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(podcast),
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   if (!response.ok) {
     throw new Error('Failed to create podcast');
   }
@@ -166,14 +136,13 @@ export async function createEpisode(
   podcastId: string,
   episode: Pick<Episode, 'title' | 'description' | 'content'>
 ): Promise<Episode> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes`, {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes`, addAuthHeaders({
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json', // Restored original headers
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(episode),
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   if (!response.ok) {
     throw new Error('Failed to create episode');
   }
@@ -219,13 +188,12 @@ export async function generateEpisode(podcastId: string, options: { targetMinute
 }
 
 export async function regenerateAudio(podcastId: string, episodeId: string): Promise<Episode> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`, {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}/episodes/${episodeId}/regenerate-audio`, addAuthHeaders({
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json', // Restored original headers
+      'Content-Type': 'application/json',
     },
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   
   if (!response.ok) {
     try {
@@ -261,14 +229,13 @@ export async function updatePodcast(
   podcastId: string,
   updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType'>>
 ): Promise<Podcast> {
-  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}`, addAuthHeaders({
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json', // Restored original headers
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(updates),
-    credentials: 'include', // Include cookies with requests
-  });
+  }));
   
   if (!response.ok) {
     throw new Error('Failed to update podcast');

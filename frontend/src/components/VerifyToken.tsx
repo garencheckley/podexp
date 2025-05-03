@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyToken } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/VerifyToken.css';
 
 const VerifyToken: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   useEffect(() => {
     const handleTokenVerification = async () => {
@@ -18,18 +20,15 @@ const VerifyToken: React.FC = () => {
           return;
         }
 
-        // Attempt JavaScript-based verification first
-        const success = await verifyToken(token);
+        // Call API to verify token and get email
+        const verificationResult = await verifyToken(token);
         
-        if (success) {
+        if (verificationResult.success && verificationResult.email) {
           setStatus('success');
-          // Don't wait - navigate immediately after successful verification
-          // The AuthContext check will handle the state update on the home page
-          console.log('Token verified via JS flow, navigating immediately.');
+          // Call the login function from AuthContext to update state
+          login(verificationResult.email);
+          console.log('Token verified, context updated, navigating immediately.');
           navigate('/'); 
-          // setTimeout(() => {
-          //   navigate('/');
-          // }, 2000); 
         } else {
           setStatus('error');
         }
@@ -40,7 +39,7 @@ const VerifyToken: React.FC = () => {
     };
 
     handleTokenVerification();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, login]);
 
   return (
     <div className="verify-container">

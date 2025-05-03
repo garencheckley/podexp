@@ -15,15 +15,17 @@ const AppHeader: React.FC = () => {
   return (
     <header className="app-header">
       <h1>Garen's Podcast Generator</h1>
-      {isAuthenticated ? (
-        <button className="logout-button" onClick={logout}>
-          Log Out
-        </button>
-      ) : (
-        <Link to="/login" className="login-button">
-          Log In
-        </Link>
-      )}
+      <div className="auth-buttons">
+        {isAuthenticated ? (
+          <button className="logout-button" onClick={logout}>
+            Log Out
+          </button>
+        ) : (
+          <Link to="/login" className="login-button">
+            Log In
+          </Link>
+        )}
+      </div>
     </header>
   );
 };
