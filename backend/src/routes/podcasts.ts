@@ -1,4 +1,4 @@
-import express from 'express';
+import * as express from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   getAllPodcasts,
@@ -15,7 +15,7 @@ import {
   getEpisode,
   updatePodcast
 } from '../services/database';
-import { generateAndStoreAudio, deleteAudio } from '../services/audio';
+import * as audio from '../services/audio';
 import { conductThreeStageSearch } from '../services/search';
 import * as episodeAnalyzer from '../services/episodeAnalyzer';
 import * as searchOrchestrator from '../services/searchOrchestrator';
@@ -27,6 +27,8 @@ import * as sourceManager from '../services/sourceManager';
 import * as clusteringService from '../services/clusteringService';
 import { summarizeCluster } from '../services/clusteringService';
 import { authenticateToken, authenticateTokenOptional } from '../middleware/auth';
+import * as logService from '../services/logService';
+import { addDecision, updateStage, setEpisodeId, completeLog, failLog } from '../services/logService';
 
 const router = express.Router();
 
@@ -256,7 +258,7 @@ router.delete('/:podcastId/episodes/:episodeId', authenticateToken, async (req, 
     
     // If the episode has an audio URL, delete the audio file
     if (episode.audioUrl) {
-      await deleteAudio(podcastId, episodeId);
+      await audio.deleteAudio(podcastId, episodeId);
     }
     
     // Delete the episode from the database
@@ -299,7 +301,7 @@ router.delete('/:podcastId', authenticateToken, async (req, res) => {
     // Delete audio files for all episodes
     const audioDeletions = episodes
       .filter(episode => episode.audioUrl)
-      .map(episode => deleteAudio(podcastId, episode.id));
+      .map(episode => audio.deleteAudio(podcastId, episode.id));
     await Promise.all(audioDeletions);
     
     // Delete the podcast (this will also delete all episodes)
@@ -349,7 +351,7 @@ router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
     // Generate audio for the episode
     const audioStartTime = Date.now();
     console.log('Generating audio for the episode...');
-    const audioUrl = await generateAndStoreAudio(
+    const audioUrl = await audio.generateAndStoreAudio(
       episode.content!, 
       podcast.id!, 
       episode.id!
@@ -359,7 +361,6 @@ router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
     await updateEpisodeAudio(episode.id!, audioUrl);
     
     // Update log with audio generation
-    const logService = require('../services/logService');
     const generationLog = logService.createEpisodeGenerationLog(req.params.podcastId);
     generationLog.episodeId = episode.id;
     console.log(`Setting episode ID ${episode.id} in generation log ${generationLog.id}`);
@@ -393,667 +394,393 @@ router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
 
 // Generate a new episode for a podcast (Protected)
 router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
+  const { id: podcastId } = req.params;
+  let generationLog; // Define log here to be accessible in catch blocks
+  const logService = require('../services/logService'); // Require log service early
+
   try {
-    const { id: podcastId } = req.params;
-    console.log(`POST /api/podcasts/${podcastId}/generate-episode`);
+    console.log(`--- START Generate Episode for Podcast ID: ${podcastId} ---`);
     
-    // Add userId check
+    // Add userId check (early)
     if (!req.userId) {
-      console.error('Error generating episode: No userId found on request.');
+      console.error('Generate episode error: No userId found on request.');
       return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
     }
     console.log(`Attempting generate by user ${req.userId}`);
     
     // Create a new episode generation log
-    const logService = require('../services/logService');
-    const generationLog = logService.createEpisodeGenerationLog(podcastId);
+    generationLog = logService.createEpisodeGenerationLog(podcastId);
     console.log(`Created episode generation log: ${generationLog.id}`);
     
-    // Get the podcast & Authorize - Pass userId (email) for access check
-    const podcast = await getPodcast(podcastId, req.userId);
-    if (!podcast) {
-      const errorMsg = 'Podcast not found or access denied'; // Updated error message
-      await logService.saveEpisodeGenerationLog(
-        logService.failLog(generationLog, errorMsg)
-      );
-      return res.status(404).json({ error: errorMsg });
-    }
-    // Authorization Check - Compare ownerEmail with userId (email)
-    if (podcast.ownerEmail !== req.userId) { 
-      console.warn(`Forbidden: User ${req.userId} attempted to generate episode for podcast ${podcastId} owned by ${podcast.ownerEmail}`);
-      const errorMsg = 'Forbidden: You do not own this podcast';
-      await logService.saveEpisodeGenerationLog(
-        logService.failLog(generationLog, errorMsg)
-      );
-      return res.status(403).json({ error: errorMsg });
-    }
-    
-    console.log(`Generating episode for podcast: ${podcast.title}`);
-    
-    // Get episode length specification from request or default
-    // We use words per minute (WPM) of 130 for conversational speech
-    const wordsPerMinute = 130;
-    
-    // Check if request specifies targetMinutes or targetWordCount
-    let targetWordCount = 300; // Default ~2.3 minutes at 130 WPM
-    
-    if (req.body.targetMinutes) {
-      // If minutes are specified, calculate words (rounded to nearest 10)
-      const minutes = parseFloat(req.body.targetMinutes);
-      if (!isNaN(minutes) && minutes > 0) {
-        targetWordCount = Math.round((minutes * wordsPerMinute) / 10) * 10;
-        console.log(`Requested ${minutes} minutes, calculated ${targetWordCount} words`);
-      }
-    } else if (req.body.targetWordCount) {
-      // If word count is directly specified, use that
-      const wordCount = parseInt(req.body.targetWordCount);
-      if (!isNaN(wordCount) && wordCount > 0) {
-        targetWordCount = wordCount;
-        console.log(`Requested ${targetWordCount} words directly`);
-      }
-    }
-    
-    // Set minimum and maximum limits
-    const minWordCount = 200;  // ~1.5 minutes
-    const maxWordCount = 2600; // ~20 minutes (reasonable limit for episodes)
-    
-    if (targetWordCount < minWordCount) {
-      console.log(`Requested word count ${targetWordCount} below minimum, using ${minWordCount}`);
-      targetWordCount = minWordCount;
-    } else if (targetWordCount > maxWordCount) {
-      console.log(`Requested word count ${targetWordCount} above maximum, using ${maxWordCount}`);
-      targetWordCount = maxWordCount;
-    }
-    
-    const targetMinutes = targetWordCount / wordsPerMinute;
-    const lengthSpecification = `approximately ${targetWordCount} words (about ${targetMinutes.toFixed(1)} minutes when spoken)`;
-    console.log(`Target length: ${lengthSpecification}`);
-    
-    // Add decision to log
-    generationLog.decisions.push({
-      stage: 'initialization',
-      decision: `Set target length to ${targetWordCount} words (${targetMinutes.toFixed(1)} minutes)`,
-      reasoning: `Based on ${req.body.targetMinutes ? 'requested minutes' : req.body.targetWordCount ? 'requested word count' : 'default settings'}, calculated optimal word count within system limits.`,
-      alternatives: [],
-      timestamp: new Date().toISOString()
-    });
-    
-    // Save initial log
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    // Refresh sources if needed
-    console.log('Refreshing podcast sources...');
+    // --- Authorization --- 
+    let podcast: Podcast | null;
     try {
-      const updatedSources = await sourceManager.refreshSourcesIfNeeded(podcast);
-      
-      if (updatedSources && JSON.stringify(updatedSources) !== JSON.stringify(podcast.sources)) {
-        // Update the podcast with the refreshed sources
-        await updatePodcast(podcastId, {
-          sources: updatedSources
-        });
-        console.log(`Updated podcast with ${updatedSources.length} refreshed sources`);
-        
-        // Update the podcast object for use in this request
-        podcast.sources = updatedSources;
-        
-        // Add decision to log
-        generationLog.decisions.push({
-          stage: 'source_refresh',
-          decision: `Updated podcast with ${updatedSources.length} refreshed sources`,
-          reasoning: 'Sources required refreshing to ensure current information',
-          alternatives: [],
-          timestamp: new Date().toISOString()
-        });
-        await logService.saveEpisodeGenerationLog(generationLog);
-      } else {
-        console.log('No changes to podcast sources');
+      console.log('[Generate Step] Fetching & Authorizing Podcast...');
+      podcast = await getPodcast(podcastId, req.userId);
+      if (!podcast) {
+        throw new Error('Podcast not found or access denied');
       }
-    } catch (sourceError) {
-      console.error('Error refreshing sources:', sourceError);
-      // Continue without refreshed sources - non-critical error
-      
-      // Log the error but continue
-      generationLog.decisions.push({
-        stage: 'source_refresh',
-        decision: 'Continued without refreshed sources',
-        reasoning: 'Source refresh failed but this is non-critical, proceeding with existing sources',
-        alternatives: [],
-        timestamp: new Date().toISOString()
-      });
-      await logService.saveEpisodeGenerationLog(generationLog);
+      if (podcast.ownerEmail !== req.userId) { 
+        throw new Error('Forbidden: You do not own this podcast');
+      }
+      console.log(`[Generate Step] Podcast authorized: ${podcast.title}`);
+    } catch(authError: any) {
+      console.error(`[Generate Step] Authorization Failed: ${authError.message}`);
+      await logService.saveEpisodeGenerationLog(
+        logService.failLog(generationLog, `Authorization Failed: ${authError.message}`)
+      );
+      return res.status(authError.message.includes('Forbidden') ? 403 : 404).json({ error: authError.message });
     }
-    
-    // 1. Review existing episodes
-    console.log('Step 1: Analyzing existing episodes');
-    const analysisStartTime = Date.now();
-    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
-    const analysisEndTime = Date.now();
-    const analysisProcessingTime = analysisEndTime - analysisStartTime;
-    console.log(`Analysis complete: Found ${episodeAnalysis.episodeCount} episodes, ${episodeAnalysis.recentTopics.length} topics`);
-    
-    // Update log with analysis results
-    generationLog.stages.episodeAnalysis = {
-      ...episodeAnalysis,
-      processingTimeMs: analysisProcessingTime
-    };
-    generationLog.duration.stageBreakdown.episodeAnalysis = analysisProcessingTime;
-    generationLog.duration.totalMs += analysisProcessingTime;
-    
-    // Add decision to log
-    generationLog.decisions.push({
-      stage: 'episode_analysis',
-      decision: `Analyzed ${episodeAnalysis.episodeCount} previous episodes`,
-      reasoning: 'Understanding previous content is essential for generating differentiated new content',
-      alternatives: [],
-      timestamp: new Date().toISOString()
-    });
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    // 2. Perform initial search for new content
-    console.log('Step 2: Performing initial search for new content');
-    const searchStartTime = Date.now();
-    const initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
-    const searchEndTime = Date.now();
-    const searchProcessingTime = searchEndTime - searchStartTime;
-    console.log(`Initial search complete: Found ${initialSearchResults.potentialTopics.length} potential topics`);
-    
-    // Update log with search results
-    generationLog.stages.initialSearch = {
-      searchQueries: [], // We would need to modify searchOrchestrator to return the queries used
-      potentialTopics: initialSearchResults.potentialTopics,
-      relevantSources: initialSearchResults.relevantSources || [],
-      processingTimeMs: searchProcessingTime
-    };
-    generationLog.duration.stageBreakdown.initialSearch = searchProcessingTime;
-    generationLog.duration.totalMs += searchProcessingTime;
-    
-    // Add decision to log for search
-    generationLog.decisions.push({
-      stage: 'initial_search',
-      decision: `Found ${initialSearchResults.potentialTopics.length} potential topics through search`,
-      reasoning: 'Web search is used to discover current and relevant topics for the episode',
-      alternatives: [],
-      timestamp: new Date().toISOString()
-    });
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    // 2.1. NEW: Perform source-guided search using podcast sources
-    console.log('Step 2.1: Performing source-guided search');
-    const topicNames = initialSearchResults.potentialTopics.map(topic => topic.topic);
-    const sourceGuidedResults = await sourceManager.performSourceGuidedSearch(podcast, topicNames);
-    console.log(`Source-guided search complete: ${sourceGuidedResults.content.length} characters, ${sourceGuidedResults.sources.length} sources`);
-    
-    // Add decision to log for source-guided search
-    generationLog.decisions.push({
-      stage: 'source_guided_search',
-      decision: `Completed source-guided search with ${sourceGuidedResults.sources.length} sources`,
-      reasoning: 'Supplementing web search with targeted content from podcast-specific sources',
-      alternatives: [],
-      timestamp: new Date().toISOString()
-    });
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    // Combine initial and source-guided search results (Consider how to handle duplicates if needed)
-    // For now, appending content and merging sources.
+    // --- End Authorization ---
+
+    // --- Target Length Calculation --- 
+    let targetWordCount = 300; // Default
+    try {
+      console.log('[Generate Step] Calculating Target Length...');
+      const wordsPerMinute = 130;
+      if (req.body.targetMinutes) {
+        const minutes = parseFloat(req.body.targetMinutes);
+        if (!isNaN(minutes) && minutes > 0) {
+          targetWordCount = Math.round((minutes * wordsPerMinute) / 10) * 10;
+        }
+      } else if (req.body.targetWordCount) {
+        const wordCount = parseInt(req.body.targetWordCount);
+        if (!isNaN(wordCount) && wordCount > 0) {
+          targetWordCount = wordCount;
+        }
+      }
+      const minWordCount = 200; const maxWordCount = 2600;
+      targetWordCount = Math.max(minWordCount, Math.min(targetWordCount, maxWordCount));
+      const targetMinutes = targetWordCount / wordsPerMinute;
+      console.log(`[Generate Step] Target length set: ${targetWordCount} words (~${targetMinutes.toFixed(1)} mins)`);
+      generationLog = addDecision(generationLog, 'initialization', `Set target length to ${targetWordCount} words`, 'Based on request or defaults');
+      await logService.saveEpisodeGenerationLog(generationLog);
+    } catch (lengthError: any) { // Catch specific errors if possible
+        console.error(`[Generate Step] Error calculating target length: ${lengthError.message}`);
+        // Decide if this is fatal or can proceed with default
+        await logService.saveEpisodeGenerationLog(failLog(generationLog, `Error calculating target length: ${lengthError.message}`));
+        return res.status(500).json({ error: 'Failed during target length calculation', details: lengthError.message });
+    }
+    // --- End Target Length --- 
+
+    // --- Source Refresh --- 
+    try {
+        console.log('[Generate Step] Refreshing Sources...');
+        const analysisStartTime = Date.now(); // Reusing var name for timing
+        const updatedSources = await sourceManager.refreshSourcesIfNeeded(podcast);
+        if (updatedSources && JSON.stringify(updatedSources) !== JSON.stringify(podcast.sources)) {
+            await updatePodcast(podcastId, { sources: updatedSources });
+            podcast.sources = updatedSources;
+            console.log(`[Generate Step] Sources refreshed: ${updatedSources.length} sources`);
+            generationLog = addDecision(generationLog, 'source_refresh', 'Updated podcast sources', 'Sources required refreshing');
+        } else {
+             console.log('[Generate Step] Sources did not require refresh.');
+        }
+         generationLog.duration.stageBreakdown.sourceRefresh = Date.now() - analysisStartTime; // Log time for this step
+         generationLog.duration.totalMs += generationLog.duration.stageBreakdown.sourceRefresh;
+         await logService.saveEpisodeGenerationLog(generationLog);
+    } catch (sourceRefreshError: any) {
+        console.error(`[Generate Step] Non-fatal error refreshing sources: ${sourceRefreshError.message}. Proceeding with existing sources.`);
+        generationLog = addDecision(generationLog, 'source_refresh', 'Proceeded without refreshed sources', `Non-fatal error during refresh: ${sourceRefreshError.message}`);
+        await logService.saveEpisodeGenerationLog(generationLog);
+    }
+    // --- End Source Refresh --- 
+
+    // --- Episode Analysis --- 
+    let episodeAnalysis;
+    try {
+      console.log('[Generate Step] Analyzing Existing Episodes...');
+      const analysisStartTime = Date.now();
+      episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
+      generationLog = updateStage(generationLog, 'episodeAnalysis', { ...episodeAnalysis, processingTimeMs: Date.now() - analysisStartTime }, Date.now() - analysisStartTime);
+      generationLog = addDecision(generationLog, 'episode_analysis', `Analyzed ${episodeAnalysis.episodeCount} previous episodes`, 'Required for content differentiation');
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Episode analysis complete.`);
+    } catch (analysisError: any) {
+      console.error(`[Generate Step] Error during episode analysis: ${analysisError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Episode analysis failed: ${analysisError.message}`));
+      return res.status(500).json({ error: 'Failed during episode analysis', details: analysisError.message });
+    }
+    // --- End Episode Analysis ---
+
+    // --- Initial Search --- 
+    let initialSearchResults;
+    try {
+      console.log('[Generate Step] Performing Initial Search...');
+      const searchStartTime = Date.now();
+      initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
+      generationLog = updateStage(generationLog, 'initialSearch', { potentialTopics: initialSearchResults.potentialTopics, relevantSources: initialSearchResults.relevantSources || [], processingTimeMs: Date.now() - searchStartTime }, Date.now() - searchStartTime);
+      generationLog = addDecision(generationLog, 'initial_search', `Found ${initialSearchResults.potentialTopics.length} potential topics`, 'Discovering current/relevant topics');
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Initial search complete.`);
+    } catch (searchError: any) {
+      console.error(`[Generate Step] Error during initial search: ${searchError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Initial search failed: ${searchError.message}`));
+      return res.status(500).json({ error: 'Failed during initial search', details: searchError.message });
+    }
+    // --- End Initial Search --- 
+
+    // --- Source-Guided Search --- 
     let combinedResearchContent = initialSearchResults.combinedResearch;
     let combinedSources = initialSearchResults.allSources;
-    if (sourceGuidedResults.content) {
-      combinedResearchContent += '\n\n--- Source Guided Search Results ---\n' + sourceGuidedResults.content;
-      combinedSources = [...new Set([...combinedSources, ...sourceGuidedResults.sources])];
-    }
-
-    // Create ArticleData for clustering from potential topics
-    const articlesToCluster: clusteringService.ArticleData[] = initialSearchResults.potentialTopics.map((topic, index) => ({
-        id: topic.topic || `topic_${index}`, // Use topic name as ID, or generate one if empty
-        content: topic.topic || '' // Use topic name as content (fallback - TODO: Improve with actual content snippets)
-    }));
-
-    // 2.2 NEW: Cluster the potential topics/articles
-    console.log('Step 2.2: Clustering potential topics');
-    const clusterStartTime = Date.now();
-    let clusterResult: clusteringService.ClusterResult = { clusters: {}, noise: [], clusterAssignments: [] };
     try {
-        clusterResult = await clusteringService.clusterArticles(articlesToCluster);
-        console.log(`Clustering complete: Found ${Object.keys(clusterResult.clusters).length} clusters.`);
-        
-        // Update log with clustering results
-        generationLog.stages.clustering = {
-          inputTopics: articlesToCluster.map(a => a.id),
-          clusters: clusterResult.clusters,
-          clusterSummaries: [], // Will be populated after summarization
-          processingTimeMs: Date.now() - clusterStartTime
-        };
-        generationLog.duration.stageBreakdown.clustering = Date.now() - clusterStartTime;
-        generationLog.duration.totalMs += Date.now() - clusterStartTime;
-        
-        // Add decision to log for clustering
-        generationLog.decisions.push({
-          stage: 'clustering',
-          decision: `Grouped potential topics into ${Object.keys(clusterResult.clusters).length} thematic clusters`,
-          reasoning: 'Clustering improves focus by grouping similar topics',
-          alternatives: [],
-          timestamp: new Date().toISOString()
-        });
+        console.log('[Generate Step] Performing Source-Guided Search...');
+        const searchStartTime = Date.now(); // Reusing var name for timing
+        const topicNames = initialSearchResults.potentialTopics.map(topic => topic.topic);
+        const sourceGuidedResults = await sourceManager.performSourceGuidedSearch(podcast, topicNames);
+        if (sourceGuidedResults.content) {
+            combinedResearchContent += '\n\n--- Source Guided Search Results ---\n' + sourceGuidedResults.content;
+            combinedSources = [...new Set([...combinedSources, ...sourceGuidedResults.sources])];
+        }
+        generationLog.duration.stageBreakdown.sourceGuidedSearch = Date.now() - searchStartTime; // Log time
+        generationLog.duration.totalMs += generationLog.duration.stageBreakdown.sourceGuidedSearch;
+        generationLog = addDecision(generationLog, 'source_guided_search', `Completed with ${sourceGuidedResults.sources.length} sources`, 'Supplementing web search');
         await logService.saveEpisodeGenerationLog(generationLog);
-        
-    } catch (clusterError) {
-        console.error('Error during article clustering, proceeding without clustering:', clusterError);
-        // Update log with clustering failure
-        generationLog.decisions.push({
-          stage: 'clustering',
-          decision: 'Proceeded without clustering due to error',
-          reasoning: 'Clustering failed but generation can proceed without it',
-          alternatives: [],
-          timestamp: new Date().toISOString()
-        });
+        console.log(`[Generate Step] Source-guided search complete.`);
+    } catch (sourceSearchError: any) {
+        console.error(`[Generate Step] Non-fatal error during source-guided search: ${sourceSearchError.message}. Proceeding without these results.`);
+        generationLog = addDecision(generationLog, 'source_guided_search', 'Proceeded without source-guided results', `Non-fatal error: ${sourceSearchError.message}`);
         await logService.saveEpisodeGenerationLog(generationLog);
     }
-    
-    // TODO: Adapt the input for prioritizeTopicsForDeepDive based on clusterResult
-    // This will involve selecting representative articles/summaries per cluster.
-    // For now, we'll pass the original prioritizedTopics as a placeholder.
-    
-    // Generate summaries for each cluster
-    console.log('Step 2.3: Generating summaries for topic clusters');
-    const clusterSummariesInput: clusteringService.ClusterSummaryInput[] = [];
-    if (clusterResult && clusterResult.clusters && Object.keys(clusterResult.clusters).length > 0) {
-        const clusterIds = Object.keys(clusterResult.clusters).map(Number);
-        for (const clusterId of clusterIds) {
-            const topicIds = clusterResult.clusters[clusterId];
-            if (topicIds && topicIds.length > 0) {
-                try {
-                    // Pass initialSearchResults for context if available
-                    const summary = await summarizeCluster(clusterId, topicIds, initialSearchResults);
-                    clusterSummariesInput.push({
-                        clusterId: clusterId,
-                        summary: summary,
-                        originalTopicIds: topicIds
-                    });
-                    
-                    // Update clustering log with summaries
-                    if (generationLog.stages.clustering) {
-                      generationLog.stages.clustering.clusterSummaries.push({
-                        clusterId: clusterId,
-                        summary: summary,
-                        originalTopicIds: topicIds
-                      });
+    // --- End Source-Guided Search --- 
+
+    // --- Clustering --- 
+    let clusterResult: clusteringService.ClusterResult = { clusters: {}, noise: [], clusterAssignments: [] };
+    let clusterSummariesInput: clusteringService.ClusterSummaryInput[] = [];
+    try {
+        console.log('[Generate Step] Clustering Topics...');
+        const clusterStartTime = Date.now();
+        const articlesToCluster: clusteringService.ArticleData[] = initialSearchResults.potentialTopics.map((topic, index) => ({ id: topic.topic || `topic_${index}`, content: topic.topic || '' }));
+        if (articlesToCluster.length > 0) {
+            clusterResult = await clusteringService.clusterArticles(articlesToCluster);
+            generationLog = updateStage(generationLog, 'clustering', { inputTopics: articlesToCluster.map(a => a.id), clusters: clusterResult.clusters, clusterSummaries: [], processingTimeMs: Date.now() - clusterStartTime }, Date.now() - clusterStartTime);
+            generationLog = addDecision(generationLog, 'clustering', `Grouped topics into ${Object.keys(clusterResult.clusters).length} clusters`, 'Improving thematic focus');
+            console.log(`[Generate Step] Clustering complete: ${Object.keys(clusterResult.clusters).length} clusters found.`);
+
+            // --- Cluster Summarization --- 
+            console.log('[Generate Step] Summarizing Clusters...');
+            if (clusterResult.clusters && Object.keys(clusterResult.clusters).length > 0) {
+                const clusterIds = Object.keys(clusterResult.clusters).map(Number);
+                for (const clusterId of clusterIds) {
+                    const topicIds = clusterResult.clusters[clusterId];
+                    if (topicIds && topicIds.length > 0) {
+                        try {
+                            const summary = await clusteringService.summarizeCluster(clusterId, topicIds, initialSearchResults);
+                            clusterSummariesInput.push({ clusterId, summary, originalTopicIds: topicIds });
+                            if (generationLog.stages.clustering) {
+                                generationLog.stages.clustering.clusterSummaries.push({ clusterId, summary, originalTopicIds: topicIds });
+                            }
+                        } catch (summaryError: any) {
+                            console.error(`[Generate Step] Non-fatal error summarizing cluster ${clusterId}: ${summaryError.message}`);
+                        }
                     }
-                } catch (summaryError) {
-                    console.error(`Error summarizing cluster ${clusterId}, skipping:`, summaryError);
                 }
             }
+            console.log(`[Generate Step] Cluster summarization complete: ${clusterSummariesInput.length} summaries generated.`);
+        } else {
+            console.log('[Generate Step] Skipping clustering and summarization: No topics found.');
+            generationLog = addDecision(generationLog, 'clustering', 'Skipped clustering', 'No topics from initial search');
         }
-        console.log(`Generated ${clusterSummariesInput.length} cluster summaries.`);
         await logService.saveEpisodeGenerationLog(generationLog);
-    } else {
-        console.log('Skipping cluster summarization as no clusters were found or clustering failed.');
-        // POTENTIAL FALLBACK: If clustering failed or yielded no results, 
-        // we might need to revert to prioritizing original topics.
-        // For now, we proceed, potentially with an empty clusterSummariesInput.
+    } catch (clusterError: any) {
+        console.error(`[Generate Step] Non-fatal error during clustering/summarization: ${clusterError.message}. Proceeding without clusters.`);
+        generationLog = addDecision(generationLog, 'clustering', 'Proceeded without clustering due to error', `Non-fatal error: ${clusterError.message}`);
+        await logService.saveEpisodeGenerationLog(generationLog);
+        // Reset cluster results if failed
+        clusterSummariesInput = []; 
     }
-    
-    
-    // 2a. Prioritize topics (now clusters) for deep dive research
-    console.log('Step 2a: Prioritizing topic clusters for deep dive research');
-    const prioritizationStartTime = Date.now();
-    // Pass the generated cluster summaries to the updated prioritization function
-    const prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(
-      clusterSummariesInput, // Pass the generated cluster summaries
-      episodeAnalysis,
-      targetWordCount
-    );
-    const prioritizationEndTime = Date.now();
-    const prioritizationProcessingTime = prioritizationEndTime - prioritizationStartTime;
-    console.log(`Topic cluster prioritization complete: Selected ${prioritizedTopics.length} clusters for deep research`);
-    
-    // Update log with prioritization results
-    generationLog.stages.prioritization = {
-      prioritizedTopics: prioritizedTopics.map(topic => ({
-        topic: topic.topic,
-        importance: topic.importance,
-        newsworthiness: topic.newsworthiness,
-        depthPotential: topic.depthPotential,
-        rationale: topic.rationale,
-        keyQuestions: topic.keyQuestions
-      })),
-      discardedTopics: clusterSummariesInput
-        .map(c => c.summary)
-        .filter(summary => !prioritizedTopics.some(pt => pt.topic === summary)),
-      selectionReasoning: `Selected ${prioritizedTopics.length} topics based on newsworthiness, depth potential, and differentiation from previous episodes.`,
-      processingTimeMs: prioritizationProcessingTime
-    };
-    generationLog.duration.stageBreakdown.prioritization = prioritizationProcessingTime;
-    generationLog.duration.totalMs += prioritizationProcessingTime;
-    
-    // Add decision to log for prioritization
-    generationLog.decisions.push({
-      stage: 'prioritization',
-      decision: `Selected ${prioritizedTopics.length} topics for deep research: ${prioritizedTopics.map(t => t.topic).join(', ')}`,
-      reasoning: 'Topics were selected based on newsworthiness, depth potential, and differentiation from previous episodes',
-      alternatives: generationLog.stages.prioritization?.discardedTopics || [],
-      timestamp: new Date().toISOString()
-    });
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    // 2b. NEW: Conduct deep dive research on prioritized topics
-    console.log('Step 2b: Conducting deep dive research');
-    const deepResearchStartTime = Date.now();
-    const deepResearchResults = await deepDiveResearch.conductDeepDiveResearch(
-      prioritizedTopics,
-      targetWordCount
-    );
-    const deepResearchEndTime = Date.now();
-    const deepResearchProcessingTime = deepResearchEndTime - deepResearchStartTime;
-    console.log(`Deep research complete: Researched ${deepResearchResults.researchedTopics.length} topics in depth`);
-    
-    // Update log with deep research results
-    generationLog.stages.deepResearch = {
-      researchedTopics: deepResearchResults.researchedTopics.map(topic => ({
-        topic: topic.topic,
-        researchQueries: [], // Would need to capture this in the deep research function
-        sourcesConsulted: [...new Set(topic.layers.flatMap(layer => layer.sources))],
-        keyInsights: [...new Set(topic.layers.flatMap(layer => layer.keyInsights))],
-        layerCount: topic.layers.length
-      })),
-      processingTimeMs: deepResearchProcessingTime
-    };
-    generationLog.duration.stageBreakdown.deepResearch = deepResearchProcessingTime;
-    generationLog.duration.totalMs += deepResearchProcessingTime;
-    
-    // Add decision to log for deep research
-    generationLog.decisions.push({
-      stage: 'deep_research',
-      decision: `Completed in-depth research on ${deepResearchResults.researchedTopics.length} topics`,
-      reasoning: 'Deep research provides layered insights from surface to detailed levels',
-      alternatives: [],
-      timestamp: new Date().toISOString()
-    });
-    await logService.saveEpisodeGenerationLog(generationLog);
-    
-    let generatedContent;
-    let researchResults;
-    let narrativeStructure;
-    
-    // Determine whether to use deep dive or standard flow based on research results
-    if (deepResearchResults.researchedTopics.length > 0) {
-      // Use deep dive research results directly
-      console.log('Using deep dive research results for content generation');
-      
-      // Generate a title without time-specific references
-      const topicsList = deepResearchResults.researchedTopics.map(r => r.topic).join(' and ');
-      
-      // Start content generation timing
-      const contentGenStartTime = Date.now();
-      
-      generatedContent = {
-        title: `${podcast.title}: Deep Dive into ${topicsList}`,
-        description: `An in-depth exploration of ${topicsList}.`,
-        content: deepResearchResults.overallContent
-      };
+    // --- End Clustering & Summarization ---
 
-      // Update log with content generation
-      generationLog.stages.contentGeneration = {
-        generatedTitle: generatedContent.title,
-        generatedDescription: generatedContent.description,
-        topicDistribution: deepResearchResults.topicDistribution,
-        estimatedWordCount: generatedContent.content.split(/\s+/).length,
-        estimatedDuration: generatedContent.content.split(/\s+/).length / wordsPerMinute,
-        processingTimeMs: Date.now() - contentGenStartTime
-      };
-      generationLog.duration.stageBreakdown.contentGeneration = Date.now() - contentGenStartTime;
-      generationLog.duration.totalMs += Date.now() - contentGenStartTime;
-      
-      // Add decision to log for content generation
-      generationLog.decisions.push({
-        stage: 'content_generation',
-        decision: `Generated episode with title: ${generatedContent.title}`,
-        reasoning: 'Using deep dive research to create comprehensive content',
-        alternatives: [],
-        timestamp: new Date().toISOString()
-      });
+    // --- Prioritization --- 
+    let prioritizedTopics;
+    try {
+      console.log('[Generate Step] Prioritizing Topics/Clusters...');
+      const prioritizationStartTime = Date.now();
+      // Prioritize cluster summaries if available, otherwise fall back to initial potential topics
+      const topicsToPrioritize = clusterSummariesInput.length > 0 ? clusterSummariesInput : initialSearchResults.potentialTopics;
+      prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(topicsToPrioritize, episodeAnalysis, targetWordCount);
+      generationLog = updateStage(generationLog, 'prioritization', { prioritizedTopics, discardedTopics: [], selectionReasoning: 'Using selected topics/clusters', processingTimeMs: Date.now() - prioritizationStartTime }, Date.now() - prioritizationStartTime);
+      generationLog = addDecision(generationLog, 'prioritization', `Selected ${prioritizedTopics.length} topics/clusters for deep research`, 'Based on relevance, depth, differentiation');
       await logService.saveEpisodeGenerationLog(generationLog);
-      
-      // Create a compatible structure for content differentiator
-      researchResults = {
-        topicResearch: deepResearchResults.researchedTopics.map(topic => ({
-          topic: topic.topic,
-          mainResearch: {
-            content: topic.layers.map(layer => layer.content).join('\n\n'),
-            sources: [...new Set(topic.layers.flatMap(layer => layer.sources))]
-          },
-          contrastingViewpoints: {
-            content: '', // Not directly available from deep research
-            sources: []
-          },
-          synthesizedContent: topic.synthesizedContent
-        })),
-        overallSynthesis: deepResearchResults.overallContent,
-        allSources: deepResearchResults.allSources
-      };
-    } else {
-      // Fall back to the standard flow if deep research didn't yield results
-      console.log('[Generator] Falling back to standard episode planning flow');
-      
-      // 3. Have Gemini decide on topics and depth (standard flow)
-      console.log('[Generator] Step 3: Planning episode content (searchOrchestrator.planEpisodeContent)');
-      let episodePlan;
-      try {
-          episodePlan = await searchOrchestrator.planEpisodeContent(
-            podcast, 
-            episodeAnalysis, 
-            initialSearchResults
-          );
-          console.log(`[Generator] Episode plan created: "${episodePlan.episodeTitle}" with ${episodePlan.selectedTopics.length} topics`);
-      } catch (planError) {
-          console.error('[Generator] Error during episode planning:', planError);
-          throw new Error('Episode planning failed.'); // Rethrow to be caught by main handler
-      }
-      
-      // 3a. Create enhanced narrative structure with word allocation
-      console.log('[Generator] Step 3a: Creating detailed narrative structure (narrativePlanner.createNarrativeStructure)');
-      
-      // Convert episodePlan to DetailedResearchResults for narrativePlanner
-      const preliminaryResearchResults: narrativePlanner.DetailedResearchResults = {
-        episodeTitle: episodePlan.episodeTitle,
-        overallSynthesis: episodePlan.selectedTopics.map(t => t.topic).join(', '),
-        topicResearch: episodePlan.selectedTopics.map(topic => ({
-          topic: topic.topic,
-          synthesizedContent: topic.hasOwnProperty('initialContent') ? 
-            (topic as any).initialContent : 
-            `Research on ${topic.topic} - ${topic.rationale}`
-        }))
-      };
-      
-      try {
-          narrativeStructure = await narrativePlanner.createNarrativeStructure(
-            preliminaryResearchResults,
-            'medium' // Use medium length as default
-          );
-          console.log(`[Generator] Narrative structure created with ${narrativeStructure.bodySections.length} sections`);
-      } catch (narrativeError) {
-          console.error('[Generator] Error creating narrative structure:', narrativeError);
-          throw new Error('Narrative structure creation failed.');
-      }
-      
-      // 4. Perform deep research with contrasting viewpoints
-      console.log('[Generator] Step 4: Performing deep research on selected topics (searchOrchestrator.performDeepResearch)');
-      try {
-          researchResults = await searchOrchestrator.performDeepResearch(episodePlan);
-          console.log(`[Generator] Research complete: ${researchResults.topicResearch.length} topics researched, ${researchResults.allSources.length} sources`);
-      } catch (researchError) {
-          console.error('[Generator] Error during deep research:', researchError);
-          throw new Error('Deep research failed.');
-      }
-      
-      // 5. Generate structured content following the narrative plan
-      console.log('[Generator] Step 5: Generating structured content (contentFormatter.generateStructuredContent)');
-      let structuredContent;
-      try {
-          structuredContent = await contentFormatter.generateStructuredContent(
-            researchResults,
-            narrativeStructure
-          );
-          console.log(`[Generator] Structured content generated (${structuredContent.split(/\s+/).length} words)`);
-      } catch (contentGenError) {
-          console.error('[Generator] Error generating structured content:', contentGenError);
-          throw new Error('Structured content generation failed.'); // This is likely the synthesis failure point
-      }
-      
-      // Generate episode title and description
-      generatedContent = {
-        title: episodePlan.episodeTitle,
-        description: `An exploration of ${episodePlan.selectedTopics.map(t => t.topic).join(', ')}.`,
-        content: structuredContent
-      };
+      console.log(`[Generate Step] Prioritization complete.`);
+    } catch (prioritizationError: any) {
+      console.error(`[Generate Step] Error during prioritization: ${prioritizationError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Prioritization failed: ${prioritizationError.message}`));
+      return res.status(500).json({ error: 'Failed during topic prioritization', details: prioritizationError.message });
     }
-    
-    // 6. Ensure content differentiation
-    console.log('[Generator] Step 6: Validating content differentiation (contentDifferentiator.validateContentDifferentiation)');
-    let validationResult;
+    // --- End Prioritization --- 
+
+    // --- Deep Research --- 
+    let deepResearchResults;
     try {
-        validationResult = await contentDifferentiator.validateContentDifferentiation(
-          generatedContent.content,
-          episodeAnalysis
-        );
-        console.log(`[Generator] Validation complete: Similarity score ${validationResult.similarityScore}, passing: ${validationResult.isPassing}`);
-    } catch (validationError) {
-        console.error('[Generator] Error during content differentiation validation:', validationError);
-        // Non-critical, proceed with original content if validation fails
-        validationResult = { isPassing: true, similarityScore: -1, improvedContent: null }; 
-    }
-    
-    // Use the final content (either original or improved version if needed)
-    const finalContent = validationResult.improvedContent || generatedContent.content;
-    
-    // Create adherence feedback for storage
-    let adherenceFeedback = '';
-    let narrativeForStorage = null;
-    
-    // Only evaluate narrative adherence if using standard flow with narrative structure
-    if (narrativeStructure) {
-      // 7. Evaluate adherence to narrative structure
-      console.log('Step 7: Evaluating adherence to narrative structure');
-      const updatedNarrativeStructure = await narrativePlanner.evaluateContentAdherence(
-        finalContent,
-        narrativeStructure
-      );
+      console.log('[Generate Step] Conducting Deep Dive Research...');
+      const researchStartTime = Date.now();
+      deepResearchResults = await deepDiveResearch.conductDeepDiveResearch(prioritizedTopics, targetWordCount);
       
-      // Safely access adherenceMetrics
-      if (updatedNarrativeStructure.adherenceMetrics) {
-           console.log(`Adherence evaluation complete: overall score ${updatedNarrativeStructure.adherenceMetrics.overallAdherence}`);
-           // Create adherence feedback for storage
-           adherenceFeedback = contentFormatter.createAdherenceFeedback(updatedNarrativeStructure);
-           console.log(adherenceFeedback);
-      
-           // Format narrative structure for storage
-           narrativeForStorage = {
-             introduction: {
-               wordCount: updatedNarrativeStructure.introduction.wordCount,
-               approach: updatedNarrativeStructure.introduction.approach
-             },
-             bodySections: updatedNarrativeStructure.bodySections.map(section => ({
-               sectionTitle: section.sectionTitle,
-               wordCount: section.wordCount
-             })),
-             conclusion: {
-               wordCount: updatedNarrativeStructure.conclusion.wordCount
-             },
-             adherenceMetrics: updatedNarrativeStructure.adherenceMetrics
-           };
-      } else {
-          console.warn('Adherence metrics were not generated by evaluateContentAdherence.');
-          narrativeForStorage = null; // Ensure narrativeForStorage is null if metrics are missing
-          adherenceFeedback = 'Adherence evaluation did not produce metrics.';
+      if (!deepResearchResults || !deepResearchResults.overallContent || deepResearchResults.overallContent.trim().length < 50) {
+          console.error('[Generate Step] Deep research resulted in invalid or insufficient overallContent.');
+          throw new Error('Deep research phase failed to produce valid content.');
       }
+      
+      generationLog = updateStage(generationLog, 'deepResearch', { ...deepResearchResults, processingTimeMs: Date.now() - researchStartTime }, Date.now() - researchStartTime);
+      generationLog = addDecision(generationLog, 'deep_research', `Completed deep research on ${deepResearchResults.researchedTopics.length} topics`, 'Gathering layered insights');
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Deep research complete.`);
+    } catch (researchError: any) {
+      console.error(`[Generate Step] Error during deep research: ${researchError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Deep research failed: ${researchError.message}`));
+      return res.status(500).json({ error: 'Failed during deep research', details: researchError.message });
     }
-    
-    // Count words
-    const wordCount = finalContent.split(/\s+/).length;
-    console.log(`Generated content word count: ${wordCount} words`);
-    
-    // Compare with target word count and log the difference
-    const actualMinutes = wordCount / wordsPerMinute;
-    console.log(`Target: ${targetWordCount} words (${targetMinutes.toFixed(1)} minutes)`);
-    console.log(`Actual: ${wordCount} words (${actualMinutes.toFixed(1)} minutes)`);
-    console.log(`Difference: ${wordCount - targetWordCount} words (${(actualMinutes - targetMinutes).toFixed(1)} minutes)`);
-    console.log(`Adherence: ${(wordCount / targetWordCount * 100).toFixed(1)}% of target length`);
-    
-    // Create the episode
-    const episodeData: any = {
-      podcastId: podcastId,
-      title: generatedContent.title.slice(0, 100),
-      description: generatedContent.description.slice(0, 150),
-      content: finalContent,
-      sources: researchResults.allSources,
-      created_at: new Date().toISOString()
-    };
-    
-    // Generate bullet points for the episode
+    // --- End Deep Research --- 
+
+    // --- Content Generation --- 
+    let generatedContent;
+    let researchResultsForDiff; // Keep separate for differentiator
     try {
-      console.log('Generating bullet points for the episode...');
-      const bulletPoints = await contentFormatter.generateEpisodeBulletPoints(
-        episodeData.title,
-        finalContent
+        console.log('[Generate Step] Generating Content...');
+        const generationStartTime = Date.now();
+        const topicsList = deepResearchResults.researchedTopics.map(r => r.topic).join(' and ');
+        generatedContent = {
+            title: `${podcast.title}: Deep Dive into ${topicsList}`.slice(0,100), // Title based on research
+            description: `An in-depth exploration of ${topicsList}.`.slice(0,150),
+            content: deepResearchResults.overallContent // Use the synthesized content
+        };
+        researchResultsForDiff = { // Structure needed for differentiation check
+            topicResearch: deepResearchResults.researchedTopics.map(topic => ({ /* ... structure as needed ... */ topic: topic.topic, synthesizedContent: topic.synthesizedContent })),
+            overallSynthesis: deepResearchResults.overallContent,
+            allSources: deepResearchResults.allSources
+        };
+        const wordCount = generatedContent.content.split(/\s+/).length;
+        const actualMinutes = wordCount / 130;
+        generationLog = updateStage(generationLog, 'contentGeneration', { 
+            generatedTitle: generatedContent.title,
+            estimatedWordCount: wordCount,
+            estimatedDuration: actualMinutes,
+            processingTimeMs: Date.now() - generationStartTime 
+        }, Date.now() - generationStartTime);
+        generationLog = addDecision(generationLog, 'content_generation', `Generated content: ${generatedContent.title}`, 'Using deep research results');
+        await logService.saveEpisodeGenerationLog(generationLog);
+        console.log(`[Generate Step] Content generation complete (${wordCount} words).`);
+    } catch (contentGenError: any) {
+        console.error(`[Generate Step] Error during content generation: ${contentGenError.message}`);
+        await logService.saveEpisodeGenerationLog(failLog(generationLog, `Content generation failed: ${contentGenError.message}`));
+        return res.status(500).json({ error: 'Failed during content generation', details: contentGenError.message });
+    }
+    // --- End Content Generation --- 
+
+    // --- Content Differentiation --- 
+    let finalContent = generatedContent.content;
+    try {
+      console.log('[Generate Step] Validating Content Differentiation...');
+      const validationStartTime = Date.now();
+      const validationResult = await contentDifferentiator.validateContentDifferentiation(
+        generatedContent.content, 
+        episodeAnalysis
       );
-      episodeData.bulletPoints = bulletPoints;
-      console.log(`Generated ${bulletPoints.length} bullet points for the episode`);
-    } catch (bulletPointError) {
-      console.error('Error generating bullet points:', bulletPointError);
-      // Continue without bullet points if there's an error - non-critical
+      finalContent = validationResult.improvedContent || generatedContent.content;
+      generationLog.duration.stageBreakdown.differentiation = Date.now() - validationStartTime;
+      generationLog.duration.totalMs += generationLog.duration.stageBreakdown.differentiation;
+      generationLog = addDecision(generationLog, 'differentiation', `Validation passing: ${validationResult.isPassing}`, `Similarity score: ${validationResult.similarityScore.toFixed(3)}`);
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Differentiation validation complete. Passing: ${validationResult.isPassing}`);
+    } catch (diffError: any) {
+      console.error(`[Generate Step] Non-fatal error during differentiation validation: ${diffError.message}. Proceeding with generated content.`);
+      generationLog = addDecision(generationLog, 'differentiation', 'Proceeded without differentiation check', `Non-fatal error: ${diffError.message}`);
+      await logService.saveEpisodeGenerationLog(generationLog);
     }
-    
-    // Only add narrative structure if it exists
-    if (narrativeForStorage) {
-      episodeData.narrativeStructure = narrativeForStorage;
+    // --- End Content Differentiation --- 
+
+    // --- Bullet Point Generation --- 
+    let bulletPoints: string[] = [];
+    try {
+        console.log('[Generate Step] Generating Bullet Points...');
+        const bulletPointStartTime = Date.now();
+        bulletPoints = await contentFormatter.generateEpisodeBulletPoints(generatedContent.title, finalContent);
+        generationLog.duration.stageBreakdown.bulletPoints = Date.now() - bulletPointStartTime;
+        generationLog.duration.totalMs += generationLog.duration.stageBreakdown.bulletPoints;
+        generationLog = addDecision(generationLog, 'bullet_points', `Generated ${bulletPoints.length} bullet points`, '');
+        await logService.saveEpisodeGenerationLog(generationLog);
+        console.log(`[Generate Step] Bullet point generation complete.`);
+    } catch (bulletPointError: any) {
+        console.error(`[Generate Step] Non-fatal error generating bullet points: ${bulletPointError.message}. Proceeding without them.`);
+        generationLog = addDecision(generationLog, 'bullet_points', 'Proceeded without bullet points', `Non-fatal error: ${bulletPointError.message}`);
+        await logService.saveEpisodeGenerationLog(generationLog);
     }
-    
-    const episode = await createEpisode(episodeData);
-    
-    // Update the podcast's last_updated field
-    await updatePodcast(podcastId, {
-      last_updated: new Date().toISOString()
-    });
-    
-    // Update the generation log with episode ID
-    const updatedLog = logService.setEpisodeId(generationLog, episode.id);
-    console.log(`Setting episode ID ${episode.id} in generation log ${updatedLog.id}`);
-    await logService.saveEpisodeGenerationLog(updatedLog);
-    
-    // Generate audio for the episode
-    const audioStartTime = Date.now();
-    console.log('Generating audio for the episode...');
-    const audioUrl = await generateAndStoreAudio(
-      episode.content!, 
-      podcast.id!, 
-      episode.id!
-    );
-    
-    // Update the episode with the audio URL
-    await updateEpisodeAudio(episode.id!, audioUrl);
-    
-    // Update log with audio generation
-    updatedLog.stages.audioGeneration = {
-      audioFileSize: 0, // Would need to get this information
-      audioDuration: updatedLog.stages.contentGeneration?.estimatedDuration || 0,
-      processingTimeMs: Date.now() - audioStartTime
-    };
-    updatedLog.duration.stageBreakdown.audioGeneration = Date.now() - audioStartTime;
-    updatedLog.duration.totalMs += Date.now() - audioStartTime;
-    
-    // Mark log as completed
-    updatedLog.status = 'completed';
-    await logService.saveEpisodeGenerationLog(updatedLog);
+    // --- End Bullet Point Generation --- 
+
+    // --- Database Episode Creation --- 
+    let episode: Episode;
+    try {
+      console.log('[Generate Step] Creating Episode in Database...');
+      const episodeData: any = {
+        podcastId: podcastId,
+        title: generatedContent.title,
+        description: generatedContent.description,
+        content: finalContent,
+        sources: researchResultsForDiff.allSources, // Use sources from the research step
+        created_at: new Date().toISOString(),
+        bulletPoints: bulletPoints, // Add generated bullet points
+      };
+      episode = await createEpisode(episodeData);
+      await updatePodcast(podcastId, { last_updated: new Date().toISOString() });
+      generationLog = setEpisodeId(generationLog, episode.id); // Update log with Episode ID
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Episode created in DB: ${episode.id}`);
+    } catch (dbError: any) {
+      console.error(`[Generate Step] Error saving episode to database: ${dbError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Database episode creation failed: ${dbError.message}`));
+      return res.status(500).json({ error: 'Failed to save episode to database', details: dbError.message });
+    }
+    // --- End Database Episode Creation --- 
+
+    // --- Audio Generation --- 
+    let audioUrl = '';
+    try {
+      console.log('[Generate Step] Generating Audio...');
+      const audioStartTime = Date.now();
+      audioUrl = await audio.generateAndStoreAudio(finalContent, podcast.id!, episode.id!);
+      await updateEpisodeAudio(episode.id!, audioUrl);
+      generationLog = updateStage(generationLog, 'audioGeneration', { audioUrl, audioDuration: 0, audioFileSize: 0, processingTimeMs: Date.now() - audioStartTime }, Date.now() - audioStartTime);
+      generationLog = addDecision(generationLog, 'audio_generation', 'Audio generated and stored', '');
+      await logService.saveEpisodeGenerationLog(generationLog);
+      console.log(`[Generate Step] Audio generation complete: ${audioUrl}`);
+    } catch (audioError: any) {
+      console.error(`[Generate Step] Error during audio generation: ${audioError.message}`);
+      // Log failure but maybe don't fail the whole request?
+      // Or maybe we should? Decided to fail for now.
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Audio generation failed: ${audioError.message}`));
+      return res.status(500).json({ error: 'Failed during audio generation', details: audioError.message });
+    }
+    // --- End Audio Generation --- 
+
+    // --- Finalize --- 
+    console.log('[Generate Step] Finalizing...');
+    generationLog.status = 'completed';
+    await logService.saveEpisodeGenerationLog(generationLog);
     
     // Respond with the saved episode including audio URL
     episode.audioUrl = audioUrl;
     
+    console.log(`--- END Generate Episode Successfully for Podcast ID: ${podcastId} ---`);
     res.status(201).json({
       episode: episode,
-      generationLogId: updatedLog.id
+      generationLogId: generationLog.id
     });
-  } catch (error) {
-    console.error('Error generating episode:', error);
-    res.status(500).json({ error: 'Failed to generate episode' });
+
+  } catch (error: any) {
+    console.error(`--- Error Generating Episode for Podcast ID: ${podcastId} ---`);
+    console.error(`Error Name: ${error.name}`);
+    console.error(`Error Message: ${error.message}`);
+    console.error(`Error Stack: ${error.stack}`);
+    // Ensure log is defined before trying to fail it
+    if (generationLog) {
+       await logService.saveEpisodeGenerationLog(
+         failLog(generationLog, `Unhandled generation error: ${error.message}`)
+       );
+    } else {
+        console.error('Generation log was not initialized before the error occurred.');
+    }
+    res.status(500).json({ error: 'Failed to generate episode', details: error.message });
   }
 });
 
@@ -1116,7 +843,7 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToke
     if (episode.audioUrl) {
       try {
         console.log(`Deleting existing audio for episode ${episodeId}`);
-        await deleteAudio(podcastId, episodeId);
+        await audio.deleteAudio(podcastId, episodeId);
       } catch (deleteError) {
         console.error('Error deleting existing audio:', deleteError);
         // Continue anyway - non-critical error
@@ -1126,7 +853,7 @@ router.post('/:podcastId/episodes/:episodeId/regenerate-audio', authenticateToke
     console.log(`Regenerating audio for episode ${episodeId}`);
     try {
       // Generate audio for the episode
-      const audioUrl = await generateAndStoreAudio(
+      const audioUrl = await audio.generateAndStoreAudio(
         episode.content, 
         podcastId, 
         episodeId

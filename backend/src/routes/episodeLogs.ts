@@ -1,6 +1,6 @@
-import express from 'express';
-import * as logService from '../services/logService';
-import { getDb } from '../services/database';
+import * as express from 'express';
+import { getEpisodeGenerationLog, getEpisodeGenerationLogsByPodcast, getEpisodeGenerationLogByEpisode } from '../services/logService';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ router.get('/episode-logs/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`GET /api/episode-logs/${id}`);
     
-    const log = await logService.getEpisodeGenerationLog(id);
+    const log = await getEpisodeGenerationLog(id);
     
     if (!log) {
       return res.status(404).json({ error: 'Episode generation log not found' });
@@ -29,7 +29,7 @@ router.get('/podcasts/:podcastId/episode-logs', async (req, res) => {
     const { podcastId } = req.params;
     console.log(`GET /api/podcasts/${podcastId}/episode-logs`);
     
-    const logs = await logService.getEpisodeGenerationLogsByPodcast(podcastId);
+    const logs = await getEpisodeGenerationLogsByPodcast(podcastId);
     
     res.json(logs);
   } catch (error) {
@@ -44,7 +44,7 @@ router.get('/episodes/:episodeId/generation-log', async (req, res) => {
     const { episodeId } = req.params;
     console.log(`GET /api/episodes/${episodeId}/generation-log`);
     
-    const log = await logService.getEpisodeGenerationLogByEpisode(episodeId);
+    const log = await getEpisodeGenerationLogByEpisode(episodeId);
     
     if (!log) {
       return res.status(404).json({ error: 'Episode generation log not found' });

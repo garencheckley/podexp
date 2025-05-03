@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import { initializeFirebase } from './services/database';
 import podcastRoutes from './routes/podcasts';
@@ -32,16 +31,17 @@ console.log('Starting server with configuration:', {
 
 // Middleware
 app.use(bodyParser.json());
-app.use(cookieParser());
+
+// Apply CORS globally BEFORE routes
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'https://podcast-frontend-827681017824.us-west1.run.app',
     'http://localhost:5173'
   ],
-  credentials: true,
+  // credentials: false, // No credentials needed
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'Cookie', 'Accept']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'Accept']
+})); 
 
 // Initialize Firebase
 try {
@@ -69,7 +69,7 @@ app.get('/', (req, res) => {
   res.status(200).send('Server is running');
 });
 
-// Import and use route handlers
+// Import and use route handlers -> Ensure CORS is applied BEFORE these
 app.use('/api/auth', authRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/admin', adminRoutes);

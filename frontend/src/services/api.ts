@@ -328,9 +328,10 @@ export interface EpisodeGenerationLog {
 export async function getEpisodeGenerationLog(logId: string): Promise<EpisodeGenerationLog> {
   try {
     console.log('Fetching generation log by ID:', logId);
-    const response = await fetch(`${API_URL}/episode-logs/${logId}`, {
-      credentials: 'include', // Include cookies with requests
-    });
+    // Wrap fetch options with addAuthHeaders
+    const response = await fetch(`${API_URL}/episode-logs/${logId}`, addAuthHeaders({
+      // credentials: 'include', // REMOVED - addAuthHeaders handles auth now
+    }));
     
     console.log('Generation log response status:', response.status, response.statusText);
     
@@ -355,9 +356,10 @@ export async function getEpisodeGenerationLog(logId: string): Promise<EpisodeGen
 export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promise<EpisodeGenerationLog> {
   try {
     console.log('Fetching generation log for episode ID:', episodeId);
-    const response = await fetch(`${API_URL}/episodes/${episodeId}/generation-log`, {
-      credentials: 'include', // Include cookies with requests
-    });
+    // Wrap fetch options with addAuthHeaders
+    const response = await fetch(`${API_URL}/episodes/${episodeId}/generation-log`, addAuthHeaders({
+      // credentials: 'include', // REMOVED - addAuthHeaders handles auth now
+    }));
     
     console.log('Generation log by episode response status:', response.status, response.statusText);
     

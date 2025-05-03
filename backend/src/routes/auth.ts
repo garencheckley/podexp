@@ -105,74 +105,24 @@ router.get('/verify', async (req, res) => {
     // Delete the used token
     await tokenDoc.ref.delete();
     
-    // Check if the client wants JSON (JavaScript-based auth) or cookie-based auth
-    const acceptsJson = req.headers.accept && req.headers.accept.includes('application/json');
-    
-    if (acceptsJson) {
-      // Return JSON for JavaScript-based authentication
-      console.log(`Returning JSON response with email: ${email} for JavaScript-based auth`);
-      return res.json({ success: true, email });
-    } else {
-      // Set the cookie with the email for cookie-based authentication
-      console.log(`Setting cookie for email: ${email} with options:`, {
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        secure: true,
-        sameSite: 'none',
-        path: '/'
-      });
-      
-      res.cookie('userEmail', email, {
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        secure: true,
-        sameSite: 'none',
-        path: '/'
-      });
+    // ALWAYS return JSON with the email for client-side handling
+    console.log(`Verification successful for token. Returning email: ${email} in JSON response.`);
+    return res.json({ success: true, email });
 
-      // Redirect to the frontend
-      const baseUrl = process.env.FRONTEND_URL || 
-        (process.env.NODE_ENV === 'production'
-          ? 'https://podcast-frontend-827681017824.us-west1.run.app'
-          : 'http://localhost:5173');
-      
-      res.redirect(`${baseUrl}/`);
-    }
   } catch (error) {
     console.error('Token verification error:', error);
     res.status(500).json({ error: 'Failed to verify token' });
   }
 });
 
-// Logout endpoint
-router.get('/logout', (req, res) => {
-  // Clear the cookie
-  res.clearCookie('userEmail', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    path: '/'
-  });
-  
-  // Redirect to login page
-  const baseUrl = process.env.FRONTEND_URL || 
-    (process.env.NODE_ENV === 'production'
-      ? 'https://podcast-frontend-827681017824.us-west1.run.app'
-      : 'http://localhost:5173');
-  
-  res.redirect(`${baseUrl}/login`);
-});
+// Logout endpoint - No longer needed on backend as it's client-only
+// router.get('/logout', (req, res) => {
+//   // ... removed ...
+// });
 
-// Authentication Status Endpoint
-router.get('/status', authenticateTokenOptional, (req, res) => {
-  // authenticateTokenOptional attempts to set req.userId if a valid token/cookie/header exists
-  if (req.userId) {
-    console.log('Auth status check: User authenticated with email:', req.userId);
-    res.json({ authenticated: true, email: req.userId });
-  } else {
-    console.log('Auth status check: User not authenticated.');
-    res.json({ authenticated: false, email: null });
-  }
-});
+// Authentication Status Endpoint - REMOVED
+// router.get('/status', authenticateTokenOptional, (req, res) => {
+//  // ... removed ...
+// });
 
 export default router; 

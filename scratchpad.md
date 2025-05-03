@@ -198,88 +198,48 @@ The hybrid email authentication system is now fully functional. Key aspects and 
 
 1.  **Mechanism:** Uses magic links sent via email. The backend verifies the token.
     *   **Primary Auth:** Tries to set a secure, HTTP-only cookie (`userEmail`) with `SameSite=None; Secure`. This is the preferred, most secure method.
-    *   **Fallback Auth:** If cookies fail (e.g., cross-domain issues, browser settings), the frontend verification step requests JSON, stores the email in `localStorage`, and sends it via the `X-User-Email` header in subsequent requests.
-    *   **Backend Check:** The `authenticateToken` middleware checks for *either* the cookie *or* the header.
+    *   **Fallback Auth:** If cookie setting fails (e.g., cross-domain issues, browser restrictions), the `/verify` endpoint returns the email in the JSON response. The frontend then stores this email in `localStorage` and sends it as an `Authorization: Bearer <email>` header on subsequent requests.
+    *   **Middleware:** The backend authentication middleware checks for *either* the `userEmail` cookie *or* the `Authorization` header.
 
-2.  **Key Challenges & Fixes:**
-    *   **Cross-Domain Cookies:** Initial attempts with standard cookie settings failed due to the frontend and backend being on different `run.app` subdomains. Resolved by setting `secure: true` and `sameSite: 'none'` on the cookie and configuring backend CORS appropriately.
-    *   **Firestore Index Errors (FAILED_PRECONDITION):** Complex queries in `getAllPodcasts` (combining owner check and public visibility) and later `getPodcast` required specific composite indexes in Firestore. These were identified via detailed backend logging and created manually in the Firebase console.
-    *   **Debugging:** Added detailed logging (first `JSON.stringify`, then individual properties) to backend route handlers to pinpoint internal server errors, which was crucial for identifying the missing indexes.
-    *   **Authorization Logic:** Ensured that routes fetching specific podcasts (`/api/podcasts/:id`) and episodes (`/api/podcasts/:podcastId/episodes`) correctly check ownership (`ownerEmail`) or public visibility against the authenticated user (`req.userId`). Initial versions had these checks commented out, leading to 404s (as the database function returned `null` for unauthorized access).
+2.  **CORS & Cookies:**
+    *   Backend CORS is configured to allow credentials (`credentials: true`) and the specific frontend origin. Headers like `Authorization` are explicitly allowed.
+    *   Cookies require `secure: true` (HTTPS) and `sameSite: 'none'` for cross-domain use. This was the primary source of earlier issues.
 
-3.  **Troubleshooting Steps:**
-    *   **Login Fails:** Check SendGrid logs (if email not received), check `loginTokens` collection in Firestore (if token not valid).
-    *   **Requests Fail after Login (401/403):** Check `authenticateToken` middleware logs in backend (Cloud Logging). Verify if cookie or `X-User-Email` header is present and correct.
-    *   **Requests Fail after Login (500):** Check backend logs (stderr) for the specific route handler (e.g., `GET /api/podcasts`). Look for detailed error messages (like index errors).
-    *   **Requests Fail after Login (404 on Detail Pages):** Verify the authorization logic in the specific route handler (`GET /api/podcasts/:id`, `GET /api/podcasts/:podcastId/episodes`) is correctly checking ownership/visibility using `req.userId` passed to the database functions (`getPodcast`).
-    *   **Firestore Index Errors:** Check backend logs (stderr) for `FAILED_PRECONDITION`. Use the link provided in the error or manually create the required composite index in the Firebase console.
+3.  **Deployment:** Both frontend and backend were deployed successfully with the final fixes.
+    *   Backend: `gcloud builds submit --config cloudbuild.yaml .` in `/backend`.
+    *   Frontend: `gcloud builds submit --config cloudbuild.yaml .` in `/frontend`.
 
-See `AUTH_README.md` for a more comprehensive overview of the authentication flow. 
+4.  **Key Files:**
+    *   Backend: `backend/src/routes/auth.ts`, `backend/src/middleware/auth.ts`, `backend/src/server.ts` (CORS config).
+    *   Frontend: `frontend/src/services/api.ts`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/components/VerifyToken.tsx`, `frontend/src/pages/LoginPage.tsx`.
 
----
+5.  **Ownership Migration:** Ran `npm run migrate-visibility` to set `ownerEmail` to `garencheckley@gmail.com` for all existing podcasts.
 
-## Recent Activities - Hybrid Auth Implementation & Deployment (May 2nd)
+**Summary of Recent Actions (May 3rd):**
+- Corrected frontend deployment command path issue.
+- Successfully redeployed the frontend (`podcast-frontend-00055-v2h`) with the latest changes.
+- Updated `README.md` to reflect the new hybrid authentication system.
+- Updated this scratchpad with final implementation notes and deployment summary.
+- Preparing to push all changes to Git.
 
-*   **Hybrid Authentication System**: Implemented and deployed a robust hybrid authentication system supporting both secure, `SameSite=None` cookies and header-based authentication (using localStorage as a fallback) to ensure cross-browser and cross-domain compatibility.
-    *   **Backend**:
-        *   Fixed cookie configuration (`secure: true`, `sameSite: 'none'`).
-        *   Enhanced CORS configuration.
-        *   Updated `/verify` endpoint for dual auth methods.
-        *   Modified authentication middleware to check both cookies and `Authorization` headers.
-    *   **Frontend**:
-        *   Added localStorage for email storage fallback.
-        *   Updated API service for dual auth methods.
-        *   Improved token verification and handling.
-*   **Database Migration**: Successfully ran a migration script to update the `ownerEmail` field for all existing podcasts to `garencheckley@gmail.com`.
-*   **Deployment**: Deployed updated backend and frontend services to Cloud Run.
-*   **Documentation**: Updated `README.md` with details on the new authentication system, deployment procedures, and recent changes. 
+## Investigation Plan: Frontend Authentication State Issues (May 3rd)
 
----
+**Problem:** Frontend shows inconsistent authentication state: 
+*   Shows "Log In" button even when logged in (and showing private podcasts).
+*   Loses authentication state (reverts to logged-out view) after page refresh.
 
-## Debugging Synthesis Failure (May 2nd)
+**Plan:**
 
-*   **Issue**: Episode generation failed with a generic "Synthesis failed" message on the frontend.
-*   **Troubleshooting Steps**:
-    *   Checked Cloud Run logs for `podcast-backend` around the failure time; no specific errors found initially.
-    *   Enhanced error logging in `contentFormatter.ts` to capture more details from the Gemini API error object.
-    *   Examined `narrativePlanner.ts` and the episode generation route in `podcasts.ts`.
-    *   Re-deployed the backend with enhanced logging.
-    *   Checked Cloud Run service environment variables using `gcloud run services describe`.
-*   **Root Cause**: The `GEMINI_API_KEY` environment variable was not set in the deployed Cloud Run service environment for `podcast-backend`, preventing successful calls to the Gemini API during the content synthesis step.
-*   **Resolution**: 
-    *   Located the API key in the local `backend/.env` file.
-    *   Re-deployed the `podcast-backend` service using `gcloud run deploy`, explicitly setting the `GEMINI_API_KEY` using the `--set-env-vars` flag.
-*   **Result**: Episode generation is now working correctly. 
+1.  **Analyze Frontend Auth Check & State:**
+    *   Review `checkAuthentication` function usage in `frontend/src/services/api.ts`.
+    *   Examine how auth status and user email are stored and accessed in frontend state (e.g., Auth Context in `frontend/src/context/AuthContext.tsx`).
+    *   Verify timing and reliability of `checkAuthentication` calls, especially on page load/refresh (e.g., in `frontend/src/App.tsx`).
 
----
+2.  **Review Login/Logout Button Logic:**
+    *   Inspect the UI component responsible for displaying the Login/Logout button (likely a Header component, e.g., `frontend/src/components/Header.tsx`) to understand how it uses the auth state.
 
-## Visibility Toggle & Deletion Fixes (May 2nd)
+3.  **Examine Backend Status Endpoint:**
+    *   Re-verify the logic in `backend/src/routes/auth.ts` (`/api/auth/status` endpoint) and `backend/src/middleware/auth.ts` (`authenticateTokenOptional` middleware) to ensure correct identification using either cookie or `X-User-Email` header.
 
-*   **Feature Added**: Implemented a public/private visibility toggle on the `PodcastDetail` page.
-    *   Added backend endpoint logic (`PATCH /api/podcasts/:id`) to allow owners to update the `visibility` field.
-    *   Added frontend API function (`updatePodcastVisibility`) and UI toggle component in `PodcastDetail.tsx`.
-*   **Bug Fix (Visibility Update)**: Resolved a 404 error when updating visibility for private podcasts. The `PATCH /api/podcasts/:id` handler was incorrectly calling `getPodcast` without the user's email, causing the authorization check within `getPodcast` to fail for private podcasts.
-    *   **Fix**: Passed `req.userId` to the `getPodcast` call within the `PATCH` handler.
-*   **Bug Fix (Episode Deletion)**: Resolved a 401 Unauthorized error when deleting episodes. The `DELETE /api/podcasts/:podcastId/episodes/:episodeId` handler was using the incorrect `addAuthHeaders` setup in the frontend API call, potentially omitting the necessary `X-User-Email` header for the localStorage auth fallback.
-    *   **Fix**: Updated the `deleteEpisode` function in `frontend/src/services/api.ts` to use the `addAuthHeaders` helper.
-*   **Bug Fix (Podcast Deletion)**: Resolved a 401/403 error when deleting podcasts. The `DELETE /api/podcasts/:podcastId` handler had incorrect authorization logic, calling `getPodcast` without `req.userId` and comparing against `podcast.userId` instead of `podcast.ownerEmail`.
-    *   **Fix**: Updated the handler to pass `req.userId` to `getPodcast` and compare `podcast.ownerEmail === req.userId`. 
-
-## Session Summary (YYYY-MM-DD) - Hybrid Authentication Implementation & Deployment
-
-*   **Implemented Hybrid Authentication:** Developed a dual authentication system supporting both secure HttpOnly cookies and localStorage-based token handling.
-    *   **Backend:**
-        *   Configured secure cookie settings (`secure: true`, `sameSite: 'none'`).
-        *   Enhanced CORS to allow necessary headers/origins for cross-domain requests.
-        *   Updated `/verify` endpoint to handle both cookie and Authorization header.
-        *   Modified authentication middleware to check both sources.
-    *   **Frontend:**
-        *   Added localStorage fallback for token storage.
-        *   Updated API service to send token via header when cookies are unavailable/blocked.
-        *   Refined token verification logic on the client-side.
-*   **Database Update:** Ran migration script to set `ownerEmail` for all existing podcasts to `garencheckley@gmail.com`.
-*   **Documentation:** Updated `README.md` with details about the new authentication system and deployment steps.
-*   **Deployment:**
-    *   Successfully deployed the updated backend to Cloud Run (`podcast-backend`).
-    *   Successfully deployed the updated frontend to Cloud Run (`podcast-frontend`).
-*   **System Status:** Both services are live with the new hybrid authentication mechanism. 
+4.  **Trace Refresh Behavior:**
+    *   Trace the sequence during a page refresh: frontend session re-validation attempt -> credentials sent (cookie/header) -> backend response -> frontend state update. 

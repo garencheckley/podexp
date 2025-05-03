@@ -666,59 +666,57 @@ async function generateIntegratedContent(
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
-    console.log('Generating integrated podcast script content');
+    console.log('[DeepDive] Generating integrated content based on research');
+    // Check if researchedTopics is empty or invalid
+    if (!researchedTopics || researchedTopics.length === 0) {
+      console.warn('[DeepDive] No researched topics provided for integration.');
+      // Throw error instead of returning generic message
+      throw new Error('No researched topics available for content integration.');
+    }
 
-    let combinedResearch = "Synthesized Research for Podcast Episode:\n\n";
-    researchedTopics.forEach(topicResult => {
-      const allocation = topicDistribution.find(d => d.topic === topicResult.topic)?.allocation || (100 / researchedTopics.length);
-      const estimatedWords = Math.round(targetWordCount * (allocation / 100));
-      combinedResearch += `--- Topic: ${topicResult.topic} (Target Length: ~${estimatedWords} words) ---\n`;
-      combinedResearch += `Overall Depth Score: ${topicResult.depthMetrics.overallDepthScore}/10\n`;
-      combinedResearch += `Synthesized Content:\n${topicResult.synthesizedContent}\n\n`;
-    });
-
-    const generationPrompt = `
-      You are an expert MARKET RESEARCH ANALYST crafting a data-driven, insightful podcast. Your goal is to write a cohesive and authoritative script that delivers deep, evidence-based analysis filled with SPECIFIC DATA POINTS, STATISTICS, and CONCRETE EXAMPLES.
+    const prompt = `
+      Synthesize the following deep research findings into a coherent, data-driven podcast segment approximately ${targetWordCount} words long.
+      Maintain a professional, analytical tone suitable for domain experts.
+      Focus on connecting insights across topics and highlighting key data points.
       
-      Target total word count: ${targetWordCount} words.
-      Allocate content according to the target length suggested for each topic.
+      Topic Allocations:
+      ${topicDistribution.map(dist => `- ${dist.topic}: ${dist.allocation}%`).join('\n')}
       
-      HOST PERSONA: Authoritative market research expert who presents sophisticated analysis backed by HARD DATA. You speak with the confidence of someone who intimately understands the domain space and is speaking to other professionals who already grasp the fundamentals - you don't waste time explaining basics that your audience already knows. Your value comes from connecting data points, identifying patterns, and extracting meaningful insights.
+      Research Findings:
+      ${researchedTopics.map(topic => `
+      --- Topic: ${topic.topic} ---
+      ${topic.synthesizedContent}
+      Key Insights:
+      ${topic.layers.flatMap(l => l.keyInsights).map(insight => `- ${insight}`).join('\n')}
+      `).join('\n\n')}
       
-      REQUIRED CONTENT QUALITIES:
-      1. DATA-CENTRIC ANALYSIS: Liberally cite SPECIFIC statistics, percentages, growth rates, market sizes, and other quantifiable metrics
-      2. PRECISE EXAMPLES: Reference specific companies, products, or case studies to illustrate key points
-      3. COMPARATIVE METRICS: Use data to make meaningful comparisons (year-over-year changes, industry benchmarks, cross-sector analysis)
-      4. EXPERT SYNTHESIS: Connect disparate data points to reveal non-obvious patterns and implications
-      5. DOMAIN-SPECIFIC TERMINOLOGY: Use specialized vocabulary and industry terms appropriate to field experts
-      
-      CRITICAL WRITING RESTRICTIONS:
-      1. NO GENERIC STATEMENTS: Every significant claim must be supported by specific data or concrete examples
-      2. NO DUMBING DOWN: Write for an audience that already understands the domain - focus on advanced insights
-      3. NO VAGUE CLAIMS: Instead of "sales grew significantly," say "sales grew 37% year-over-year"
-      4. NO FILLER PHRASES: Avoid empty phrases like "it's important to note," "as we can see," "it's worth mentioning"
-      5. NO OBVIOUS STATEMENTS: Don't tell listeners what they already know - focus exclusively on high-value insights
-      
-      CRITICAL FORMAT REQUIREMENTS:
-      1. DO NOT include any speaker indicators like "Host:" or "Speaker:"
-      2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
-      3. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" 
-      4. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
-      5. AVOID assumptions about publication frequency (daily, weekly, monthly)
-      6. Use only plain text with standard punctuation (periods, commas, question marks)
-
-      Synthesized Research Input:
-      ${combinedResearch}
-
-      Generate ONLY the integrated podcast script content. Every paragraph should include SPECIFIC DATA POINTS, STATISTICS or CONCRETE EXAMPLES. Write as an authoritative market researcher speaking to other domain experts.
+      Requirements:
+      - Weave together the findings from different topics naturally.
+      - Prioritize content based on the Topic Allocations.
+      - Ensure the final output is well-structured and flows logically.
+      - Cite specific data points and metrics where possible.
+      - Adhere strictly to the word count.
+      - Output ONLY the integrated podcast content text, with standard punctuation.
+      - DO NOT include headers, titles, or introductory/concluding remarks unless they are part of the synthesized flow.
+      - DO NOT use markdown or special formatting.
+      - DO NOT include audio directions or speaker tags.
     `;
+    
+    const result = await model.generateContent(prompt);
+    const generatedContent = result.response.text();
 
-    const result = await model.generateContent(generationPrompt);
-    return result.response.text();
+    // Add a basic check for valid content
+    if (!generatedContent || generatedContent.trim().length < 50) { // Check for minimal length
+      console.error('[DeepDive] Integrated content generation resulted in empty or too short response.');
+      throw new Error('Failed to generate sufficient integrated content.');
+    }
 
+    console.log(`[DeepDive] Generated integrated content (${generatedContent.split(/\s+/).length} words)`);
+    return generatedContent;
   } catch (error) {
-    console.error('Error generating integrated podcast content:', error);
-    return "Failed to generate integrated podcast content due to an internal error.";
+    console.error('[DeepDive] Error generating integrated content:', error);
+    // Re-throw the error instead of returning a string
+    throw new Error(`Failed to generate integrated podcast content due to an internal error: ${error.message}`); 
   }
 }
 
