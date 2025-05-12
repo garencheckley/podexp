@@ -64,7 +64,6 @@ The system follows a client-server architecture with the following components:
 - **Hosting**: Google Cloud Run (serverless containers)
 - **Database**: Google Cloud Firestore
 - **Storage**: Google Cloud Storage
-- **Authentication**: (Planned for Phase 5) Google Identity Platform
 
 ## Data Model
 
@@ -474,63 +473,49 @@ The development process follows these steps:
 
 The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. There are two main approaches to deployment: using local Docker or using Google Cloud Build directly.
 
-### Backend Deployment (Recommended Method: Google Cloud Build)
+### Prerequisites
+- Google Cloud SDK installed and configured
+- Docker installed
+- `gcloud` CLI authenticated with your Google Cloud account
+- Project ID configured in `gcloud` (or replace `PROJECT_ID` placeholder manually)
+- Firestore indexes deployed (see `deploy-indexes.sh`)
 
-The recommended approach is to use Google Cloud Build, which handles the Docker build process in the cloud:
+### Backend Deployment
 
-1. **Build and Push the Container**:
-   ```bash
-   # Navigate to the backend directory
-   cd /path/to/project/backend
-   
-   # Build the container using Google Cloud Build
-   gcloud builds submit --tag gcr.io/PROJECT_ID/podcast-backend
-   ```
+1.  **Create a `.env` file in the `backend` directory (if it doesn't exist):**
+    This file is crucial for storing your `GEMINI_API_KEY` and should NOT be committed to git (ensure it's in your `.gitignore` file).
+    ```
+    backend/.env
+    ```
+    Add your Gemini API key to this file:
+    ```env
+    GEMINI_API_KEY=AIzaSyYOUR_ACTUAL_GEMINI_API_KEY_HERE
+    ```
 
-2. **Deploy to Cloud Run**:
-   ```bash
-   # Deploy the container to Cloud Run
-   gcloud run deploy podcast-backend \
-     --image gcr.io/PROJECT_ID/podcast-backend:latest \
-     --region us-west1 \
-     --platform managed \
-     --allow-unauthenticated
-   ```
+2.  **Navigate to the `backend` directory:**
+    ```bash
+    cd backend
+    ```
 
-   **IMPORTANT**: Always deploy to the `us-west1` region for consistency. Do not use other regions.
+3.  **Build the container using Google Cloud Build:**
+    Replace `PROJECT_ID` with your actual Google Cloud Project ID if not configured in `gcloud`.
+    ```bash
+    gcloud builds submit --tag gcr.io/PROJECT_ID/podcast-backend
+    ```
 
-3. **Firestore Indexes**: 
-   - Before the first deployment, ensure Firestore indexes are created:
-   ```
-   # Deploy required Firestore indexes
-   ./deploy-indexes.sh
-   ```
-   - Indexes are critical for queries that combine filtering and ordering
-   - Without proper indexes, certain queries will fail with FAILED_PRECONDITION errors
-
-4. **Environment Variables**: 
-   - Key environment variables are set in the Dockerfile and during deployment
-   - The service account credentials are included in the build
-   - Additional environment variables can be set during deployment with `--set-env-vars`
-   - **Important**: Ensure the `GEMINI_API_KEY` is set correctly for the `podcast-backend` service. This key is required for content generation. If deploying manually, include `--set-env-vars=GEMINI_API_KEY=<YOUR_API_KEY>` in the `gcloud run deploy` command. Refer to your local `backend/.env` file for the key if needed, but **do not commit the `.env` file** to source control.
-
-### Backend Deployment (Alternative: Local Docker)
-
-If you prefer to build locally first (requires Docker installed):
-
-1. **Build the Container Locally**:
-   ```bash
-   # Navigate to the backend directory
-   cd /path/to/project/backend
-   
-   # Build the Docker image
-   docker build -t gcr.io/PROJECT_ID/podcast-backend .
-   
-   # Push to Google Container Registry
-   docker push gcr.io/PROJECT_ID/podcast-backend
-   ```
-
-2. **Deploy to Cloud Run**: Same as in the recommended method.
+4.  **Deploy to Cloud Run:**
+    Replace `PROJECT_ID` and `YOUR_REGION` (e.g., `us-west1`). This command sources the `GEMINI_API_KEY` from your `backend/.env` file.
+    ```bash
+    # Ensure backend/.env exists and GEMINI_API_KEY is set within it.
+    # This command extracts the key from .env and passes it to Cloud Run.
+    gcloud run deploy podcast-backend \
+      --image gcr.io/PROJECT_ID/podcast-backend:latest \
+      --region YOUR_REGION \
+      --platform managed \
+      --allow-unauthenticated \
+      --set-env-vars="GEMINI_API_KEY=$(grep GEMINI_API_KEY .env | cut -d '=' -f2-)"
+    ```
+    **Note:** If your `GEMINI_API_KEY` might contain special characters that could interfere with the command, ensure it's properly quoted within the `.env` file or consider alternative methods for securely passing secrets in more complex CI/CD pipelines (like Secret Manager). For direct CLI deployment, this approach is generally effective.
 
 ### Frontend Deployment
 

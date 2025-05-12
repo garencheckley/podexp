@@ -243,3 +243,115 @@ The hybrid email authentication system is now fully functional. Key aspects and 
 
 4.  **Trace Refresh Behavior:**
     *   Trace the sequence during a page refresh: frontend session re-validation attempt -> credentials sent (cookie/header) -> backend response -> frontend state update. 
+
+# Podcast Topic Generation Improvement Plan
+
+**Goal:** Modify the "Initial Exploratory Search" to use a more specific, direct prompt to Gemini, incorporating podcast-specific reference websites and a fixed 14-day recency window, to generate better, more up-to-date podcast topic ideas.
+
+**Current Status:** Detailed plan complete. Phased implementation approach agreed upon (Phase 1: Live initial integration with basic topic titles and robust fallback; Phase 2: Full data integration and refinements). Awaiting go-ahead to begin Phase 1 implementation.
+
+**Key Requirements from CEO:**
+- Use a fixed 14-day window for recency in prompts.
+- Leverage the podcast's existing list of reference websites from the database.
+- The new process should directly ask for a list of potential podcast episode topics.
+
+## Implementation Steps:
+
+### 1. Locate Relevant Code & Understand Current Workflow
+   - [x] Identify the `searchOrchestrator` component or equivalent service. (Found: `backend/src/services/searchOrchestrator.ts`)
+   - [x] Analyze how `backend/src/services/search.ts` (specifically `conductSimpleSearch`, `identifyResearchTopics`, `executeWebSearch`) is currently used in the initial topic discovery.
+     - `searchOrchestrator.ts` is the primary driver.
+     - It calls `generateExploratoryQueries()` (within `searchOrchestrator.ts`) which uses a GenAI prompt to create ~5 search query strings. These queries aim for recency ("latest", "current month/year") and novelty.
+     - These queries are run via `executeWebSearch()` (from `search.ts`).
+     - The results are fed into `identifyPotentialTopics()` (within `searchOrchestrator.ts`) which uses another GenAI prompt to extract 5-7 topic ideas, relevance, and a *further research query* for each.
+     - `conductSimpleSearch()` is not the primary path but part of fallback logic in `searchOrchestrator.ts`.
+   - [x] Map out the current flow of initial topic generation. (Done above)
+
+Current Process for Initial Topics:
+`generate-episode` route -> `searchOrchestrator.performInitialSearch()`
+  -> `generateExploratoryQueries()` (AI #1: Podcast context -> Search Query Strings)
+  -> `executeWebSearch()` for each query string
+  -> `identifyPotentialTopics()` (AI #2: Search Results -> Potential Topics List with *deeper research queries*)
+
+This is a multi-step AI process. We want to make the first major AI call more direct in asking for topic *ideas*.
+
+### 2. Data Access for Reference Websites
+   - [x] Confirm the Firestore data structure for `Podcast` and its `sources` (reference websites).
+     - `backend/src/services/database.ts` defines:
+       `interface Podcast { ... prompt?: string; sources?: PodcastSource[]; ... }`
+       `interface PodcastSource { url: string; name: string; ... }`
+   - [x] Verify how these sources are fetched and made available to the backend services during episode generation.
+     - The `podcast` object, including `sources`, is passed to `searchOrchestrator.performInitialSearch()` from `backend/src/routes/podcasts.ts`.
+     - The `podcast.sources` will be an array of objects, and we'll need to extract the `url` from each.
+
+### 3. Draft New Gemini API Prompt
+   - [x] Formulate the precise wording of the new prompt.
+
+### 4. Outline Specific Code Changes
+   - [x] Detail changes needed in `searchOrchestrator` (or equivalent).
+   - [x] Detail changes/obsolescence for functions in `backend/src/services/search.ts`.
+   - [x] Define any new helper functions or data structures if needed.
+
+**Summary of Code Changes in `backend/src/services/searchOrchestrator.ts`:**
+
+1.  **Create `generateDirectTopicIdeas(podcast: Podcast, analysis: EpisodeAnalysis): Promise<RawTopicIdea[]>`:**
+    *   `RawTopicIdea` will be an interface like `{ topic_title: string; topic_summary: string; key_questions: string[]; supporting_sources: string[]; }`.
+    *   Constructs the new detailed Gemini prompt (from Step 3) using `podcast.prompt` and `podcast.sources` (list of URLs, with a 14-day hardcoded window).
+    *   Calls `executeWebSearch(newPrompt)` (from `search.ts`).
+    *   Parses the JSON response from Gemini into `RawTopicIdea[]`. Includes robust JSON parsing and error handling.
+
+2.  **Create `adaptDirectResultsToSearchResults(rawTopics: RawTopicIdea[], podcast: Podcast): SearchResults`:**
+    *   Transforms `RawTopicIdea[]` into the `SearchResults` interface required by downstream functions (like `planEpisodeContent`).
+    *   Mapping example:
+        *   `potentialTopics`: `rawTopic.topic_title` becomes `topic`.
+        *   `relevance`: Default high (e.g., 9).
+        *   `query`: Formulated from `rawTopic.key_questions` (e.g., "Explore: question1; question2").
+        *   `allSources` / `relevantSources`: From `rawTopic.supporting_sources`.
+        *   `recencyMapping`: All topics mapped to "Within 14 days".
+        *   `combinedResearch`: Can be empty string, as this method gives structured topics directly.
+
+3.  **Modify `performInitialSearch(podcast: Podcast, analysis: EpisodeAnalysis)`:**
+    *   Remove calls to `generateExploratoryQueries()` and `identifyPotentialTopics()`.
+    *   Call `generateDirectTopicIdeas()` to get `RawTopicIdea[]`.
+    *   Call `adaptDirectResultsToSearchResults()` to convert this to the `SearchResults` object.
+    *   The rest of the function (logging, error handling) largely remains but centers around these new calls.
+
+**Impact on `backend/src/services/search.ts`:**
+*   `executeWebSearch(query: string)`: Remains crucial, used by `generateDirectTopicIdeas`.
+*   `conductSimpleSearch()`: Becomes less relevant for this primary flow. Might be kept for fallbacks or other minor uses if any.
+*   The original `identifyResearchTopics()` (which was in `searchOrchestrator.ts` despite its name potentially suggesting `search.ts`) is effectively replaced by the new direct topic generation prompt for the initial topic list creation.
+
+**Fallback Strategy:**
+*   The existing `generateFallbackQueries` in `searchOrchestrator.ts` could still be used if `generateDirectTopicIdeas` fails catastrophically (e.g., Gemini API down or consistent parsing failures not caught internally). The output of these fallback queries would then likely need to be processed by a simplified version of the old `identifyPotentialTopics` logic or a new light-weight parser if we want to avoid a second AI call for fallbacks.
+
+### 5. Testing Strategy
+   - [x] Outline how to test the new topic generation.
+
+*   **Unit Tests:**
+    *   For `generateDirectTopicIdeas`: Mock `executeWebSearch`. Test parsing of various Gemini JSON responses (valid, malformed, empty, error). Test with/without `podcast.sources`.
+    *   For `adaptDirectResultsToSearchResults`: Test transformation of `RawTopicIdea[]` to `SearchResults` structure.
+*   **Integration Tests:**
+    *   Test modified `performInitialSearch` (mocking Gemini API or DB calls if needed).
+    *   Use test `Podcast` data with different `prompt` and `sources` configurations.
+    *   Verify `SearchResults` output format and plausible data.
+*   **Manual/Staging Testing:**
+    *   Deploy to staging.
+    *   Trigger generation for diverse test podcasts.
+    *   Inspect logs for prompts and raw Gemini responses.
+    *   Evaluate quality, relevance, and timeliness of generated topics.
+    *   Test edge cases (no sources, little recent news, 14-day window adherence).
+
+### 6. (Future) Configuration
+   - [x] Note potential future configuration options (e.g., number of topics).
+
+*   **Number of Topics:** Currently "5-7", could be configurable.
+*   **Recency Window:** Fixed at 14 days now, could be configurable.
+*   **Source Adherence:** Nuance in how strictly to follow preferred sources.
+
+---
+**Log & Findings:** 
+
+**Final Plan Summary:**
+The plan is to replace the current multi-step AI process for initial topic generation in `searchOrchestrator.ts` (which involves `generateExploratoryQueries` and `identifyPotentialTopics`) with a new, single AI call. This call will use a detailed prompt (drafted in Step 3) sent via `executeWebSearch`. The prompt directly asks Gemini to generate 5-7 topic ideas within a 14-day window, prioritizing the podcast's configured reference websites. New helper functions (`generateDirectTopicIdeas` and `adaptDirectResultsToSearchResults`) will manage this new prompt and transform its output into the existing `SearchResults` interface for downstream compatibility.
+
+This approach aims to make the initial topic discovery more direct, targeted, and aligned with the CEO's successful manual prompting strategy, leading to more relevant and up-to-date topic suggestions. 
