@@ -355,4 +355,6 @@ If a deployment causes issues:
 - **Data-Focused Content Generation**: Enhanced content generation prompts to produce more data-centric, analytical content with specific statistics, quantitative metrics, and expert market insights.
   - Updated the content formatter to emphasize data and statistics in podcast scripts
   - Improved narrative planning to prioritize quantitative analysis
-  - Implemented dedicated deep dive research function for comprehensive market analysis 
+  - Implemented dedicated deep dive research function for comprehensive market analysis
+- **Modern Dark UI Theme**: Updated the frontend to a sleek, modern, flat dark theme. Reduced borders and fills, increased whitespace, and made buttons more minimal and sleek. No changes to functionality. Main changes in `frontend/src/index.css` and `frontend/src/App.css`.
+ 

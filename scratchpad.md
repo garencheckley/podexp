@@ -1,0 +1,1 @@
+- 2024-06-10: Updated UI to a modern, flat, dark theme. Reduced borders and fills, increased whitespace, and made buttons sleeker and more minimal. No changes to functionality. Main changes were in index.css and App.css. 
