@@ -18,6 +18,7 @@ export interface InitialSearchLog {
   }>;
   relevantSources: string[];
   processingTimeMs: number;
+  geminiPrompt?: string;
 };
 
 export interface ClusteringLog {

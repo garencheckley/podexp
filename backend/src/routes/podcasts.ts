@@ -509,7 +509,12 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
       console.log('[Generate Step] Performing Initial Search...');
       const searchStartTime = Date.now();
       initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
-      generationLog = updateStage(generationLog, 'initialSearch', { potentialTopics: initialSearchResults.potentialTopics, relevantSources: initialSearchResults.relevantSources || [], processingTimeMs: Date.now() - searchStartTime }, Date.now() - searchStartTime);
+      generationLog = updateStage(generationLog, 'initialSearch', {
+        potentialTopics: initialSearchResults.potentialTopics,
+        relevantSources: initialSearchResults.relevantSources || [],
+        processingTimeMs: Date.now() - searchStartTime,
+        geminiPrompt: initialSearchResults.geminiPrompt
+      }, Date.now() - searchStartTime);
       generationLog = addDecision(generationLog, 'initial_search', `Found ${initialSearchResults.potentialTopics.length} potential topics`, 'Discovering current/relevant topics');
       await logService.saveEpisodeGenerationLog(generationLog);
       console.log(`[Generate Step] Initial search complete.`);

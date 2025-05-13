@@ -68,10 +68,10 @@ interface RawTopicIdea {
  */
 async function generateDirectTopicIdeas_Phase1(
   podcast: Podcast,
-  _analysis: EpisodeAnalysis // Analysis might be used in future prompt refinement
+  _analysis: EpisodeAnalysis, // Analysis might be used in future prompt refinement
+  geminiPrompt: string
 ): Promise<RawTopicIdea[]> {
   console.log(`[Phase 1] Attempting direct topic generation for podcast: ${podcast.title}`);
-  const podcastPromptText = podcast.prompt || podcast.description || podcast.title;
   const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
   let sourceListString = "any reputable major news outlets";
   if (sourceUrls.length > 0) {
@@ -83,7 +83,7 @@ async function generateDirectTopicIdeas_Phase1(
 You are an AI assistant tasked with generating compelling and timely podcast episode topic ideas for a news-focused podcast.
 
 Podcast Details:
-- Main Theme/Description: "${podcastPromptText}"
+- Main Theme/Description: "${podcast.prompt || podcast.description || podcast.title}"
 - Preferred Information Sources: Please prioritize news and updates from ${sourceListString}
 
 Your Task:
@@ -183,19 +183,22 @@ function adaptDirectResultsToSearchResults_Phase1(
 export async function performInitialSearch(
   podcast: Podcast,
   analysis: EpisodeAnalysis
-): Promise<SearchResults> {
+): Promise<SearchResults & { geminiPrompt?: string }> {
   // --- START NEW Phase 1 Logic ---
   try {
     console.log(`[Phase 1 Path] Attempting new direct topic generation for podcast: ${podcast.title}`);
-    const rawTopicIdeas = await generateDirectTopicIdeas_Phase1(podcast, analysis);
-    
+    const podcastPromptText = podcast.prompt || podcast.description || podcast.title;
+    const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
+    let sourceListString = "any reputable major news outlets";
+    if (sourceUrls.length > 0) {
+      sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast's theme and the specified preferred sources.`;
+    }
+    const geminiPrompt = `\nYou are an AI assistant tasked with generating compelling and timely podcast episode topic ideas for a news-focused podcast.\n\nPodcast Details:\n- Main Theme/Description: \"${podcastPromptText}\"\n- Preferred Information Sources: Please prioritize news and updates from ${sourceListString}\n\nYour Task:\nIdentify 5-7 distinct and newsworthy podcast episode topic ideas based on significant developments, stories, or updates that have emerged primarily from the preferred information sources (and other relevant major news outlets as a secondary consideration) strictly within the **last 14 days**.\n\nOutput Requirements:\nFor each topic idea, provide the following in a clear, structured format (e.g., JSON):\n1.  \`topic_title\`: A concise, engaging title for a potential podcast episode (e.g., \"The Future of Contactless Payments: What's Next?\").\n2.  \`topic_summary\`: A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme and preferred sources.\n3.  \`key_questions\`: 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., \"How are consumer adoption rates changing?\", \"What are the latest security concerns?\").\n4.  \`supporting_sources\`: A list of 1-3 specific URLs from the web search (ideally from the preferred sources, or other reputable sources) that directly support this topic idea and its timeliness.\n\nImportant Considerations:\n- Focus on distinct topics. Avoid multiple slight variations of the same core event unless the different angles are themselves uniquely newsworthy and substantial.\n- Ensure the information used to derive these topics is current (within the last 14 days).\n- The output should be a list of these structured topic ideas.\n- If no sufficiently newsworthy topics are found from the preferred sources within the last 14 days, indicate that clearly.\n\nPlease return the output as a JSON array, where each element is an object representing a topic idea with the fields: \`topic_title\`, \`topic_summary\`, \`key_questions\`, and \`supporting_sources\` (which itself is an array of strings/URLs).\nExample of a single topic object:\n{\n  \"topic_title\": \"Example Topic Title\",\n  \"topic_summary\": \"This topic is relevant because of recent X event reported by Source Y within the last 14 days.\",\n  \"key_questions\": [\"What is the impact of Z?\", \"How will this affect Q?\"],\n  \"supporting_sources\": [\"http://example.com/news-article-1\", \"http://another-source.com/related-story\"]\n}\n      `;
+    const rawTopicIdeas = await generateDirectTopicIdeas_Phase1(podcast, analysis, geminiPrompt);
     if (rawTopicIdeas && rawTopicIdeas.length > 0) {
       const adaptedResults = adaptDirectResultsToSearchResults_Phase1(rawTopicIdeas, podcast);
-      console.log(`[Phase 1 Path] Successfully generated ${adaptedResults.potentialTopics.length} topics directly for ${podcast.title}.`);
-      return adaptedResults;
+      return { ...adaptedResults, geminiPrompt };
     } else {
-      console.warn(`[Phase 1 Path] New direct topic generation for ${podcast.title} yielded no topics. Proceeding to fallback.`);
-      // No specific error, but no topics, so proceed to fallback by throwing a controlled error.
       throw new Error("Direct topic generation yielded no topics.");
     }
   } catch (newMethodError: any) {

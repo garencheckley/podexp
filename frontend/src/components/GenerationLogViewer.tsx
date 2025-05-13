@@ -16,6 +16,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<string | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
     async function fetchLog() {
@@ -143,7 +144,16 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <div className="stage-data">
             <h4>Initial Search Results</h4>
-            
+            {stageData.geminiPrompt && (
+              <div className="data-section">
+                <button onClick={() => setShowPrompt(v => !v)} className="show-prompt-toggle">
+                  {showPrompt ? 'Hide Prompt' : 'Show Prompt'}
+                </button>
+                {showPrompt && (
+                  <pre className="gemini-prompt-block">{stageData.geminiPrompt}</pre>
+                )}
+              </div>
+            )}
             {stageData.potentialTopics && stageData.potentialTopics.length > 0 && (
               <div className="data-section">
                 <h5>Potential Topics Found</h5>
@@ -156,7 +166,6 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                 </ul>
               </div>
             )}
-            
             {stageData.relevantSources && stageData.relevantSources.length > 0 && (
               <div className="data-section">
                 <h5>Sources</h5>
