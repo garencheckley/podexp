@@ -691,15 +691,44 @@ async function generateIntegratedContent(
       `).join('\n\n')}
       
       Requirements:
-      - Weave together the findings from different topics naturally.
-      - Prioritize content based on the Topic Allocations.
-      - Ensure the final output is well-structured and flows logically.
-      - Cite specific data points and metrics where possible.
-      - Adhere strictly to the word count.
-      - Output ONLY the integrated podcast content text, with standard punctuation.
-      - DO NOT include headers, titles, or introductory/concluding remarks unless they are part of the synthesized flow.
-      - DO NOT use markdown or special formatting.
-      - DO NOT include audio directions or speaker tags.
+      1. DATA POINTS:
+         - Include specific numbers, percentages, and statistics
+         - Cite exact dates for all data points
+         - Use precise figures instead of approximations
+         - Include year-over-year comparisons where relevant
+      
+      2. DIRECT QUOTES:
+         - Include at least 2-3 direct quotes per topic
+         - Format as: "According to [Source], '[exact quote]'"
+         - Ensure proper attribution
+         - Use quotes that provide specific insights
+      
+      3. SPECIFIC EXAMPLES:
+         - Reference exact company names and products
+         - Include specific dates and outcomes
+         - Provide concrete metrics for each example
+      
+      4. COMPARATIVE ANALYSIS:
+         - Use exact numbers for comparisons
+         - Include specific percentages for changes
+         - Reference precise time periods
+      
+      5. SYNTHESIS REQUIREMENTS:
+         - Connect specific data points across topics
+         - Highlight numerical patterns
+         - Draw conclusions based on exact figures
+      
+      Output Requirements:
+      - Weave together findings from different topics naturally
+      - Prioritize content based on Topic Allocations
+      - Ensure well-structured and logical flow
+      - Include specific data points and quotes
+      - Adhere strictly to word count
+      - Output ONLY the integrated podcast content text
+      - Use standard punctuation only
+      - NO headers, titles, or introductory remarks
+      - NO markdown or special formatting
+      - NO audio directions or speaker tags
     `;
     
     const result = await model.generateContent(prompt);

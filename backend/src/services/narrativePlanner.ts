@@ -115,15 +115,18 @@ export async function createNarrativeStructure(
       Create a professional narrative structure for a data-driven podcast episode with EXACTLY the following components:
       
       1. Introduction section with:
-         - An attention-grabbing hook statement that mentions a surprising statistic or metric
-         - A brief explanation of what analysts should know about this topic
+         - An attention-grabbing hook statement that MUST include a specific statistic or metric
+         - A brief explanation of what analysts should know about this topic, including at least one specific data point
          - Word count: exactly ${introWordCount} words
       
       2. Exactly ${optimalSectionCount} body sections, each with:
-         - A clear section title incorporating metrics or analytical terms (e.g., "Segment Growth: 43% YoY Increase in Enterprise Adoption")
+         - A clear section title incorporating specific metrics (e.g., "Segment Growth: 43% YoY Increase in Enterprise Adoption")
          - Reference to specific topics from the research (identify which research topic to use)
          - Content approach emphasizing data-driven analysis, trend identification, market impact
-         - 3-5 key bullet points (as phrases) highlighting metrics, quantitative insights, and specific examples to cover
+         - 3-5 key bullet points (as phrases) highlighting:
+           * At least one specific statistic or metric
+           * At least one direct quote from a source
+           * Specific examples with concrete numbers
          - A transition statement leading into the section
          - A transition statement leading out of the section
          - Word count: exactly ${sectionWordCount} words per section
@@ -134,7 +137,8 @@ export async function createNarrativeStructure(
          - Word count: exactly ${conclusionWordCount} words
       
       REQUIREMENTS:
-      - Focus on quantitative analysis and evidence-based insights
+      - Every section MUST include specific data points and metrics
+      - Each body section MUST include at least one direct quote
       - Use business/market research terminology appropriate for experts
       - Prioritize topics with the strongest data points and metrics
       - Structure each section to follow a logical analytical progression
@@ -155,7 +159,13 @@ export async function createNarrativeStructure(
             "sectionTitle": "string - analytical section title with metrics",
             "topicReference": "string - which research topic this section draws from",
             "contentApproach": "string - analytical approach for this section",
-            "keyPoints": ["string", "string", "string", "string", "string"],
+            "keyPoints": [
+              "string - must include specific data point",
+              "string - must include direct quote",
+              "string - must include specific example",
+              "string - additional key point",
+              "string - additional key point"
+            ],
             "transitions": {
               "leadIn": "string - transition into this section",
               "leadOut": "string - transition out of this section"

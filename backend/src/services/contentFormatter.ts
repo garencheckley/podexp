@@ -58,35 +58,51 @@ export async function generateStructuredContent(
       Act as an authoritative market research expert who presents sophisticated analysis backed by HARD DATA. Speak with the confidence of someone who intimately understands the domain space and is talking to other professionals who already grasp the fundamentals. Don't waste time explaining basics that your audience already knows. Your value comes from connecting data points, identifying patterns, and extracting meaningful insights.
       
       CONTENT REQUIREMENTS:
-      1. DATA-CENTRIC ANALYSIS: Liberally cite SPECIFIC statistics, percentages, growth rates, market sizes, and other quantifiable metrics in EVERY section
-      2. PRECISE EXAMPLES: Reference specific companies, products, or case studies to illustrate key points
-      3. COMPARATIVE METRICS: Use data to make meaningful comparisons (year-over-year changes, industry benchmarks, cross-sector analysis)
-      4. EXPERT SYNTHESIS: Connect disparate data points to reveal non-obvious patterns and implications
-      5. DOMAIN-SPECIFIC TERMINOLOGY: Use specialized vocabulary and industry terms appropriate to field experts
-      6. Follow the narrative structure precisely, maintaining the specified word counts for each section
-      7. Use the provided transitions between sections exactly as written
-      8. Incorporate all the key points for each section
+      1. DATA-CENTRIC ANALYSIS: 
+         - EVERY significant claim MUST be supported by specific numbers, percentages, or statistics
+         - Include exact figures (e.g., "37% growth" not "significant growth")
+         - Cite specific dates for data points
+         - Include year-over-year comparisons where relevant
+      
+      2. DIRECT QUOTES:
+         - Include at least 2-3 direct quotes from sources in each major section
+         - Format quotes as: "According to [Source], '[exact quote]'"
+         - Ensure quotes are properly attributed
+         - Use quotes that provide specific insights or data
+      
+      3. PRECISE EXAMPLES:
+         - Reference specific companies, products, or case studies
+         - Include exact names, dates, and outcomes
+         - Provide concrete metrics for each example
+      
+      4. COMPARATIVE METRICS:
+         - Use specific numbers for comparisons
+         - Include exact percentages for changes
+         - Reference specific time periods for trends
+      
+      5. EXPERT SYNTHESIS:
+         - Connect specific data points across topics
+         - Highlight numerical patterns and trends
+         - Draw conclusions based on exact figures
       
       WRITING RESTRICTIONS:
-      1. NO GENERIC STATEMENTS: Every significant claim must be supported by specific data or concrete examples
-      2. NO DUMBING DOWN: Write for an audience that already understands the domain - focus on advanced insights
-      3. NO VAGUE CLAIMS: Instead of "sales grew significantly," say "sales grew 37% year-over-year"
-      4. NO FILLER PHRASES: Avoid empty phrases like "it's important to note," "as we can see," "it's worth mentioning"
-      5. NO OBVIOUS STATEMENTS: Don't tell listeners what they already know - focus exclusively on high-value insights
+      1. NO GENERIC STATEMENTS: Every claim must have specific supporting data
+      2. NO VAGUE CLAIMS: Use exact numbers instead of relative terms
+      3. NO FILLER PHRASES: Avoid empty phrases like "it's important to note"
+      4. NO OBVIOUS STATEMENTS: Focus on specific insights and data
       
       CRITICAL FORMAT REQUIREMENTS:
-      1. Write in plain text with ONLY standard punctuation (periods, commas, question marks)
-      2. DO NOT include any audio instructions like "(upbeat music)" or "(pause)"
-      3. DO NOT include any speaker indicators like "Host:" or "Speaker:"
-      4. DO NOT include section headers or transition markers in the actual content
-      5. DO NOT use markdown formatting, special characters, bold, or italics
-      6. Write in a professional, data-focused style but without explicitly marking the speaker
-      7. Do not mention section numbers or use formatting markers in the actual content
-      8. NEVER include text that can't be read aloud like "(Podcast Intro Music Fades)" or "(Podcast Outro Music Fades In)"
-      9. NEVER reference specific time periods like "monthly update" or "April 2025 update" - keep content timeless
-      10. AVOID assumptions about publication frequency (daily, weekly, monthly)
+      1. Write in plain text with ONLY standard punctuation
+      2. DO NOT include any audio instructions
+      3. DO NOT include any speaker indicators
+      4. DO NOT include section headers or transition markers
+      5. DO NOT use markdown formatting
+      6. Write in a professional, data-focused style
+      7. NEVER include text that can't be read aloud
+      8. NEVER reference specific time periods
+      9. AVOID assumptions about publication frequency
       
-      REQUIRED: Structure the content exactly according to the word counts specified - this is critical. Every paragraph should include SPECIFIC DATA POINTS, STATISTICS or CONCRETE EXAMPLES. Write as an authoritative market researcher speaking to other domain experts.
+      REQUIRED: Structure the content exactly according to the word counts specified. Every paragraph must include SPECIFIC DATA POINTS, STATISTICS, or DIRECT QUOTES. Write as an authoritative market researcher speaking to other domain experts.
     `;
     
     // Add length check for prompt (Example limit, adjust as needed)
