@@ -1153,3 +1153,38 @@ a:hover {
   background: transparent !important;
   color: var(--text-color) !important;
 }
+
+/* Generation log and transcript tab content - force dark backgrounds and light text */
+.generation-log-tab, .transcript-tab, .tab-content {
+  background: var(--background-dark) !important;
+  color: var(--text-color) !important;
+}
+.generation-log-tab *, .transcript-tab *, .tab-content * {
+  background: transparent !important;
+  color: var(--text-color) !important;
+  border-color: #333 !important;
+}
+
+/* Tables in generation log */
+.generation-log-tab table, .generation-log-tab th, .generation-log-tab td {
+  background: transparent !important;
+  color: var(--text-color) !important;
+  border-color: #333 !important;
+}
+
+/* Tab bar and active tab styling */
+.tabs-header {
+  background: var(--background-dark) !important;
+  border-bottom: 2px solid #222 !important;
+}
+.tab-button {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border: none !important;
+  border-bottom: 3px solid transparent !important;
+}
+.tab-button.active {
+  color: var(--primary-color) !important;
+  border-bottom: 3px solid var(--primary-color) !important;
+  background: transparent !important;
+}
