@@ -1116,11 +1116,6 @@ router.get('/:id/rss', authenticateTokenOptional, async (req, res) => {
       return res.status(404).json({ error: 'Podcast not found or access denied' });
     }
 
-    // Check if podcast is public or user is owner
-    if (podcast.visibility !== 'public' && podcast.ownerEmail !== req.userId) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
     // Get all episodes for the podcast
     const episodes = await getEpisodesByPodcastId(podcastId);
 
