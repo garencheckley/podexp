@@ -9,14 +9,14 @@
   width: 100%;
   max-width: 400px;
   padding: 30px;
-  background: #ffffff;
+  background: #232428;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .login-description {
   margin-bottom: 24px;
-  color: #666;
+  color: #b0b3b8;
 }
 
 .form-group {
@@ -27,21 +27,29 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
+  color: #f3f3f3;
 }
 
 .form-group input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #33353a;
   border-radius: 4px;
   font-size: 16px;
+  background: #18191c;
+  color: #f3f3f3;
+}
+
+.form-group input:focus {
+  border-color: #4cc9f0;
+  outline: none;
 }
 
 .login-button {
   width: 100%;
   padding: 12px;
-  background-color: #4CAF50;
-  color: white;
+  background-color: #4cc9f0;
+  color: #18191c;
   border: none;
   border-radius: 4px;
   font-size: 16px;
@@ -50,11 +58,13 @@
 }
 
 .login-button:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: #4361ee;
+  color: #fff;
 }
 
 .login-button:disabled {
-  background-color: #cccccc;
+  background-color: #33353a;
+  color: #888;
   cursor: not-allowed;
 }
 
@@ -65,11 +75,11 @@
 }
 
 .message.success {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: #233524;
+  color: #3dd68c;
 }
 
 .message.error {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #3a2328;
+  color: #f72585;
 } 
