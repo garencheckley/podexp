@@ -30,6 +30,7 @@ const PodcastDetail = () => {
   const navigate = useNavigate();
   const [isOwner, setIsOwner] = useState(false);
   const [visibilityUpdating, setVisibilityUpdating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Get the current user's email (for ownership check)
   const { userEmail } = useAuth();
@@ -413,46 +414,139 @@ const PodcastDetail = () => {
       <Link to="/" className="back-button">
         ← Back to Podcasts
       </Link>
-      
       <div className="podcast-card">
         <h2>{podcast.title}</h2>
-        
-        {/* --- Visibility Toggle (Inline Implementation) --- */}
-        {/* Only show if owner */}
+        {/* Only show generate UI at the top */}
         {isOwner && (
-          <div className="visibility-toggle-section" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <label className="visibility-toggle-label">
-              <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
-              <div className="toggle-switch">
-                 <input
-                   type="checkbox"
-                   id={`visibility-toggle-${podcast.id}`}
-                   checked={podcast.visibility === 'public'}
-                   onChange={handleVisibilityChange}
-                   disabled={visibilityUpdating}
-                 />
-                 <span className="slider round"></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+            <button
+              onClick={() => setShowSettings((s) => !s)}
+              className="edit-button"
+              aria-label="Show settings"
+              style={{ minWidth: 100 }}
+            >
+              {showSettings ? 'Hide Settings' : 'Show Settings'}
+            </button>
+            <div style={{ flex: 1 }} />
+            <div className="episode-length-control" style={{ margin: 0 }}>
+              <div className="length-input-container">
+                <button
+                  className="length-button"
+                  onClick={decrementEpisodeLength}
+                  disabled={episodeLength <= 1 || generating}
+                  aria-label="Decrease episode length"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  value={episodeLength}
+                  onChange={handleEpisodeLengthChange}
+                  className="length-input"
+                  disabled={generating}
+                  style={{ width: 60 }}
+                />
+                <button
+                  className="length-button"
+                  onClick={incrementEpisodeLength}
+                  disabled={generating}
+                  aria-label="Increase episode length"
+                >
+                  +
+                </button>
+                <span className="length-label">minutes</span>
               </div>
-              {visibilityUpdating && <span className="updating-indicator">(updating...)</span>}
-            </label>
-            <button 
-              onClick={handleDeletePodcast}
-              className="delete-button"
-              disabled={deleting === podcastId}
+            </div>
+            <button
+              onClick={handleGenerateEpisode}
+              disabled={generating}
               style={{ marginLeft: '1rem' }}
             >
-              {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
+              {generating ? 'Generating Episode...' : 'Generate New Episode'}
             </button>
           </div>
         )}
-        {/* --- End Visibility Toggle --- */}
-        
+        {/* Settings section, only visible if toggled and owner */}
+        {isOwner && showSettings && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div className="visibility-toggle-section" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              <label className="visibility-toggle-label">
+                <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
+                <div className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    id={`visibility-toggle-${podcast.id}`}
+                    checked={podcast.visibility === 'public'}
+                    onChange={handleVisibilityChange}
+                    disabled={visibilityUpdating}
+                  />
+                  <span className="slider round"></span>
+                </div>
+                {visibilityUpdating && <span className="updating-indicator">(updating...)</span>}
+              </label>
+              <button
+                onClick={handleDeletePodcast}
+                className="delete-button"
+                disabled={deleting === podcastId}
+                style={{ marginLeft: '1rem' }}
+              >
+                {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
+              </button>
+            </div>
+            {/* Prompt Edit Section */}
+            <div className="podcast-prompt-section">
+              <div className="prompt-header">
+                <h3>Podcast Prompt</h3>
+                {/* Only show Edit button if owner */}
+                {isOwner && !editingPrompt && (
+                  <button
+                    onClick={handleEditPrompt}
+                    className="edit-button"
+                    aria-label="Edit prompt"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+              {/* Show editor only if owner and editing */}
+              {isOwner && editingPrompt ? (
+                <div className="prompt-editor">
+                  <textarea
+                    value={promptValue}
+                    onChange={(e) => setPromptValue(e.target.value)}
+                    rows={6}
+                    placeholder="Enter podcast prompt..."
+                    disabled={savingPrompt}
+                  />
+                  <div className="editor-actions">
+                    <button
+                      onClick={handleCancelEdit}
+                      className="cancel-button"
+                      disabled={savingPrompt}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSavePrompt}
+                      className="save-button"
+                      disabled={savingPrompt || !promptValue.trim()}
+                    >
+                      {savingPrompt ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="podcast-prompt">{podcast.prompt}</p>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Podcast description and badge remain below settings */}
         <p>{podcast.description}</p>
-        
         <div className="podcast-type-badge">
           <span className="badge news">News from the web</span>
         </div>
-        
         <div className="podcast-sources-section">
           <div className="sources-header">
             <h3>Trusted Sources</h3>
@@ -507,113 +601,6 @@ const PodcastDetail = () => {
             <p className="no-sources">No trusted sources configured for this podcast.</p>
           )}
         </div>
-        
-        {/* --- Edit Prompt Section --- */}
-        <div className="podcast-prompt-section">
-          <div className="prompt-header">
-            <h3>Podcast Prompt</h3>
-            {/* Only show Edit button if owner */}
-            {isOwner && !editingPrompt && (
-              <button 
-                onClick={handleEditPrompt} 
-                className="edit-button"
-                aria-label="Edit prompt"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          {/* Show editor only if owner and editing */}
-          {isOwner && editingPrompt ? (
-            <div className="prompt-editor">
-              <textarea
-                value={promptValue}
-                onChange={(e) => setPromptValue(e.target.value)}
-                rows={6}
-                placeholder="Enter podcast prompt..."
-                disabled={savingPrompt}
-              />
-              <div className="editor-actions">
-                <button 
-                  onClick={handleCancelEdit}
-                  className="cancel-button"
-                  disabled={savingPrompt}
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleSavePrompt}
-                  className="save-button"
-                  disabled={savingPrompt || !promptValue.trim()}
-                >
-                  {savingPrompt ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="podcast-prompt">{podcast.prompt}</p>
-          )}
-        </div>
-        {/* --- End Edit Prompt Section --- */}
-        
-        {error && (
-          <div className="error-message">
-            {error}
-            <button 
-              onClick={() => setError(null)} 
-              className="error-dismiss"
-              aria-label="Dismiss error"
-            >
-              ×
-            </button>
-          </div>
-        )}
-        
-        {/* --- Generate Episode Section --- */}
-        {/* Only show if owner */}
-        {isOwner && (
-           <div className="episode-generation-controls">
-              <div className="episode-length-control">
-                <h3>Episode Length</h3>
-                <div className="length-input-container">
-                  <button 
-                    className="length-button"
-                    onClick={decrementEpisodeLength}
-                    disabled={episodeLength <= 1 || generating}
-                    aria-label="Decrease episode length"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    value={episodeLength}
-                    onChange={handleEpisodeLengthChange}
-                    className="length-input"
-                    disabled={generating}
-                  />
-                  <button 
-                    className="length-button"
-                    onClick={incrementEpisodeLength}
-                    disabled={generating}
-                    aria-label="Increase episode length"
-                  >
-                    +
-                  </button>
-                  <span className="length-label">minutes</span>
-                </div>
-                <p className="length-help">Determines the duration of the generated episode. Longer episodes will have more content.</p>
-              </div>
-              <button 
-                onClick={handleGenerateEpisode} 
-                disabled={generating}
-                style={{ marginTop: '1rem' }}
-              >
-                {generating ? 'Generating Episode...' : 'Generate New Episode'}
-              </button>
-          </div>
-        )}
-        {/* --- End Generate Episode Section --- */}
       </div>
       
       <div className="episode-list">
