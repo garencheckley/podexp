@@ -144,52 +144,11 @@ const PodcastList = () => {
                 <div className="podcast-card-content">
                   <h2>{podcast.title}</h2>
                   
-                  <div className="visibility-toggle-section list-toggle">
-                     <label className="visibility-toggle-label">
-                       <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
-                       {isOwner && (
-                         <div className="toggle-switch">
-                            <input
-                              type="checkbox"
-                              id={`visibility-toggle-list-${podcast.id}`}
-                              checked={podcast.visibility === 'public'}
-                              onChange={(e) => handleVisibilityChange(podcast.id!, e.target.checked ? 'public' : 'private')}
-                            />
-                            <span className="slider round"></span>
-                         </div>
-                       )}
-                     </label>
-                     {!isOwner && podcast.visibility === 'private' && (
-                         <p className="visibility-note">This podcast is private.</p>
-                     )}
-                  </div>
-                  
                   <p>{podcast.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                     <Link to={`/podcasts/${podcast.id}`}>
                       <button>View Episodes</button>
                     </Link>
-                    
-                    {isOwner && (
-                      <div className="more-actions">
-                        <button 
-                          onClick={() => podcast.id && toggleDeleteMenu(podcast.id)}
-                          className="more-button"
-                          aria-label="Show delete option"
-                        >
-                          ⋮
-                        </button>
-                        
-                        <div className={`actions-menu ${showDeleteMenu[podcast.id!] ? 'show' : ''}`}>
-                          <div 
-                            className="menu-item delete"
-                            onClick={() => podcast.id && handleDeletePodcast(podcast.id)}
-                          >
-                            {deleting === podcast.id ? 'Deleting...' : 'Delete Podcast'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

@@ -370,6 +370,23 @@ const PodcastDetail = () => {
     }
   };
 
+  // Add handler for deleting the podcast
+  const handleDeletePodcast = async () => {
+    if (!podcastId) return;
+    if (window.confirm('Are you sure you want to delete this podcast? This will delete all episodes and audio files and cannot be undone.')) {
+      setDeleting(podcastId);
+      try {
+        await import('../services/api').then(api => api.deletePodcast(podcastId));
+        navigate('/');
+      } catch (err) {
+        setError('Failed to delete podcast. Please try again later.');
+        console.error('Error deleting podcast:', err);
+      } finally {
+        setDeleting(null);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -403,7 +420,7 @@ const PodcastDetail = () => {
         {/* --- Visibility Toggle (Inline Implementation) --- */}
         {/* Only show if owner */}
         {isOwner && (
-          <div className="visibility-toggle-section">
+          <div className="visibility-toggle-section" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
             <label className="visibility-toggle-label">
               <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
               <div className="toggle-switch">
@@ -418,11 +435,14 @@ const PodcastDetail = () => {
               </div>
               {visibilityUpdating && <span className="updating-indicator">(updating...)</span>}
             </label>
-            <p className="visibility-note">
-              {podcast.visibility === 'public'
-                ? 'Anyone logged in can see this podcast.'
-                : 'Only you can see this podcast.'}
-            </p>
+            <button 
+              onClick={handleDeletePodcast}
+              className="delete-button"
+              disabled={deleting === podcastId}
+              style={{ marginLeft: '1rem' }}
+            >
+              {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
+            </button>
           </div>
         )}
         {/* --- End Visibility Toggle --- */}
