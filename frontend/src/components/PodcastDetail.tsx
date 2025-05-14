@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 import GenerationLogViewer from './GenerationLogViewer';
 import VisibilityToggle from './VisibilityToggle';
@@ -494,6 +494,30 @@ const PodcastDetail = () => {
                 {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
               </button>
             </div>
+
+            {/* RSS Feed Section */}
+            <div className="rss-feed-section" style={{ marginTop: '1rem' }}>
+              <h3>RSS Feed</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <input
+                  type="text"
+                  value={getRssFeedUrl(podcast.id!)}
+                  readOnly
+                  style={{ flex: 1, padding: '0.5rem' }}
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(getRssFeedUrl(podcast.id!));
+                    // You could add a toast notification here if you have one
+                    alert('RSS feed URL copied to clipboard!');
+                  }}
+                  className="copy-button"
+                >
+                  Copy URL
+                </button>
+              </div>
+            </div>
+
             {/* Prompt Edit Section */}
             <div className="podcast-prompt-section">
               <div className="prompt-header">

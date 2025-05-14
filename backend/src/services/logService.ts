@@ -190,9 +190,26 @@ export function failLog(log: EpisodeGenerationLog, error: string): EpisodeGenera
   return { ...log, status: 'failed', error };
 }
 
+// Utility to recursively remove undefined values from an object
+function removeUndefined(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined);
+  } else if (obj && typeof obj === 'object') {
+    return Object.entries(obj)
+      .filter(([_, v]) => v !== undefined)
+      .reduce((acc, [k, v]) => {
+        acc[k] = removeUndefined(v);
+        return acc;
+      }, {} as any);
+  }
+  return obj;
+}
+
 export async function saveEpisodeGenerationLog(log: EpisodeGenerationLog): Promise<void> {
   try {
-    await getDb().collection('episodeGenerationLogs').doc(log.id).set(log);
+    const cleanedLog = removeUndefined(log);
+    console.log('Saving cleaned episode generation log (undefineds removed):', JSON.stringify(cleanedLog));
+    await getDb().collection('episodeGenerationLogs').doc(log.id).set(cleanedLog);
     console.log(`Saved episode generation log: ${log.id}`);
   } catch (error) {
     console.error('Error saving episode generation log:', error);

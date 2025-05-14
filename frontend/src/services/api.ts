@@ -374,4 +374,8 @@ export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promi
     console.error('Error fetching episode generation log for episode:', error);
     throw error;
   }
+}
+
+export function getRssFeedUrl(podcastId: string): string {
+  return `${API_URL}/podcasts/${podcastId}/rss`;
 } 

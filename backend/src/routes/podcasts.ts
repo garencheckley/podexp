@@ -29,6 +29,7 @@ import { summarizeCluster } from '../services/clusteringService';
 import { authenticateToken, authenticateTokenOptional } from '../middleware/auth';
 import * as logService from '../services/logService';
 import { addDecision, updateStage, setEpisodeId, completeLog, failLog } from '../services/logService';
+import { generateRssFeed } from '../services/rssGenerator';
 
 const router = express.Router();
 
@@ -1100,6 +1101,38 @@ router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error updating podcast visibility:', error);
     res.status(500).json({ error: 'Failed to update podcast visibility' });
+  }
+});
+
+// Get RSS feed for podcast (Public endpoint with visibility check)
+router.get('/:id/rss', authenticateTokenOptional, async (req, res) => {
+  try {
+    const { id: podcastId } = req.params;
+    console.log(`GET /api/podcasts/${podcastId}/rss`);
+
+    // Get the podcast
+    const podcast = await getPodcast(podcastId, req.userId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found or access denied' });
+    }
+
+    // Check if podcast is public or user is owner
+    if (podcast.visibility !== 'public' && podcast.ownerEmail !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get all episodes for the podcast
+    const episodes = await getEpisodesByPodcastId(podcastId);
+
+    // Generate RSS feed
+    const rssFeed = generateRssFeed(podcast, episodes);
+
+    // Set content type to XML
+    res.setHeader('Content-Type', 'application/xml');
+    res.send(rssFeed);
+  } catch (error) {
+    console.error('Error generating RSS feed:', error);
+    res.status(500).json({ error: 'Failed to generate RSS feed' });
   }
 });
 
