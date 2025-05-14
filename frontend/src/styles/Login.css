@@ -9,14 +9,19 @@
   width: 100%;
   max-width: 400px;
   padding: 30px;
-  background: #232428;
+  background: #18191c;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.login-card h2,
+.login-description,
+.form-group label {
+  color: #f3f3f3;
+}
+
 .login-description {
   margin-bottom: 24px;
-  color: #b0b3b8;
 }
 
 .form-group {
@@ -27,7 +32,6 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #f3f3f3;
 }
 
 .form-group input {
@@ -36,7 +40,7 @@
   border: 1px solid #33353a;
   border-radius: 4px;
   font-size: 16px;
-  background: #18191c;
+  background: #232428;
   color: #f3f3f3;
 }
 
@@ -72,14 +76,14 @@
   padding: 12px;
   margin-bottom: 20px;
   border-radius: 4px;
+  color: #f3f3f3;
+  background: #232428;
 }
 
 .message.success {
-  background-color: #233524;
   color: #3dd68c;
 }
 
 .message.error {
-  background-color: #3a2328;
   color: #f72585;
 } 
