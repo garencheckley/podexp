@@ -109,7 +109,7 @@ The system implements a secure, email-based authentication system with the follo
 - Protected API endpoints with proper authorization checks
 
 ### Content Generation Pipeline
-The system uses a sophisticated multi-stage process for generating high-quality podcast content:
+The system uses a multi-stage process for generating high-quality podcast content:
 
 1. **Episode Analysis**
    - Consolidated analysis of previous episodes
@@ -117,10 +117,12 @@ The system uses a sophisticated multi-stage process for generating high-quality 
    - Pattern recognition across episodes
    - Topic frequency analysis
 
-2. **Topic Generation**
+2. **Topic Generation & Selection**
    - 14-day recency window for up-to-date content
    - Podcast-specific reference websites integration
    - Enhanced relevance scoring and filtering
+   - **Directly selects topics based on newness (not previously covered) and timeliness (e.g., breaking news, ongoing development)**
+   - Skips clustering and prioritization steps
    - Comprehensive logging for debugging
 
 3. **Deep Research**

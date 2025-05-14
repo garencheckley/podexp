@@ -550,84 +550,59 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
     }
     // --- End Source-Guided Search --- 
 
-    // --- Clustering --- 
-    let clusterResult: clusteringService.ClusterResult = { clusters: {}, noise: [], clusterAssignments: [] };
-    let clusterSummariesInput: clusteringService.ClusterSummaryInput[] = [];
+    // --- Topic Selection (No Clustering/Prioritization) ---
+    let selectedTopics = [];
     try {
-        console.log('[Generate Step] Clustering Topics...');
-        const clusterStartTime = Date.now();
-        const articlesToCluster: clusteringService.ArticleData[] = initialSearchResults.potentialTopics.map((topic, index) => ({ id: topic.topic || `topic_${index}`, content: topic.topic || '' }));
-        if (articlesToCluster.length > 0) {
-            clusterResult = await clusteringService.clusterArticles(articlesToCluster);
-            generationLog = updateStage(generationLog, 'clustering', { inputTopics: articlesToCluster.map(a => a.id), clusters: clusterResult.clusters, clusterSummaries: [], processingTimeMs: Date.now() - clusterStartTime }, Date.now() - clusterStartTime);
-            generationLog = addDecision(generationLog, 'clustering', `Grouped topics into ${Object.keys(clusterResult.clusters).length} clusters`, 'Improving thematic focus');
-            console.log(`[Generate Step] Clustering complete: ${Object.keys(clusterResult.clusters).length} clusters found.`);
-
-            // --- Cluster Summarization --- 
-            console.log('[Generate Step] Summarizing Clusters...');
-            if (clusterResult.clusters && Object.keys(clusterResult.clusters).length > 0) {
-                const clusterIds = Object.keys(clusterResult.clusters).map(Number);
-                for (const clusterId of clusterIds) {
-                    const topicIds = clusterResult.clusters[clusterId];
-                    if (topicIds && topicIds.length > 0) {
-                        try {
-                            const summary = await clusteringService.summarizeCluster(clusterId, topicIds, initialSearchResults);
-                            clusterSummariesInput.push({ clusterId, summary, originalTopicIds: topicIds });
-                            if (generationLog.stages.clustering) {
-                                generationLog.stages.clustering.clusterSummaries.push({ clusterId, summary, originalTopicIds: topicIds });
-                            }
-                        } catch (summaryError: any) {
-                            console.error(`[Generate Step] Non-fatal error summarizing cluster ${clusterId}: ${summaryError.message}`);
-                        }
-                    }
-                }
-            }
-            console.log(`[Generate Step] Cluster summarization complete: ${clusterSummariesInput.length} summaries generated.`);
-        } else {
-            console.log('[Generate Step] Skipping clustering and summarization: No topics found.');
-            generationLog = addDecision(generationLog, 'clustering', 'Skipped clustering', 'No topics from initial search');
-        }
-        await logService.saveEpisodeGenerationLog(generationLog);
-    } catch (clusterError: any) {
-        console.error(`[Generate Step] Non-fatal error during clustering/summarization: ${clusterError.message}. Proceeding without clusters.`);
-        generationLog = addDecision(generationLog, 'clustering', 'Proceeded without clustering due to error', `Non-fatal error: ${clusterError.message}`);
-        await logService.saveEpisodeGenerationLog(generationLog);
-        // Reset cluster results if failed
-        clusterSummariesInput = []; 
-    }
-    // --- End Clustering & Summarization ---
-
-    // --- Prioritization --- 
-    let prioritizedTopics;
-    try {
-      console.log('[Generate Step] Prioritizing Topics/Clusters...');
-      const prioritizationStartTime = Date.now();
-      // Prioritize cluster summaries if available, otherwise fall back to initial potential topics
-      const topicsToPrioritize = clusterSummariesInput.length > 0 ? clusterSummariesInput : initialSearchResults.potentialTopics;
-      prioritizedTopics = await deepDiveResearch.prioritizeTopicsForDeepDive(topicsToPrioritize, episodeAnalysis, targetWordCount);
-      generationLog = updateStage(generationLog, 'prioritization', { prioritizedTopics, discardedTopics: [], selectionReasoning: 'Using selected topics/clusters', processingTimeMs: Date.now() - prioritizationStartTime }, Date.now() - prioritizationStartTime);
-      generationLog = addDecision(generationLog, 'prioritization', `Selected ${prioritizedTopics.length} topics/clusters for deep research`, 'Based on relevance, depth, differentiation');
+      console.log('[Generate Step] Selecting Topic(s) based on newness and timeliness...');
+      // Filter out topics that have been covered before
+      const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
+      const timelyTopics = initialSearchResults.potentialTopics.filter(t => {
+        const isNew = !previouslyCovered.has((t.topic || '').toLowerCase());
+        const isTimely = t.recency && [
+          'breaking news',
+          'ongoing development',
+          'recent',
+          'new',
+          'current',
+        ].some(keyword => t.recency.toLowerCase().includes(keyword));
+        return isNew && isTimely;
+      });
+      // Fallback: if no timely topics, pick any new topic
+      selectedTopics = timelyTopics.length > 0 ? timelyTopics : initialSearchResults.potentialTopics.filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()));
+      // Fallback: if still empty, pick the most relevant topic
+      if (selectedTopics.length === 0 && initialSearchResults.potentialTopics.length > 0) {
+        selectedTopics = [initialSearchResults.potentialTopics[0]];
+      }
+      generationLog = addDecision(generationLog, 'topic_selection', `Selected ${selectedTopics.length} topic(s) for deep research`, 'Criteria: new and timely');
       await logService.saveEpisodeGenerationLog(generationLog);
-      console.log(`[Generate Step] Prioritization complete.`);
-    } catch (prioritizationError: any) {
-      console.error(`[Generate Step] Error during prioritization: ${prioritizationError.message}`);
-      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Prioritization failed: ${prioritizationError.message}`));
-      return res.status(500).json({ error: 'Failed during topic prioritization', details: prioritizationError.message });
+      console.log(`[Generate Step] Topic selection complete. Topics: ${selectedTopics.map(t => t.topic).join(', ')}`);
+    } catch (topicSelectError: any) {
+      console.error(`[Generate Step] Error during topic selection: ${topicSelectError.message}`);
+      await logService.saveEpisodeGenerationLog(failLog(generationLog, `Topic selection failed: ${topicSelectError.message}`));
+      return res.status(500).json({ error: 'Failed during topic selection', details: topicSelectError.message });
     }
-    // --- End Prioritization --- 
+    // --- End Topic Selection ---
 
     // --- Deep Research --- 
     let deepResearchResults;
     try {
       console.log('[Generate Step] Conducting Deep Dive Research...');
       const researchStartTime = Date.now();
-      deepResearchResults = await deepDiveResearch.conductDeepDiveResearch(prioritizedTopics, targetWordCount);
-      
+      // Adapt selectedTopics to DeepResearchTopic[] format if needed
+      const deepResearchInput = selectedTopics.map(t => ({
+        topic: t.topic,
+        importance: t.relevance || 8,
+        newsworthiness: 10, // Assume high for timely topics
+        depthPotential: 8,
+        rationale: 'Selected for newness and timeliness',
+        keyQuestions: [],
+        searchQueries: [t.query]
+      }));
+      deepResearchResults = await deepDiveResearch.conductDeepDiveResearch(deepResearchInput, targetWordCount);
       if (!deepResearchResults || !deepResearchResults.overallContent || deepResearchResults.overallContent.trim().length < 50) {
           console.error('[Generate Step] Deep research resulted in invalid or insufficient overallContent.');
           throw new Error('Deep research phase failed to produce valid content.');
       }
-      
       generationLog = updateStage(generationLog, 'deepResearch', { ...deepResearchResults, processingTimeMs: Date.now() - researchStartTime }, Date.now() - researchStartTime);
       generationLog = addDecision(generationLog, 'deep_research', `Completed deep research on ${deepResearchResults.researchedTopics.length} topics`, 'Gathering layered insights');
       await logService.saveEpisodeGenerationLog(generationLog);

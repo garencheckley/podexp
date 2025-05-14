@@ -104,7 +104,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
     const stageDecisions = log.decisions.filter(d => d.stage === stage);
     
     // Render different content based on the stage
-    let stageSpecificContent;
+    let stageSpecificContent = null;
     
     switch (stage) {
       case 'episodeAnalysis':
@@ -117,7 +117,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
               <div className="data-section">
                 <h5>Recent Topics</h5>
                 <ul>
-                  {stageData.recentTopics.map((topic, idx) => (
+                  {stageData.recentTopics.map((topic: { topic: string; frequency: number }, idx: number) => (
                     <li key={idx}>
                       {topic.topic} (mentioned {topic.frequency} times)
                     </li>
@@ -130,7 +130,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
               <div className="data-section">
                 <h5>Recurrent Themes</h5>
                 <ul>
-                  {stageData.recurrentThemes.map((theme, idx) => (
+                  {stageData.recurrentThemes.map((theme: string, idx: number) => (
                     <li key={idx}>{theme}</li>
                   ))}
                 </ul>
@@ -158,7 +158,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
               <div className="data-section">
                 <h5>Potential Topics Found</h5>
                 <ul>
-                  {stageData.potentialTopics.map((topic, idx) => (
+                  {stageData.potentialTopics.map((topic: { topic: string, relevance: number }, idx: number) => (
                     <li key={idx}>
                       {topic.topic} (relevance: {topic.relevance}/10)
                     </li>
@@ -170,109 +170,12 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
               <div className="data-section">
                 <h5>Sources</h5>
                 <ul className="sources-list">
-                  {stageData.relevantSources.map((source, idx) => (
+                  {stageData.relevantSources.map((source: { url: string }, idx: number) => (
                     <li key={idx}>
-                      <a href={source} target="_blank" rel="noopener noreferrer">{source}</a>
+                      <a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a>
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-          </div>
-        );
-        break;
-        
-      case 'clustering':
-        stageSpecificContent = (
-          <div className="stage-data">
-            <h4>Topic Clustering</h4>
-            
-            {stageData.clusters && Object.keys(stageData.clusters).length > 0 && (
-              <div className="data-section">
-                <h5>Topic Clusters</h5>
-                {Object.entries(stageData.clusters).map(([clusterId, topics]) => (
-                  <div key={clusterId} className="cluster">
-                    <h6>Cluster {clusterId}</h6>
-                    <ul>
-                      {Array.isArray(topics) && topics.map((topic, idx) => (
-                        <li key={idx}>{topic}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {stageData.clusterSummaries && stageData.clusterSummaries.length > 0 && (
-              <div className="data-section">
-                <h5>Cluster Summaries</h5>
-                {stageData.clusterSummaries.map((summary, idx) => (
-                  <div key={idx} className="cluster-summary">
-                    <h6>Cluster {summary.clusterId}</h6>
-                    <p>{summary.summary}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-        break;
-        
-      case 'prioritization':
-        stageSpecificContent = (
-          <div className="stage-data">
-            <h4>Topic Prioritization</h4>
-            
-            <div className="data-section">
-              <h5>Selected Topics</h5>
-              {stageData.prioritizedTopics && stageData.prioritizedTopics.length > 0 ? (
-                <ul className="prioritized-topics">
-                  {stageData.prioritizedTopics.map((topic, idx) => (
-                    <li key={idx} className="prioritized-topic">
-                      <div className="topic-header">
-                        <strong>{topic.topic}</strong>
-                        <div className="topic-scores">
-                          <span>Importance: {topic.importance}/10</span>
-                          <span>Newsworthiness: {topic.newsworthiness}/10</span>
-                          <span>Depth Potential: {topic.depthPotential}/10</span>
-                        </div>
-                      </div>
-                      <div className="topic-rationale">
-                        <p><strong>Why selected:</strong> {topic.rationale}</p>
-                      </div>
-                      {topic.keyQuestions && topic.keyQuestions.length > 0 && (
-                        <div className="key-questions">
-                          <strong>Key Questions:</strong>
-                          <ul>
-                            {topic.keyQuestions.map((q, qIdx) => (
-                              <li key={qIdx}>{q}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No topics were prioritized</p>
-              )}
-            </div>
-            
-            {stageData.discardedTopics && stageData.discardedTopics.length > 0 && (
-              <div className="data-section">
-                <h5>Discarded Topics</h5>
-                <ul>
-                  {stageData.discardedTopics.map((topic, idx) => (
-                    <li key={idx}>{topic}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {stageData.selectionReasoning && (
-              <div className="data-section">
-                <h5>Selection Reasoning</h5>
-                <p>{stageData.selectionReasoning}</p>
               </div>
             )}
           </div>
@@ -287,7 +190,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
             {stageData.researchedTopics && stageData.researchedTopics.length > 0 ? (
               <div className="data-section">
                 <h5>Researched Topics</h5>
-                {stageData.researchedTopics.map((topic, idx) => (
+                {stageData.researchedTopics.map((topic: { topic: string; layerCount: number; sourcesConsulted: { url: string }[]; keyInsights: string[] }, idx: number) => (
                   <div key={idx} className="researched-topic">
                     <h6>{topic.topic}</h6>
                     
@@ -300,7 +203,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                       <div className="key-insights">
                         <strong>Key Insights:</strong>
                         <ul>
-                          {topic.keyInsights.map((insight, insightIdx) => (
+                          {topic.keyInsights.map((insight: string, insightIdx: number) => (
                             <li key={insightIdx}>{insight}</li>
                           ))}
                         </ul>
@@ -311,9 +214,9 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                       <div className="sources">
                         <strong>Sources:</strong>
                         <ul className="sources-list">
-                          {topic.sourcesConsulted.map((source, sourceIdx) => (
+                          {topic.sourcesConsulted.map((source: { url: string }, sourceIdx: number) => (
                             <li key={sourceIdx}>
-                              <a href={source} target="_blank" rel="noopener noreferrer">{source}</a>
+                              <a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a>
                             </li>
                           ))}
                         </ul>
@@ -346,7 +249,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
               <div className="data-section">
                 <h5>Topic Distribution</h5>
                 <ul>
-                  {stageData.topicDistribution.map((topic, idx) => (
+                  {stageData.topicDistribution.map((topic: { topic: string, allocation: number }, idx: number) => (
                     <li key={idx}>
                       {topic.topic}: {topic.allocation}%
                     </li>
@@ -367,6 +270,24 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         );
         break;
         
+      case 'topic_selection':
+        stageSpecificContent = (
+          <div className="stage-data">
+            <h4>Topic Selection</h4>
+            <div className="data-section">
+              <p>Selected topics based on newness and timeliness.</p>
+              {stageData.selectedTopics && stageData.selectedTopics.length > 0 && (
+                <ul>
+                  {stageData.selectedTopics.map((topic: { topic: string }, idx: number) => (
+                    <li key={idx}>{topic.topic}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        );
+        break;
+        
       default:
         stageSpecificContent = (
           <div className="stage-data">
@@ -382,7 +303,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         {stageDecisions.length > 0 && (
           <div className="stage-decisions">
             <h4>Decisions</h4>
-            {stageDecisions.map((decision, idx) => (
+            {stageDecisions.map((decision: { decision: string, reasoning: string, timestamp: string, alternatives: string[] }, idx: number) => (
               <div key={idx} className="decision">
                 <div className="decision-header">
                   <strong>{decision.decision}</strong>
@@ -394,7 +315,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   <div className="decision-alternatives">
                     <strong>Alternatives Considered:</strong>
                     <ul>
-                      {decision.alternatives.map((alt, altIdx) => (
+                      {decision.alternatives.map((alt: string, altIdx: number) => (
                         <li key={altIdx}>{alt}</li>
                       ))}
                     </ul>
