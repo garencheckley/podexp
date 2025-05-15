@@ -392,7 +392,7 @@ const PodcastDetail = () => {
         <h2>{podcast.title}</h2>
         {/* Only show generate UI at the top */}
         {isOwner && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="episode-gen-controls" style={{ marginBottom: '1.5rem' }}>
             <button
               onClick={() => setShowSettings((s) => !s)}
               className="edit-button"
@@ -754,11 +754,6 @@ const PodcastDetail = () => {
                                   ))}
                                 </ul>
                               )}
-                              {!expandedSources[episode.id!] && (
-                                <p className="sources-summary">
-                                  {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
-                                </p>
-                              )}
                             </div>
                           )}
                         </div>
@@ -766,25 +761,13 @@ const PodcastDetail = () => {
                     </div>
                   </div>
                 )}
-                <div className="episode-meta">
-                  Created: {episode.created_at && 
-                    `${getRelativeTimeString(episode.created_at)} (${formatDateTime(episode.created_at)})`
-                  }
-                </div>
               </div>
-              {idx !== episodes.length - 1 && <hr className="episode-divider" />}
             </React.Fragment>
           ))
         )}
       </div>
-      {currentAudio && (
-        <AudioPlayer 
-          audioUrl={currentAudio.url} 
-          title={currentAudio.title} 
-        />
-      )}
     </div>
   );
 };
 
-export default PodcastDetail; 
+export default PodcastDetail;
