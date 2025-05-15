@@ -135,9 +135,11 @@ const PodcastList = () => {
                   <h2>{podcast.title}</h2>
                   <p>{podcast.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                    <Link to={`/podcasts/${podcast.id}`}>
-                      <button>View Episodes</button>
-                    </Link>
+                    <div className="centered-actions">
+                      <Link to={`/podcasts/${podcast.id}`}>
+                        <button>View Episodes</button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
                 {idx !== podcasts.length - 1 && <hr className="podcast-divider" />}
