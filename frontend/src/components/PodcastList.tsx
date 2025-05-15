@@ -11,7 +11,7 @@ const PodcastList = () => {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showDeleteMenu, setShowDeleteMenu] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
-  const { isAuthenticated, userEmail, isLoading: authIsLoading } = useAuth();
+  const { isAuthenticated, userEmail } = useAuth();
 
   const fetchPodcasts = async () => {
     try {
@@ -64,16 +64,6 @@ const PodcastList = () => {
     }));
   };
 
-  if (authIsLoading) {
-    return (
-      <div className="container">
-        <div className="loading">
-          <div className="loading-spinner"></div>
-        </div>
-      </div>
-    );
-  }
-
   const handleVisibilityChange = async (podcastId: string, newVisibility: 'public' | 'private') => {
     const originalPodcasts = [...podcasts];
     setPodcasts(prevPodcasts =>
@@ -119,7 +109,7 @@ const PodcastList = () => {
         </div>
       )}
 
-      {loading && !authIsLoading && podcasts.length === 0 && <p>Loading podcasts...</p>}
+      {loading && podcasts.length === 0 && <p>Loading podcasts...</p>}
 
       {!loading && podcasts.length === 0 ? (
         <div className="empty-state">
@@ -136,14 +126,13 @@ const PodcastList = () => {
           )}
         </div>
       ) : (
-        <div className="podcast-list">
-          {podcasts.map(podcast => {
+        <div className="podcast-list flat-list">
+          {podcasts.map((podcast, idx) => {
             const isOwner = isAuthenticated && userEmail === podcast.ownerEmail;
             return (
-              <div key={podcast.id} className="podcast-card">
-                <div className="podcast-card-content">
+              <React.Fragment key={podcast.id}>
+                <div className="podcast-list-item">
                   <h2>{podcast.title}</h2>
-                  
                   <p>{podcast.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                     <Link to={`/podcasts/${podcast.id}`}>
@@ -151,7 +140,8 @@ const PodcastList = () => {
                     </Link>
                   </div>
                 </div>
-              </div>
+                {idx !== podcasts.length - 1 && <hr className="podcast-divider" />}
+              </React.Fragment>
             );
           })}
         </div>

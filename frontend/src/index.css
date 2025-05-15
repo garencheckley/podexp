@@ -71,28 +71,11 @@ body {
 
 /* Card styling */
 .podcast-card, .episode-item, .card {
-  border-radius: var(--border-radius);
-  padding: 2rem 2rem 1.5rem 2rem;
-  margin: 1.5rem 0;
-  background: var(--background-dark) !important;
-  background-color: var(--background-dark) !important;
+  background: none !important;
   box-shadow: none !important;
   border: none !important;
-  transition: var(--transition);
-}
-
-.podcast-card:hover, .episode-item:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px) scale(1.01);
-}
-
-.podcast-card h2, .episode-title {
-  color: #fff;
-  font-weight: 600;
-}
-
-.podcast-card p, .episode-item p {
-  color: var(--text-secondary);
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Button styling */
@@ -1188,4 +1171,50 @@ a:hover {
   color: var(--primary-color) !important;
   border-bottom: 3px solid var(--primary-color) !important;
   background: transparent !important;
+}
+
+.podcast-list.flat-list, .episode-list.flat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: none;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+}
+
+.podcast-list-item, .episode-list-item {
+  background: none;
+  box-shadow: none;
+  border: none;
+  padding: 1.2rem 0 1.2rem 0;
+  margin: 0;
+  text-align: left;
+}
+
+.podcast-divider, .episode-divider {
+  border: none;
+  border-top: 1px solid var(--border-color, #232428);
+  margin: 0;
+}
+
+.podcast-list-item h2, .episode-list-item h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.podcast-list-item p, .episode-list-item p {
+  color: var(--text-secondary);
+  margin: 0 0 0.5rem 0;
+}
+
+@media (max-width: 768px) {
+  .podcast-list.flat-list, .episode-list.flat-list {
+    padding: 0 0.5rem;
+  }
+  .podcast-list-item, .episode-list-item {
+    padding: 1rem 0 1rem 0;
+  }
 }

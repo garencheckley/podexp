@@ -388,7 +388,7 @@ const PodcastDetail = () => {
       <Link to="/" className="back-button">
         ← Back to Podcasts
       </Link>
-      <div className="podcast-card">
+      <div className="podcast-detail-flat">
         <h2>{podcast.title}</h2>
         {/* Only show generate UI at the top */}
         {isOwner && (
@@ -474,7 +474,6 @@ const PodcastDetail = () => {
                 {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
               </button>
             </div>
-
             {/* RSS Feed Section */}
             <div className="rss-feed-section" style={{ marginTop: '1rem' }}>
               <h3>RSS Feed</h3>
@@ -488,7 +487,6 @@ const PodcastDetail = () => {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(getRssFeedUrl(podcast.id!));
-                    // You could add a toast notification here if you have one
                     alert('RSS feed URL copied to clipboard!');
                   }}
                   className="copy-button"
@@ -497,12 +495,10 @@ const PodcastDetail = () => {
                 </button>
               </div>
             </div>
-
             {/* Prompt Edit Section */}
             <div className="podcast-prompt-section">
               <div className="prompt-header">
                 <h3>Podcast Prompt</h3>
-                {/* Only show Edit button if owner */}
                 {isOwner && !editingPrompt && (
                   <button
                     onClick={handleEditPrompt}
@@ -513,7 +509,6 @@ const PodcastDetail = () => {
                   </button>
                 )}
               </div>
-              {/* Show editor only if owner and editing */}
               {isOwner && editingPrompt ? (
                 <div className="prompt-editor">
                   <textarea
@@ -544,12 +539,10 @@ const PodcastDetail = () => {
                 <p className="podcast-prompt">{podcast.prompt}</p>
               )}
             </div>
-            {/* Podcast description and badge remain below settings */}
             <p>{podcast.description}</p>
             <div className="podcast-type-badge">
               <span className="badge news">News from the web</span>
             </div>
-            {/* Trusted sources section now behind settings toggle */}
             <div className="podcast-sources-section">
               <div className="sources-header">
                 <h3>Trusted Sources</h3>
@@ -605,202 +598,185 @@ const PodcastDetail = () => {
           </div>
         )}
       </div>
-      
-      <div className="episode-list">
+      <hr className="podcast-divider" />
+      <div className="episode-list flat-list">
         {episodes.length === 0 ? (
           <div className="empty-state">
             <h3>No episodes yet</h3>
             <p>Generate your first episode to get started!</p>
           </div>
         ) : (
-          episodes.map(episode => (
-            <div key={episode.id} className="episode-item">
-              <div className="episode-header">
-                <h3 className="episode-title">{episode.title}</h3>
-                
-                <div className="episode-actions">
-                  {episode.audioUrl && (
-                    <button 
-                      onClick={() => playEpisode(episode)}
-                      className="play-episode-button"
-                      aria-label="Play Episode"
-                    >
-                      <span className="play-icon">▶</span>
-                      Play Episode
-                    </button>
-                  )}
-                  
-                  {/* Only show episode menu button if owner */}
-                  {isOwner && (
-                    <div className="more-actions">
+          episodes.map((episode, idx) => (
+            <React.Fragment key={episode.id}>
+              <div className="episode-list-item">
+                <div className="episode-header">
+                  <h3 className="episode-title">{episode.title}</h3>
+                  <div className="episode-actions">
+                    {episode.audioUrl && (
                       <button 
-                        onClick={() => episode.id && toggleMenu(episode.id)}
-                        className="more-button"
-                        aria-label="More actions"
+                        onClick={() => playEpisode(episode)}
+                        className="play-episode-button"
+                        aria-label="Play Episode"
                       >
-                        ⋮
+                        <span className="play-icon">▶</span>
+                        Play Episode
                       </button>
-                      {/* The menu itself needs no extra owner check, as button won't render */}
-                      <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
-                        <div 
-                          className="menu-item"
-                          onClick={() => episode.id && toggleEpisodeContent(episode.id)}
+                    )}
+                    {isOwner && (
+                      <div className="more-actions">
+                        <button 
+                          onClick={() => episode.id && toggleMenu(episode.id)}
+                          className="more-button"
+                          aria-label="More actions"
                         >
-                          {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
-                        </div>
-                        
-                        {episodeGenerationLogs[episode.id!] && (
+                          ⋮
+                        </button>
+                        <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
                           <div 
                             className="menu-item"
-                            onClick={() => {
-                              if (episode.id) {
-                                toggleEpisodeTab(episode.id, 'log');
-                                if (!expandedEpisodes[episode.id]) {
-                                  toggleEpisodeContent(episode.id);
+                            onClick={() => episode.id && toggleEpisodeContent(episode.id)}
+                          >
+                            {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
+                          </div>
+                          {episodeGenerationLogs[episode.id!] && (
+                            <div 
+                              className="menu-item"
+                              onClick={() => {
+                                if (episode.id) {
+                                  toggleEpisodeTab(episode.id, 'log');
+                                  if (!expandedEpisodes[episode.id]) {
+                                    toggleEpisodeContent(episode.id);
+                                  }
                                 }
-                              }
-                            }}
-                          >
-                            View Generation Log
-                          </div>
-                        )}
-                        
-                        {episode.audioUrl && (
-                          <a 
-                            href={episode.audioUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="menu-item"
-                          >
-                            Download MP3
-                          </a>
-                        )}
-                        
-                        <div 
-                          className="menu-item"
-                          onClick={() => episode.id && handleRegenerateAudio(episode.id)}
-                        >
-                          {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
-                        </div>
-                        
-                        <div 
-                          className="menu-item delete"
-                          onClick={() => episode.id && handleDeleteEpisode(episode.id)}
-                        >
-                          {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <p className="episode-description">{episode.description}</p>
-              
-              {expandedEpisodes[episode.id!] && (
-                <div className="episode-content-tabs">
-                  <div className="tabs-header">
-                    <button 
-                      className={`tab-button ${activeEpisodeTabs[episode.id!] !== 'log' ? 'active' : ''}`}
-                      onClick={() => episode.id && toggleEpisodeTab(episode.id, 'transcript')}
-                    >
-                      Transcript
-                    </button>
-                    {episodeGenerationLogs[episode.id!] && (
-                      <button 
-                        className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
-                        onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
-                      >
-                        Generation Log
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="tab-content">
-                    {activeEpisodeTabs[episode.id!] === 'log' ? (
-                      <div className="generation-log-tab">
-                        {episodeGenerationLogs[episode.id!] ? (
-                          <GenerationLogViewer 
-                            logId={episodeGenerationLogs[episode.id!]} 
-                            onError={(error) => {
-                              console.error("Error loading generation log:", error);
-                              // Reset to transcript tab on error
-                              toggleEpisodeTab(episode.id!, 'transcript');
-                            }}
-                          />
-                        ) : (
-                          <div className="log-not-available">
-                            <p>Generation log not available for this episode.</p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="transcript-tab">
-                        {episode.content.split('\n').map((paragraph, i) => (
-                          <p key={i}>{paragraph}</p>
-                        ))}
-                        
-                        {episode.sources && episode.sources.length > 0 && (
-                          <div className="episode-sources">
-                            <div className="sources-header">
-                              <h4>Sources:</h4>
-                              <button 
-                                onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
-                                className="toggle-sources-button"
-                                aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                              >
-                                {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                              </button>
+                              }}
+                            >
+                              View Generation Log
                             </div>
-                            
-                            {expandedSources[episode.id!] && (
-                              <ul>
-                                {episode.sources.map((source, index) => (
-                                  <li key={index}>
-                                    <a href={source} target="_blank" rel="noopener noreferrer">
-                                      {(() => {
-                                        try {
-                                          const url = new URL(source);
-                                          // Check if it's a vertexaisearch URL (which isn't very useful to display)
-                                          if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
-                                            return `Reference ${index + 1}`;
-                                          }
-                                          // For normal URLs, show the hostname with protocol stripped
-                                          return url.hostname;
-                                        } catch (e) {
-                                          // If URL parsing fails, just show the source directly
-                                          return source;
-                                        }
-                                      })()}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            
-                            {!expandedSources[episode.id!] && (
-                              <p className="sources-summary">
-                                {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
-                              </p>
-                            )}
+                          )}
+                          {episode.audioUrl && (
+                            <a 
+                              href={episode.audioUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="menu-item"
+                            >
+                              Download MP3
+                            </a>
+                          )}
+                          <div 
+                            className="menu-item"
+                            onClick={() => episode.id && handleRegenerateAudio(episode.id)}
+                          >
+                            {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
                           </div>
-                        )}
+                          <div 
+                            className="menu-item delete"
+                            onClick={() => episode.id && handleDeleteEpisode(episode.id)}
+                          >
+                            {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-              
-              <div className="episode-meta">
-                Created: {episode.created_at && 
-                  `${getRelativeTimeString(episode.created_at)} (${formatDateTime(episode.created_at)})`
-                }
+                <p className="episode-description">{episode.description}</p>
+                {expandedEpisodes[episode.id!] && (
+                  <div className="episode-content-tabs">
+                    <div className="tabs-header">
+                      <button 
+                        className={`tab-button ${activeEpisodeTabs[episode.id!] !== 'log' ? 'active' : ''}`}
+                        onClick={() => episode.id && toggleEpisodeTab(episode.id, 'transcript')}
+                      >
+                        Transcript
+                      </button>
+                      {episodeGenerationLogs[episode.id!] && (
+                        <button 
+                          className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
+                          onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
+                        >
+                          Generation Log
+                        </button>
+                      )}
+                    </div>
+                    <div className="tab-content">
+                      {activeEpisodeTabs[episode.id!] === 'log' ? (
+                        <div className="generation-log-tab">
+                          {episodeGenerationLogs[episode.id!] ? (
+                            <GenerationLogViewer 
+                              logId={episodeGenerationLogs[episode.id!]} 
+                              onError={(error) => {
+                                console.error("Error loading generation log:", error);
+                                toggleEpisodeTab(episode.id!, 'transcript');
+                              }}
+                            />
+                          ) : (
+                            <div className="log-not-available">
+                              <p>Generation log not available for this episode.</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="transcript-tab">
+                          {episode.content.split('\n').map((paragraph, i) => (
+                            <p key={i}>{paragraph}</p>
+                          ))}
+                          {episode.sources && episode.sources.length > 0 && (
+                            <div className="episode-sources">
+                              <div className="sources-header">
+                                <h4>Sources:</h4>
+                                <button 
+                                  onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
+                                  className="toggle-sources-button"
+                                  aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                                >
+                                  {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
+                                </button>
+                              </div>
+                              {expandedSources[episode.id!] && (
+                                <ul>
+                                  {episode.sources.map((source, index) => (
+                                    <li key={index}>
+                                      <a href={source} target="_blank" rel="noopener noreferrer">
+                                        {(() => {
+                                          try {
+                                            const url = new URL(source);
+                                            if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
+                                              return `Reference ${index + 1}`;
+                                            }
+                                            return url.hostname;
+                                          } catch (e) {
+                                            return source;
+                                          }
+                                        })()}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {!expandedSources[episode.id!] && (
+                                <p className="sources-summary">
+                                  {episode.sources.length} {episode.sources.length === 1 ? 'source' : 'sources'} available
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="episode-meta">
+                  Created: {episode.created_at && 
+                    `${getRelativeTimeString(episode.created_at)} (${formatDateTime(episode.created_at)})`
+                  }
+                </div>
               </div>
-            </div>
+              {idx !== episodes.length - 1 && <hr className="episode-divider" />}
+            </React.Fragment>
           ))
         )}
       </div>
-      
       {currentAudio && (
         <AudioPlayer 
           audioUrl={currentAudio.url} 

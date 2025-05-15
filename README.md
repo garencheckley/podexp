@@ -14,6 +14,7 @@ The system follows a client-server architecture with the following components:
 - Communicates with the backend via RESTful API calls
 - Features a custom audio player component for episode playback
 - Implements hybrid authentication with secure cookies and localStorage fallback
+- **Flat, mobile-friendly UI:** The interface uses a flat design with divider lines (no card backgrounds or shadows), optimized for both mobile and desktop. All interactive elements have improved contrast for accessibility. The UI is dark mode only.
 
 ### Backend
 - Node.js/Express server

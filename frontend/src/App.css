@@ -35,12 +35,11 @@
 }
 
 .card {
-  padding: 2em;
-  background: #232428;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-  color: #f3f3f3;
-  border: none;
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .read-the-docs {
