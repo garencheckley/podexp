@@ -123,6 +123,7 @@ button:disabled, .create-button:disabled, .delete-button:disabled {
 
 .podcast-list-item, .episode-list-item {
   padding: 0.3rem 0 0.3rem 0;
+  margin-bottom: 0.7rem;
 }
 
 .podcast-list-item h2, .episode-list-item h3 {
