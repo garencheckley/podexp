@@ -31,6 +31,7 @@ const PodcastDetail = () => {
   const [isOwner, setIsOwner] = useState(false);
   const [visibilityUpdating, setVisibilityUpdating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBackgroundGenNotice, setShowBackgroundGenNotice] = useState(false);
 
   // Get the current user's email (for ownership check)
   const { userEmail } = useAuth();
@@ -130,49 +131,22 @@ const PodcastDetail = () => {
 
   const handleGenerateEpisode = async () => {
     if (!podcastId) return;
-    
-    // Clear any previous error before generating
     setError(null);
     setGenerating(true);
+    setShowBackgroundGenNotice(false);
     try {
-      console.log('Generating episode for podcast:', podcastId, 'with length:', episodeLength);
-      const result = await generateEpisode(podcastId, { targetMinutes: episodeLength });
-      console.log('Generated episode result (full):', JSON.stringify(result, null, 2));
-      console.log('Episode ID:', result.episode.id);
-      console.log('Generation log ID:', result.generationLogId);
-      
-      // Make sure we have a valid episode id and generation log id
-      if (!result.episode.id || !result.generationLogId) {
-        console.error('Missing episode ID or generation log ID in response');
-      } else {
-        console.log(`Setting generation log ID ${result.generationLogId} for episode ${result.episode.id}`);
-        
-        // Update episodeGenerationLogs state
-        setEpisodeGenerationLogs(prev => {
-          const updated = {
-            ...prev,
-            [result.episode.id!]: result.generationLogId
-          };
-          console.log('Updated episodeGenerationLogs state:', updated);
-          return updated;
+      // Fire off the request but do not wait for completion
+      generateEpisode(podcastId, { targetMinutes: episodeLength })
+        .catch((err) => {
+          // If the API call fails immediately, show error
+          const errorMessage = err instanceof Error ? err.message : 'Failed to start episode generation. Please try again.';
+          setError(errorMessage);
         });
-        
-        // Initialize the tab state to transcript by default
-        setActiveEpisodeTabs(prev => ({
-          ...prev,
-          [result.episode.id!]: 'transcript'
-        }));
-      }
-      
-      // Add new episode to the list
-      setEpisodes(prevEpisodes => [result.episode, ...prevEpisodes]);
-    } catch (err) {
-      // Show the detailed error message from the API
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate episode. Please try again later.';
-      setError(errorMessage);
-      console.error('Error generating episode:', err);
+      // Show background generation notice
+      setShowBackgroundGenNotice(true);
     } finally {
-      setGenerating(false);
+      // Always stop loading after a short delay for UX
+      setTimeout(() => setGenerating(false), 1000);
     }
   };
 
@@ -465,6 +439,12 @@ const PodcastDetail = () => {
             >
               {generating ? 'Generating Episode...' : 'Generate New Episode'}
             </button>
+          </div>
+        )}
+        {showBackgroundGenNotice && (
+          <div className="background-gen-notice" style={{ marginBottom: '1rem', background: '#232428', color: '#fff', padding: '1rem', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Episode generation has started and will complete in the background. Please refresh the page in a few minutes to see the new episode.</span>
+            <button onClick={() => setShowBackgroundGenNotice(false)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
           </div>
         )}
         {/* Settings section, only visible if toggled and owner */}
