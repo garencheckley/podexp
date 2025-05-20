@@ -1,6 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  CircularProgress, 
+  Alert, 
+  Button, 
+  Paper,
+  Stack,
+  Divider,
+  Link,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemText,
+  Chip
+} from '@mui/material';
+import {
+  ExpandMore as ExpandMoreIcon,
+  Code as CodeIcon,
+  Link as LinkIcon,
+  Lightbulb as LightbulbIcon,
+  Topic as TopicIcon,
+  Timer as TimerIcon
+} from '@mui/icons-material';
 import { EpisodeGenerationLog, EpisodeGenerationDecision, getEpisodeGenerationLog, getEpisodeGenerationLogByEpisode } from '../services/api';
-import '../styles/GenerationLogViewer.css';
 
 interface GenerationLogViewerProps {
   logId?: string;
@@ -59,15 +84,27 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
   }, [logId, episodeId, onError]);
 
   if (loading) {
-    return <div className="generation-log-loading">Loading generation log...</div>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
   
   if (error) {
-    return <div className="generation-log-error">Error: {error}</div>;
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        Error: {error}
+      </Alert>
+    );
   }
   
   if (!log) {
-    return <div className="generation-log-not-found">Generation log not found</div>;
+    return (
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Generation log not found
+      </Alert>
+    );
   }
   
   const formatDuration = (ms: number): string => {
@@ -97,7 +134,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
     const stageData = log.stages[stage as keyof typeof log.stages];
     
     if (!stageData) {
-      return <div>No data available for this stage</div>;
+      return <Typography>No data available for this stage</Typography>;
     }
     
     // Decisions related to this stage
@@ -109,126 +146,183 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
     switch (stage) {
       case 'episodeAnalysis':
         stageSpecificContent = (
-          <div className="stage-data">
-            <h4>Previous Episode Analysis</h4>
-            <p>Analyzed {stageData.episodeCount} episodes</p>
+          <Stack spacing={2}>
+            <Typography variant="h6">Previous Episode Analysis</Typography>
+            <Typography>Analyzed {stageData.episodeCount} episodes</Typography>
             
             {stageData.recentTopics && stageData.recentTopics.length > 0 && (
-              <div className="data-section">
-                <h5>Recent Topics</h5>
-                <ul>
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Recent Topics
+                </Typography>
+                <List>
                   {stageData.recentTopics.map((topic: { topic: string; frequency: number }, idx: number) => (
-                    <li key={idx}>
-                      {topic.topic} (mentioned {topic.frequency} times)
-                    </li>
+                    <ListItem key={idx}>
+                      <ListItemText
+                        primary={topic.topic}
+                        secondary={`Mentioned ${topic.frequency} times`}
+                      />
+                    </ListItem>
                   ))}
-                </ul>
-              </div>
+                </List>
+              </Box>
             )}
             
             {stageData.recurrentThemes && stageData.recurrentThemes.length > 0 && (
-              <div className="data-section">
-                <h5>Recurrent Themes</h5>
-                <ul>
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Recurrent Themes
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {stageData.recurrentThemes.map((theme: string, idx: number) => (
-                    <li key={idx}>{theme}</li>
+                    <Chip key={idx} label={theme} />
                   ))}
-                </ul>
-              </div>
+                </Stack>
+              </Box>
             )}
-          </div>
+          </Stack>
         );
         break;
         
       case 'initialSearch':
         stageSpecificContent = (
-          <div className="stage-data">
-            <h4>Initial Search Results</h4>
+          <Stack spacing={2}>
+            <Typography variant="h6">Initial Search Results</Typography>
+            
             {stageData.geminiPrompt && (
-              <div className="data-section">
-                <button onClick={() => setShowPrompt(v => !v)} className="show-prompt-toggle">
+              <Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<CodeIcon />}
+                  onClick={() => setShowPrompt(v => !v)}
+                >
                   {showPrompt ? 'Hide Prompt' : 'Show Prompt'}
-                </button>
+                </Button>
                 {showPrompt && (
-                  <pre className="gemini-prompt-block">{stageData.geminiPrompt}</pre>
+                  <Paper 
+                    variant="outlined" 
+                    sx={{ 
+                      p: 2, 
+                      mt: 1,
+                      bgcolor: 'background.default',
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {stageData.geminiPrompt}
+                  </Paper>
                 )}
-              </div>
+              </Box>
             )}
+            
             {stageData.potentialTopics && stageData.potentialTopics.length > 0 && (
-              <div className="data-section">
-                <h5>Potential Topics Found</h5>
-                <ul>
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Potential Topics Found
+                </Typography>
+                <List>
                   {stageData.potentialTopics.map((topic: { topic: string, relevance: number }, idx: number) => (
-                    <li key={idx}>
-                      {topic.topic} (relevance: {topic.relevance}/10)
-                    </li>
+                    <ListItem key={idx}>
+                      <ListItemText
+                        primary={topic.topic}
+                        secondary={`Relevance: ${topic.relevance}/10`}
+                      />
+                    </ListItem>
                   ))}
-                </ul>
-              </div>
+                </List>
+              </Box>
             )}
+            
             {stageData.relevantSources && stageData.relevantSources.length > 0 && (
-              <div className="data-section">
-                <h5>Sources</h5>
-                <ul className="sources-list">
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Sources
+                </Typography>
+                <List>
                   {stageData.relevantSources.map((source: { url: string }, idx: number) => (
-                    <li key={idx}>
-                      <a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a>
-                    </li>
+                    <ListItem key={idx}>
+                      <Link
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                      >
+                        <LinkIcon fontSize="small" />
+                        {source.url}
+                      </Link>
+                    </ListItem>
                   ))}
-                </ul>
-              </div>
+                </List>
+              </Box>
             )}
-          </div>
+          </Stack>
         );
         break;
         
       case 'deepResearch':
         stageSpecificContent = (
-          <div className="stage-data">
-            <h4>Deep Research</h4>
+          <Stack spacing={2}>
+            <Typography variant="h6">Deep Research</Typography>
             
             {stageData.researchedTopics && stageData.researchedTopics.length > 0 ? (
-              <div className="data-section">
-                <h5>Researched Topics</h5>
+              <Stack spacing={2}>
                 {stageData.researchedTopics.map((topic: { topic: string; layerCount: number; sourcesConsulted: { url: string }[]; keyInsights: string[] }, idx: number) => (
-                  <div key={idx} className="researched-topic">
-                    <h6>{topic.topic}</h6>
+                  <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      {topic.topic}
+                    </Typography>
                     
-                    <div className="research-metrics">
-                      <span>Layers: {topic.layerCount}</span>
-                      <span>Sources: {topic.sourcesConsulted.length}</span>
-                    </div>
+                    <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                      <Chip
+                        icon={<TopicIcon />}
+                        label={`${topic.layerCount} layers`}
+                        size="small"
+                      />
+                      <Chip
+                        icon={<LinkIcon />}
+                        label={`${topic.sourcesConsulted.length} sources`}
+                        size="small"
+                      />
+                    </Stack>
                     
-                    {topic.keyInsights && topic.keyInsights.length > 0 && (
-                      <div className="key-insights">
-                        <strong>Key Insights:</strong>
-                        <ul>
-                          {topic.keyInsights.map((insight: string, insightIdx: number) => (
-                            <li key={insightIdx}>{insight}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <Typography variant="subtitle2" gutterBottom>
+                      Key Insights
+                    </Typography>
+                    <List dense>
+                      {topic.keyInsights.map((insight: string, insightIdx: number) => (
+                        <ListItem key={insightIdx}>
+                          <ListItemText
+                            primary={insight}
+                            primaryTypographyProps={{ variant: 'body2' }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
                     
-                    {topic.sourcesConsulted && topic.sourcesConsulted.length > 0 && (
-                      <div className="sources">
-                        <strong>Sources:</strong>
-                        <ul className="sources-list">
-                          {topic.sourcesConsulted.map((source: { url: string }, sourceIdx: number) => (
-                            <li key={sourceIdx}>
-                              <a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Sources Consulted
+                    </Typography>
+                    <List dense>
+                      {topic.sourcesConsulted.map((source: { url: string }, sourceIdx: number) => (
+                        <ListItem key={sourceIdx}>
+                          <Link
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="body2"
+                          >
+                            {source.url}
+                          </Link>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Paper>
                 ))}
-              </div>
+              </Stack>
             ) : (
-              <p>No topics were researched in depth</p>
+              <Typography>No research data available</Typography>
             )}
-          </div>
+          </Stack>
         );
         break;
         
@@ -290,91 +384,82 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         
       default:
         stageSpecificContent = (
-          <div className="stage-data">
-            <pre>{JSON.stringify(stageData, null, 2)}</pre>
-          </div>
+          <Typography>No specific content available for this stage</Typography>
         );
     }
     
     return (
-      <div className="stage-details">
+      <Stack spacing={2}>
         {stageSpecificContent}
         
         {stageDecisions.length > 0 && (
-          <div className="stage-decisions">
-            <h4>Decisions</h4>
-            {stageDecisions.map((decision: { decision: string, reasoning: string, timestamp: string, alternatives: string[] }, idx: number) => (
-              <div key={idx} className="decision">
-                <div className="decision-header">
-                  <strong>{decision.decision}</strong>
-                  <span className="decision-time">{formatTimestamp(decision.timestamp)}</span>
-                </div>
-                <p className="decision-reasoning">{decision.reasoning}</p>
-                
-                {decision.alternatives && decision.alternatives.length > 0 && (
-                  <div className="decision-alternatives">
-                    <strong>Alternatives Considered:</strong>
-                    <ul>
-                      {decision.alternatives.map((alt: string, altIdx: number) => (
-                        <li key={altIdx}>{alt}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Decisions Made
+            </Typography>
+            <List>
+              {stageDecisions.map((decision: EpisodeGenerationDecision, idx: number) => (
+                <ListItem key={idx}>
+                  <ListItemText
+                    primary={decision.decision}
+                    secondary={decision.reasoning}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         )}
-        
-        <div className="stage-timing">
-          <p>Processing time: {formatDuration(stageData.processingTimeMs)}</p>
-        </div>
-      </div>
+      </Stack>
     );
   };
 
   return (
-    <div className="generation-log-viewer">
-      <div className="log-header">
-        <h2>Episode Generation Process</h2>
-        <div className="log-meta">
-          <p><strong>Created:</strong> {formatTimestamp(log.timestamp)}</p>
-          <p><strong>Status:</strong> <span className={`status-${log.status}`}>{log.status}</span></p>
-          <p><strong>Total Duration:</strong> {formatDuration(log.duration.totalMs)}</p>
-        </div>
-      </div>
+    <Stack spacing={2}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6">
+            Generation Log
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Started: {formatTimestamp(log.startTime)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Duration: {formatDuration(log.duration)}
+          </Typography>
+        </Stack>
+      </Paper>
       
-      <div className="generation-timeline">
-        {Object.entries(log.stages).map(([stage, data]) => {
-          if (!data) return null;
-          const stageKey = stage as keyof typeof log.stages;
-          const percentage = Math.round((log.duration.stageBreakdown[stageKey] / log.duration.totalMs) * 100);
+      <Stack spacing={1}>
+        {Object.keys(log.stages).map((stage) => {
+          const stageData = log.stages[stage as keyof typeof log.stages];
+          if (!stageData) return null;
           
           return (
-            <div 
+            <Accordion
               key={stage}
-              className={`timeline-stage ${activeStage === stage ? 'active' : ''} ${!data ? 'incomplete' : ''}`}
-              style={{ width: `${percentage}%` }}
-              onClick={() => setActiveStage(activeStage === stage ? null : stage)}
+              expanded={activeStage === stage}
+              onChange={() => setActiveStage(activeStage === stage ? null : stage)}
             >
-              <div className="stage-label">{stageLabels[stage] || stage}</div>
-              <div className="stage-time">{formatDuration(log.duration.stageBreakdown[stageKey])}</div>
-            </div>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1">
+                    {stageLabels[stage] || stage}
+                  </Typography>
+                  <Chip
+                    icon={<TimerIcon />}
+                    label={formatDuration(stageData.duration)}
+                    size="small"
+                  />
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                {renderStageDetails(stage)}
+              </AccordionDetails>
+            </Accordion>
           );
         })}
-      </div>
-      
-      {activeStage && (
-        <div className="active-stage-details">
-          <h3>{stageLabels[activeStage] || activeStage}</h3>
-          {renderStageDetails(activeStage)}
-        </div>
-      )}
-      
-      <div className="log-footer">
-        <p className="log-id">Log ID: {log.id}</p>
-      </div>
-    </div>
+      </Stack>
+    </Stack>
   );
 };
 

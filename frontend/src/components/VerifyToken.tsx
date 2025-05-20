@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  Box, 
+  Typography, 
+  CircularProgress, 
+  Button, 
+  Card, 
+  CardContent,
+  Alert
+} from '@mui/material';
 import { verifyToken } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import '../styles/VerifyToken.css';
 
 const VerifyToken: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -42,33 +50,63 @@ const VerifyToken: React.FC = () => {
   }, [searchParams, navigate, login]);
 
   return (
-    <div className="verify-container">
-      {status === 'loading' && (
-        <div className="verify-card">
-          <h2>Verifying your login...</h2>
-          <p>Please wait while we verify your login.</p>
-          <div className="loading-spinner"></div>
-        </div>
-      )}
-      
-      {status === 'success' && (
-        <div className="verify-card success">
-          <h2>Login Successful!</h2>
-          <p>You have been logged in successfully.</p>
-          <p>Redirecting to the home page...</p>
-        </div>
-      )}
-      
-      {status === 'error' && (
-        <div className="verify-card error">
-          <h2>Verification Failed</h2>
-          <p>We couldn't verify your login link. It may have expired or been used already.</p>
-          <button onClick={() => navigate('/login')}>
-            Return to Login
-          </button>
-        </div>
-      )}
-    </div>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        p: 2
+      }}
+    >
+      <Card sx={{ maxWidth: 400, width: '100%' }}>
+        <CardContent>
+          {status === 'loading' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h5" gutterBottom>
+                Verifying your login...
+              </Typography>
+              <Typography color="text.secondary" paragraph>
+                Please wait while we verify your login.
+              </Typography>
+              <CircularProgress sx={{ mt: 2 }} />
+            </Box>
+          )}
+          
+          {status === 'success' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h5" gutterBottom color="success.main">
+                Login Successful!
+              </Typography>
+              <Typography color="text.secondary" paragraph>
+                You have been logged in successfully.
+              </Typography>
+              <Typography color="text.secondary">
+                Redirecting to the home page...
+              </Typography>
+            </Box>
+          )}
+          
+          {status === 'error' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                Verification Failed
+              </Alert>
+              <Typography color="text.secondary" paragraph>
+                We couldn't verify your login link. It may have expired or been used already.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/login')}
+                sx={{ mt: 2 }}
+              >
+                Return to Login
+              </Button>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 

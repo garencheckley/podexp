@@ -1,5 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Button,
+  Alert,
+  CircularProgress,
+  Card,
+  CardContent,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  TextField,
+  Stack,
+  Divider,
+  Paper,
+  Tabs,
+  Tab,
+  Switch,
+  FormControlLabel,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Slider,
+  InputAdornment
+} from '@mui/material';
+import {
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon,
+  Refresh as RefreshIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  Settings as SettingsIcon,
+  Public as PublicIcon,
+  Lock as LockIcon,
+  PlayArrow as PlayArrowIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Source as SourceIcon,
+  Verified as VerifiedIcon
+} from '@mui/icons-material';
 import { Podcast, Episode } from '../types';
 import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl } from '../services/api';
 import AudioPlayer from './AudioPlayer';
@@ -364,409 +409,278 @@ const PodcastDetail = () => {
 
   if (loading) {
     return (
-      <div className="container">
-        <div className="loading">
-          <div className="loading-spinner"></div>
-        </div>
-      </div>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      </Box>
     );
   }
 
   if (error || !podcast) {
     return (
-      <div className="container">
-        <h2>{error || 'Podcast not found'}</h2>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ mb: 3 }}
+        >
+          {error || 'Podcast not found'}
+        </Alert>
         <Link to="/" className="back-button">
           ← Back to Home
         </Link>
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="container">
-      <Link to="/" className="back-button">
-        ← Back to Podcasts
-      </Link>
-      <div className="podcast-detail-flat">
-        <h2>{podcast.title}</h2>
-        {/* Only show generate UI at the top */}
-        {isOwner && (
-          <div className="episode-gen-controls" style={{ marginBottom: '1.5rem' }}>
-            <button
-              onClick={() => setShowSettings((s) => !s)}
-              className="edit-button"
-              aria-label="Show settings"
-              style={{ minWidth: 100 }}
-            >
-              {showSettings ? 'Hide Settings' : 'Show Settings'}
-            </button>
-            <div style={{ flex: 1 }} />
-            <div className="episode-length-control" style={{ margin: 0 }}>
-              <div className="length-input-container">
-                <button
-                  className="length-button"
-                  onClick={decrementEpisodeLength}
-                  disabled={episodeLength <= 1 || generating}
-                  aria-label="Decrease episode length"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={episodeLength}
-                  onChange={handleEpisodeLengthChange}
-                  className="length-input"
-                  disabled={generating}
-                  style={{ width: 60 }}
-                />
-                <button
-                  className="length-button"
-                  onClick={incrementEpisodeLength}
-                  disabled={generating}
-                  aria-label="Increase episode length"
-                >
-                  +
-                </button>
-                <span className="length-label">minutes</span>
-              </div>
-            </div>
-            <button
-              onClick={handleGenerateEpisode}
-              disabled={generating}
-              style={{ marginLeft: '1rem' }}
-            >
-              {generating ? 'Generating Episode...' : 'Generate New Episode'}
-            </button>
-          </div>
-        )}
-        {showBackgroundGenNotice && (
-          <div className="background-gen-notice" style={{ marginBottom: '1rem', background: '#232428', color: '#fff', padding: '1rem', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Episode generation has started and will complete in the background. Please refresh the page in a few minutes to see the new episode.</span>
-            <button onClick={() => setShowBackgroundGenNotice(false)} style={{ marginLeft: '1rem', background: 'none', border: 'none', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
-          </div>
-        )}
-        {/* Settings section, only visible if toggled and owner */}
-        {isOwner && showSettings && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div className="visibility-toggle-section" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-              <label className="visibility-toggle-label">
-                <span>{podcast.visibility === 'public' ? 'Public' : 'Private'}</span>
-                <div className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    id={`visibility-toggle-${podcast.id}`}
-                    checked={podcast.visibility === 'public'}
-                    onChange={handleVisibilityChange}
-                    disabled={visibilityUpdating}
-                  />
-                  <span className="slider round"></span>
-                </div>
-                {visibilityUpdating && <span className="updating-indicator">(updating...)</span>}
-              </label>
-              <button
-                onClick={handleDeletePodcast}
-                className="delete-button"
-                disabled={deleting === podcastId}
-                style={{ marginLeft: '1rem' }}
-              >
-                {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
-              </button>
-            </div>
-            {/* RSS Feed Section */}
-            <div className="rss-feed-section" style={{ marginTop: '1rem' }}>
-              <h3>RSS Feed</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <input
-                  type="text"
-                  value={getRssFeedUrl(podcast.id!)}
-                  readOnly
-                  style={{ flex: 1, padding: '0.5rem' }}
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(getRssFeedUrl(podcast.id!));
-                    alert('RSS feed URL copied to clipboard!');
-                  }}
-                  className="copy-button"
-                >
-                  Copy URL
-                </button>
-              </div>
-            </div>
-            {/* Prompt Edit Section */}
-            <div className="podcast-prompt-section">
-              <div className="prompt-header">
-                <h3>Podcast Prompt</h3>
-                {isOwner && !editingPrompt && (
-                  <button
-                    onClick={handleEditPrompt}
-                    className="edit-button"
-                    aria-label="Edit prompt"
-                  >
-                    Edit
-                  </button>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, pb: 10 }}>
+      {error && (
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ mb: 3 }}
+        >
+          {error}
+        </Alert>
+      )}
+      
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : podcast ? (
+        <>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h4" component="h1">
+                  {podcast.title}
+                </Typography>
+                
+                {isOwner && (
+                  <Stack direction="row" spacing={1}>
+                    <IconButton
+                      onClick={() => setShowSettings(!showSettings)}
+                      aria-label="Settings"
+                    >
+                      <SettingsIcon />
+                    </IconButton>
+                    
+                    <Menu
+                      anchorEl={document.querySelector('.settings-menu')}
+                      open={showSettings}
+                      onClose={() => setShowSettings(false)}
+                    >
+                      <MenuItem onClick={handleEditPrompt}>
+                        <ListItemIcon>
+                          <EditIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Edit Prompt</ListItemText>
+                      </MenuItem>
+                      
+                      <MenuItem onClick={handleDeletePodcast}>
+                        <ListItemIcon>
+                          <DeleteIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Delete Podcast</ListItemText>
+                      </MenuItem>
+                    </Menu>
+                  </Stack>
                 )}
-              </div>
-              {isOwner && editingPrompt ? (
-                <div className="prompt-editor">
-                  <textarea
+              </Stack>
+              
+              {editingPrompt ? (
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
                     value={promptValue}
                     onChange={(e) => setPromptValue(e.target.value)}
-                    rows={6}
-                    placeholder="Enter podcast prompt..."
+                    label="Podcast Prompt"
                     disabled={savingPrompt}
+                    sx={{ mb: 2 }}
                   />
-                  <div className="editor-actions">
-                    <button
-                      onClick={handleCancelEdit}
-                      className="cancel-button"
+                  
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained"
+                      onClick={handleSavePrompt}
                       disabled={savingPrompt}
+                      startIcon={<SaveIcon />}
+                    >
+                      Save
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      onClick={handleCancelEdit}
+                      disabled={savingPrompt}
+                      startIcon={<CancelIcon />}
                     >
                       Cancel
-                    </button>
-                    <button
-                      onClick={handleSavePrompt}
-                      className="save-button"
-                      disabled={savingPrompt || !promptValue.trim()}
-                    >
-                      {savingPrompt ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </div>
+                    </Button>
+                  </Stack>
+                </Box>
               ) : (
-                <p className="podcast-prompt">{podcast.prompt}</p>
-              )}
-            </div>
-            <p>{podcast.description}</p>
-            <div className="podcast-type-badge">
-              <span className="badge news">News from the web</span>
-            </div>
-            <div className="podcast-sources-section">
-              <div className="sources-header">
-                <h3>Trusted Sources</h3>
-                <button
-                  onClick={toggleTrustedSources}
-                  className="toggle-button"
-                  aria-label={showTrustedSources ? "Hide sources" : "Show sources"}
+                <Typography 
+                  variant="body1" 
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
                 >
-                  {showTrustedSources ? "Hide sources" : "Show sources"}
-                </button>
-              </div>
-              {showTrustedSources && podcast.sources && podcast.sources.length > 0 && (
-                <div className="trusted-sources-list">
-                  <table className="sources-table">
-                    <thead>
-                      <tr>
-                        <th>Source</th>
-                        <th>Category</th>
-                        <th>Topics</th>
-                        <th>Quality</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {podcast.sources.map((source, index) => (
-                        <tr key={index}>
-                          <td>
-                            <a href={source.url} target="_blank" rel="noopener noreferrer">
-                              {source.name}
-                            </a>
-                          </td>
-                          <td>{source.category}</td>
-                          <td>{source.topicRelevance.join(', ')}</td>
-                          <td>
-                            <div className="quality-bar" style={{
-                              width: `${source.qualityScore * 10}%`,
-                              backgroundColor: source.qualityScore >= 8 ? '#4CAF50' : source.qualityScore >= 5 ? '#FFC107' : '#F44336'
-                            }}></div>
-                            <span className="quality-score">{source.qualityScore}/10</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="sources-info">
-                    These sources are automatically discovered based on the podcast theme and used to find relevant content when generating episodes.
-                  </p>
-                </div>
+                  {podcast.prompt}
+                </Typography>
               )}
-              {showTrustedSources && (!podcast.sources || podcast.sources.length === 0) && (
-                <p className="no-sources">No trusted sources configured for this podcast.</p>
+              
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Button
+                  variant="contained"
+                  onClick={handleGenerateEpisode}
+                  disabled={generating}
+                  startIcon={<RefreshIcon />}
+                >
+                  {generating ? 'Generating...' : 'Generate New Episode'}
+                </Button>
+                
+                <TextField
+                  type="number"
+                  label="Episode Length (minutes)"
+                  value={episodeLength}
+                  onChange={handleEpisodeLengthChange}
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                  }}
+                  sx={{ width: 200 }}
+                />
+              </Stack>
+              
+              {showBackgroundGenNotice && (
+                <Alert 
+                  severity="info" 
+                  sx={{ mt: 2 }}
+                >
+                  Episode generation has started in the background. This may take a few minutes. 
+                  The page will automatically update when the episode is ready.
+                </Alert>
               )}
-            </div>
-          </div>
-        )}
-      </div>
-      <hr className="podcast-divider" />
-      <div className="episode-list flat-list">
-        {episodes.length === 0 ? (
-          <div className="empty-state">
-            <h3>No episodes yet</h3>
-            <p>Generate your first episode to get started!</p>
-          </div>
-        ) : (
-          episodes.map((episode, idx) => (
-            <React.Fragment key={episode.id}>
-              <div className="episode-list-item">
-                <div className="episode-header">
-                  <h3 className="episode-title">{episode.title}</h3>
-                  <div className="episode-actions">
-                    {episode.audioUrl && (
-                      <button 
+            </CardContent>
+          </Card>
+          
+          <Stack spacing={2}>
+            {episodes.map((episode) => (
+              <Card key={episode.id}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Stack 
+                      direction="row" 
+                      justifyContent="space-between" 
+                      alignItems="center"
+                    >
+                      <Typography variant="h6">
+                        {episode.title}
+                      </Typography>
+                      
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDateTime(episode.created_at!)}
+                        </Typography>
+                        
+                        {isOwner && (
+                          <IconButton
+                            size="small"
+                            onClick={() => toggleMenu(episode.id!)}
+                            aria-label="Episode options"
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        )}
+                        
+                        <Menu
+                          anchorEl={document.querySelector(`[data-episode-id="${episode.id}"]`)}
+                          open={openMenuId === episode.id}
+                          onClose={() => setOpenMenuId(null)}
+                        >
+                          <MenuItem onClick={() => handleRegenerateAudio(episode.id!)}>
+                            <ListItemIcon>
+                              <RefreshIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>
+                              {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
+                            </ListItemText>
+                          </MenuItem>
+                          
+                          <MenuItem onClick={() => handleDeleteEpisode(episode.id!)}>
+                            <ListItemIcon>
+                              <DeleteIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>
+                              {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
+                            </ListItemText>
+                          </MenuItem>
+                        </Menu>
+                      </Stack>
+                    </Stack>
+                    
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        size="small"
                         onClick={() => playEpisode(episode)}
-                        className="play-episode-button"
-                        aria-label="Play Episode"
+                        startIcon={<PlayArrowIcon />}
                       >
-                        <span className="play-icon">▶</span>
-                        Play Episode
-                      </button>
-                    )}
-                    {isOwner && (
-                      <div className="more-actions">
-                        <button 
-                          onClick={() => episode.id && toggleMenu(episode.id)}
-                          className="more-button"
-                          aria-label="More actions"
-                        >
-                          ⋮
-                        </button>
-                        <div className={`actions-menu ${openMenuId === episode.id ? 'show' : ''}`}>
-                          <div 
-                            className="menu-item"
-                            onClick={() => episode.id && toggleEpisodeContent(episode.id)}
-                          >
-                            {expandedEpisodes[episode.id!] ? 'Hide Transcript' : 'Show Transcript'}
-                          </div>
-                          {episodeGenerationLogs[episode.id!] && (
-                            <div 
-                              className="menu-item"
-                              onClick={() => {
-                                if (episode.id) {
-                                  toggleEpisodeTab(episode.id, 'log');
-                                  if (!expandedEpisodes[episode.id]) {
-                                    toggleEpisodeContent(episode.id);
-                                  }
-                                }
-                              }}
-                            >
-                              View Generation Log
-                            </div>
-                          )}
-                          {episode.audioUrl && (
-                            <a 
-                              href={episode.audioUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="menu-item"
-                            >
-                              Download MP3
-                            </a>
-                          )}
-                          <div 
-                            className="menu-item"
-                            onClick={() => episode.id && handleRegenerateAudio(episode.id)}
-                          >
-                            {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
-                          </div>
-                          <div 
-                            className="menu-item delete"
-                            onClick={() => episode.id && handleDeleteEpisode(episode.id)}
-                          >
-                            {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <p className="episode-description">{episode.description}</p>
-                {expandedEpisodes[episode.id!] && (
-                  <div className="episode-content-tabs">
-                    <div className="tabs-header">
-                      <button 
-                        className={`tab-button ${activeEpisodeTabs[episode.id!] !== 'log' ? 'active' : ''}`}
-                        onClick={() => episode.id && toggleEpisodeTab(episode.id, 'transcript')}
+                        Play
+                      </Button>
+                      
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => toggleEpisodeContent(episode.id!)}
+                        endIcon={expandedEpisodes[episode.id!] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       >
-                        Transcript
-                      </button>
-                      {episodeGenerationLogs[episode.id!] && (
-                        <button 
-                          className={`tab-button ${activeEpisodeTabs[episode.id!] === 'log' ? 'active' : ''}`}
-                          onClick={() => episode.id && toggleEpisodeTab(episode.id, 'log')}
+                        {expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}
+                      </Button>
+                    </Stack>
+                    
+                    {expandedEpisodes[episode.id!] && (
+                      <Box>
+                        <Tabs
+                          value={activeEpisodeTabs[episode.id!] || 'transcript'}
+                          onChange={(_, value) => toggleEpisodeTab(episode.id!, value)}
+                          sx={{ mb: 2 }}
                         >
-                          Generation Log
-                        </button>
-                      )}
-                    </div>
-                    <div className="tab-content">
-                      {activeEpisodeTabs[episode.id!] === 'log' ? (
-                        <div className="generation-log-tab">
-                          {episodeGenerationLogs[episode.id!] ? (
-                            <GenerationLogViewer 
-                              logId={episodeGenerationLogs[episode.id!]} 
-                              onError={(error) => {
-                                console.error("Error loading generation log:", error);
-                                toggleEpisodeTab(episode.id!, 'transcript');
-                              }}
-                            />
-                          ) : (
-                            <div className="log-not-available">
-                              <p>Generation log not available for this episode.</p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="transcript-tab">
-                          {episode.content.split('\n').map((paragraph, i) => (
-                            <p key={i}>{paragraph}</p>
-                          ))}
-                          {episode.sources && episode.sources.length > 0 && (
-                            <div className="episode-sources">
-                              <div className="sources-header">
-                                <h4>Sources:</h4>
-                                <button 
-                                  onClick={() => episode.id && toggleSourcesVisibility(episode.id)}
-                                  className="toggle-sources-button"
-                                  aria-label={expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                                >
-                                  {expandedSources[episode.id!] ? "Hide sources" : "Show all sources"}
-                                </button>
-                              </div>
-                              {expandedSources[episode.id!] && (
-                                <ul>
-                                  {episode.sources.map((source, index) => (
-                                    <li key={index}>
-                                      <a href={source} target="_blank" rel="noopener noreferrer">
-                                        {(() => {
-                                          try {
-                                            const url = new URL(source);
-                                            if (url.hostname.includes('vertexaisearch.cloud.google.com')) {
-                                              return `Reference ${index + 1}`;
-                                            }
-                                            return url.hostname;
-                                          } catch (e) {
-                                            return source;
-                                          }
-                                        })()}
-                                      </a>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </React.Fragment>
-          ))
-        )}
-      </div>
-    </div>
+                          <Tab value="transcript" label="Transcript" />
+                          <Tab value="log" label="Generation Log" />
+                        </Tabs>
+                        
+                        {activeEpisodeTabs[episode.id!] === 'transcript' ? (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {episode.content}
+                          </Typography>
+                        ) : (
+                          <GenerationLogViewer
+                            episodeId={episode.id!}
+                            logId={episodeGenerationLogs[episode.id!]}
+                          />
+                        )}
+                      </Box>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </>
+      ) : null}
+      
+      {currentAudio && (
+        <AudioPlayer
+          audioUrl={currentAudio.url}
+          title={currentAudio.title}
+        />
+      )}
+    </Box>
   );
 };
 

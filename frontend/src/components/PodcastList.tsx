@@ -1,5 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Alert, 
+  CircularProgress,
+  Card,
+  CardContent,
+  Divider,
+  Stack,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText
+} from '@mui/material';
+import { 
+  Add as AddIcon,
+  MoreVert as MoreVertIcon,
+  Public as PublicIcon,
+  Lock as LockIcon,
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon
+} from '@mui/icons-material';
 import { Podcast } from '../types';
 import { getAllPodcasts, deletePodcast, updatePodcastVisibility } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +33,7 @@ const PodcastList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [showDeleteMenu, setShowDeleteMenu] = useState<Record<string, boolean>>({});
+  const [menuAnchor, setMenuAnchor] = useState<{ [key: string]: HTMLElement | null }>({});
   const navigate = useNavigate();
   const { isAuthenticated, userEmail } = useAuth();
 
@@ -41,27 +65,23 @@ const PodcastList = () => {
       setDeleting(podcastId);
       try {
         await deletePodcast(podcastId);
-        // Refresh the podcast list
         fetchPodcasts();
       } catch (err) {
         setError('Failed to delete podcast. Please try again later.');
         console.error('Error deleting podcast:', err);
       } finally {
         setDeleting(null);
-        // Close the delete menu
-        setShowDeleteMenu(prev => ({
-          ...prev,
-          [podcastId]: false
-        }));
+        setMenuAnchor(prev => ({ ...prev, [podcastId]: null }));
       }
     }
   };
   
-  const toggleDeleteMenu = (podcastId: string) => {
-    setShowDeleteMenu(prev => ({
-      ...prev,
-      [podcastId]: !prev[podcastId]
-    }));
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, podcastId: string) => {
+    setMenuAnchor(prev => ({ ...prev, [podcastId]: event.currentTarget }));
+  };
+
+  const handleMenuClose = (podcastId: string) => {
+    setMenuAnchor(prev => ({ ...prev, [podcastId]: null }));
   };
 
   const handleVisibilityChange = async (podcastId: string, newVisibility: 'public' | 'private') => {
@@ -75,6 +95,7 @@ const PodcastList = () => {
 
     try {
       await updatePodcastVisibility(podcastId, newVisibility);
+      handleMenuClose(podcastId);
     } catch (err) {
       console.error('Failed to update visibility:', err);
       setError(`Failed to update visibility for podcast ${podcastId}. Please try refreshing.`);
@@ -83,72 +104,151 @@ const PodcastList = () => {
   };
 
   return (
-    <div className="container">
-      <div className="header">
-        <h2>{isAuthenticated ? 'My Podcasts' : 'Public Podcasts'}</h2>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        mb: 4 
+      }}>
+        <Typography variant="h4" component="h1">
+          {isAuthenticated ? 'My Podcasts' : 'Public Podcasts'}
+        </Typography>
         {isAuthenticated && (
-          <button 
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
             onClick={handleCreatePodcast}
-            className="create-button"
+            size="large"
           >
-            + Create New Podcast
-          </button>
+            Create New Podcast
+          </Button>
         )}
-      </div>
+      </Box>
 
       {error && (
-        <div className="error-message">
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ mb: 3 }}
+        >
           {error}
-          <button 
-            onClick={() => setError(null)} 
-            className="error-dismiss"
-            aria-label="Dismiss error"
-          >
-            ×
-          </button>
-        </div>
+        </Alert>
       )}
 
-      {loading && podcasts.length === 0 && <p>Loading podcasts...</p>}
+      {loading && podcasts.length === 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
 
       {!loading && podcasts.length === 0 ? (
-        <div className="empty-state">
-          <h3>{isAuthenticated ? 'No podcasts yet' : 'No public podcasts found'}</h3>
+        <Card sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom>
+            {isAuthenticated ? 'No podcasts yet' : 'No public podcasts found'}
+          </Typography>
           {isAuthenticated ? (
             <>
-             <p>Create your first podcast to get started!</p>
-             <button onClick={handleCreatePodcast} className="create-button">
-               Create Your First Podcast
-             </button>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Create your first podcast to get started!
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreatePodcast}
+                size="large"
+              >
+                Create Your First Podcast
+              </Button>
             </>
           ) : (
-            <p>Log in to create your own podcasts.</p>
+            <Typography color="text.secondary">
+              Log in to create your own podcasts.
+            </Typography>
           )}
-        </div>
+        </Card>
       ) : (
-        <div className="podcast-list flat-list">
-          {podcasts.map((podcast, idx) => {
+        <Stack spacing={2}>
+          {podcasts.map((podcast) => {
+            if (!podcast.id) return null; // Skip podcasts without IDs
             const isOwner = isAuthenticated && userEmail === podcast.ownerEmail;
+            const podcastId = podcast.id;
             return (
-              <React.Fragment key={podcast.id}>
-                <div className="podcast-list-item">
-                  <h2>{podcast.title}</h2>
-                  <p>{podcast.description}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                    <div className="centered-actions">
-                      <Link to={`/podcasts/${podcast.id}`}>
-                        <button>View Episodes</button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-                {idx !== podcasts.length - 1 && <hr className="podcast-divider" />}
-              </React.Fragment>
+              <Card key={podcastId} elevation={1}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h5" gutterBottom>
+                        {podcast.title}
+                      </Typography>
+                      <Typography color="text.secondary" paragraph>
+                        {podcast.description}
+                      </Typography>
+                    </Box>
+                    {isOwner && (
+                      <IconButton onClick={(e) => handleMenuOpen(e, podcastId)}>
+                        <MoreVertIcon />
+                      </IconButton>
+                    )}
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                    <Button
+                      component={Link}
+                      to={`/podcasts/${podcastId}`}
+                      variant="outlined"
+                      startIcon={<VisibilityIcon />}
+                    >
+                      View Episodes
+                    </Button>
+                    {isOwner && (
+                      <Typography variant="body2" color="text.secondary">
+                        {podcast.visibility === 'public' ? (
+                          <PublicIcon fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />
+                        ) : (
+                          <LockIcon fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />
+                        )}
+                        {podcast.visibility}
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+
+                {isOwner && (
+                  <Menu
+                    anchorEl={menuAnchor[podcastId]}
+                    open={Boolean(menuAnchor[podcastId])}
+                    onClose={() => handleMenuClose(podcastId)}
+                  >
+                    <MenuItem 
+                      onClick={() => handleVisibilityChange(podcastId, podcast.visibility === 'public' ? 'private' : 'public')}
+                    >
+                      <ListItemIcon>
+                        {podcast.visibility === 'public' ? <LockIcon /> : <PublicIcon />}
+                      </ListItemIcon>
+                      <ListItemText>
+                        Make {podcast.visibility === 'public' ? 'Private' : 'Public'}
+                      </ListItemText>
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={() => handleDeletePodcast(podcastId)}
+                      disabled={deleting === podcastId}
+                    >
+                      <ListItemIcon>
+                        <DeleteIcon />
+                      </ListItemIcon>
+                      <ListItemText>
+                        {deleting === podcastId ? 'Deleting...' : 'Delete Podcast'}
+                      </ListItemText>
+                    </MenuItem>
+                  </Menu>
+                )}
+              </Card>
             );
           })}
-        </div>
+        </Stack>
       )}
-    </div>
+    </Box>
   );
 };
 

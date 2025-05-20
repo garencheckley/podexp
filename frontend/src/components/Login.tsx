@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
+import { 
+  Box, 
+  Card, 
+  CardContent, 
+  Typography, 
+  TextField, 
+  Button, 
+  Alert,
+  CircularProgress
+} from '@mui/material';
 import { requestLogin } from '../services/api';
-import '../styles/Login.css';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -37,44 +46,93 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h2>Log In to Podcast Generator</h2>
-        <p className="login-description">
-          Enter your email address below to receive a login link.
-          No password needed!
-        </p>
-        
-        {message && (
-          <div className={`message ${message.type}`}>
-            {message.text}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '80vh',
+        px: 2
+      }}
+    >
+      <Card 
+        elevation={2}
+        sx={{
+          maxWidth: 400,
+          width: '100%',
+          borderRadius: 4
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom align="center">
+            Log In to Podcast Generator
+          </Typography>
+          
+          <Typography 
+            variant="body1" 
+            color="text.secondary" 
+            align="center" 
+            sx={{ mb: 4 }}
+          >
+            Enter your email address below to receive a login link.
+            No password needed!
+          </Typography>
+          
+          {message && (
+            <Alert 
+              severity={message.type} 
+              sx={{ mb: 3 }}
+            >
+              {message.text}
+            </Alert>
+          )}
+          
+          <form onSubmit={handleSubmit}>
+            <TextField
+              fullWidth
+              label="Email Address"
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               disabled={isSubmitting}
               required
+              sx={{ mb: 3 }}
             />
-          </div>
-          
-          <button 
-            type="submit" 
-            className="login-button"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Sending...' : 'Send Login Link'}
-          </button>
-        </form>
-      </div>
-    </div>
+            
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isSubmitting}
+              sx={{
+                py: 1.5,
+                position: 'relative'
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  Sending...
+                  <CircularProgress
+                    size={24}
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-12px',
+                      marginLeft: '-12px',
+                    }}
+                  />
+                </>
+              ) : (
+                'Send Login Link'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 

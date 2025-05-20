@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  TextField, 
+  Button, 
+  Alert, 
+  Card, 
+  CardContent,
+  Link as MuiLink,
+  CircularProgress
+} from '@mui/material';
+import { Link } from 'react-router-dom';
 import { createPodcast } from '../services/api';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const CreatePodcastForm: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -51,58 +63,89 @@ const CreatePodcastForm: React.FC = () => {
   };
   
   return (
-    <div className="container">
-      <Link to="/" className="back-button">
+    <Box sx={{ maxWidth: 800, mx: 'auto', px: 2 }}>
+      <MuiLink
+        component={Link}
+        to="/"
+        sx={{ 
+          display: 'inline-block',
+          mb: 3,
+          textDecoration: 'none',
+          '&:hover': { textDecoration: 'underline' }
+        }}
+      >
         ← Back to Podcasts
-      </Link>
+      </MuiLink>
       
-      <div className="create-podcast-form">
-        <h2>Create New Podcast</h2>
-        
-        {error && (
-          <div className="error-message">
-            {error}
-            <button 
-              onClick={() => setError(null)} 
-              className="error-dismiss"
-              aria-label="Dismiss error"
+      <Card elevation={1}>
+        <CardContent>
+          <Typography variant="h4" gutterBottom>
+            Create New Podcast
+          </Typography>
+          
+          {error && (
+            <Alert 
+              severity="error" 
+              onClose={() => setError(null)}
+              sx={{ mb: 3 }}
             >
-              ×
-            </button>
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="podcast-prompt">
-              Podcast Prompt <span className="character-count">{prompt.length}/1000</span>
-            </label>
-            <textarea
-              id="podcast-prompt"
+              {error}
+            </Alert>
+          )}
+          
+          <form onSubmit={handleSubmit}>
+            <TextField
+              fullWidth
+              multiline
+              rows={6}
+              label="Podcast Prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe your podcast concept in detail (up to 1000 characters)"
-              rows={6}
-              maxLength={1000}
               disabled={isSubmitting}
+              error={prompt.length > 1000}
+              helperText={`${prompt.length}/1000 characters`}
+              sx={{ mb: 2 }}
             />
-            <p className="form-help">
-              This prompt will be used to generate news podcast episodes based on current web information. Be specific about the topics, style, and focus you'd like for your news podcast.
-            </p>
-          </div>
-          
-          {/* Podcast type selection removed, always using 'news' type */}
-          
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="submit-button"
-          >
-            {isSubmitting ? 'Creating podcast...' : 'Create Podcast'}
-          </button>
-        </form>
-      </div>
-    </div>
+            
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ mb: 3 }}
+            >
+              This prompt will be used to generate news podcast episodes based on current web information. 
+              Be specific about the topics, style, and focus you'd like for your news podcast.
+            </Typography>
+            
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isSubmitting}
+              sx={{ minWidth: 200 }}
+            >
+              {isSubmitting ? (
+                <>
+                  Creating podcast...
+                  <CircularProgress
+                    size={24}
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-12px',
+                      marginLeft: '-12px',
+                    }}
+                  />
+                </>
+              ) : (
+                'Create Podcast'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 

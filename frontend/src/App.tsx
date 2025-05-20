@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { ThemeProvider, CssBaseline, AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
+import { theme } from './theme';
 import PodcastList from './components/PodcastList';
 import PodcastDetail from './components/PodcastDetail';
 import CreatePodcastForm from './components/CreatePodcastForm';
@@ -13,28 +15,55 @@ const AppHeader: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   
   return (
-    <header className="app-header">
-      <h1>Garen's Podcast Generator</h1>
-      <div className="auth-buttons">
-        {isAuthenticated ? (
-          <button className="logout-button" onClick={logout}>
-            Log Out
-          </button>
-        ) : (
-          <Link to="/login" className="login-button">
-            Log In
-          </Link>
-        )}
-      </div>
-    </header>
+    <AppBar position="static" color="primary" elevation={0}>
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          Garen's Podcast Generator
+        </Typography>
+        <Box>
+          {isAuthenticated ? (
+            <Button 
+              color="inherit" 
+              onClick={logout}
+              variant="outlined"
+              sx={{ 
+                borderColor: 'white',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              Log Out
+            </Button>
+          ) : (
+            <Button 
+              component={Link} 
+              to="/login" 
+              color="inherit"
+              variant="outlined"
+              sx={{ 
+                borderColor: 'white',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              Log In
+            </Button>
+          )}
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 };
 
 function AppContent() {
-  // Load Inter font
+  // Load Roboto font
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
     
@@ -44,9 +73,19 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="app">
+    <Box sx={{ 
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      bgcolor: 'background.default'
+    }}>
       <AppHeader />
-      <main className="app-content">
+      <Container component="main" sx={{ 
+        flexGrow: 1,
+        py: 4,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -63,18 +102,21 @@ function AppContent() {
             </ProtectedRoute>
           } />
         </Routes>
-      </main>
-    </div>
+      </Container>
+    </Box>
   );
 }
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
 

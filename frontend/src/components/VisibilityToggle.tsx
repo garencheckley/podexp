@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Switch, 
+  FormControlLabel, 
+  Alert,
+  Chip
+} from '@mui/material';
+import {
+  Public as PublicIcon,
+  Lock as LockIcon
+} from '@mui/icons-material';
 import { updatePodcastVisibility } from '../services/api';
-import '../styles/VisibilityToggle.css';
 
 interface VisibilityToggleProps {
   podcastId: string;
@@ -19,16 +30,15 @@ const VisibilityToggle: React.FC<VisibilityToggleProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Only show the toggle if the user is the owner
+  // Only show the status if the user is not the owner
   if (!isOwner) {
     return (
-      <div className="visibility-status">
-        {visibility === 'public' ? (
-          <span className="public-badge">Public</span>
-        ) : (
-          <span className="private-badge">Private</span>
-        )}
-      </div>
+      <Chip
+        icon={visibility === 'public' ? <PublicIcon /> : <LockIcon />}
+        label={visibility === 'public' ? 'Public' : 'Private'}
+        color={visibility === 'public' ? 'success' : 'default'}
+        variant="outlined"
+      />
     );
   }
 
@@ -52,26 +62,43 @@ const VisibilityToggle: React.FC<VisibilityToggleProps> = ({
   };
 
   return (
-    <div className="visibility-toggle-container">
-      <div className="visibility-label">
-        Visibility: 
-        <span className={visibility === 'public' ? 'public-text' : 'private-text'}>
-          {visibility === 'public' ? ' Public' : ' Private'}
-        </span>
-      </div>
+    <Box>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={visibility === 'public'}
+            onChange={handleToggle}
+            disabled={isUpdating}
+            color="success"
+          />
+        }
+        label={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {visibility === 'public' ? (
+              <>
+                <PublicIcon color="success" />
+                <Typography>Public</Typography>
+              </>
+            ) : (
+              <>
+                <LockIcon />
+                <Typography>Private</Typography>
+              </>
+            )}
+          </Box>
+        }
+      />
       
-      <label className="toggle-switch">
-        <input
-          type="checkbox"
-          checked={visibility === 'public'}
-          onChange={handleToggle}
-          disabled={isUpdating}
-        />
-        <span className="toggle-slider"></span>
-      </label>
-      
-      {error && <div className="visibility-error">{error}</div>}
-    </div>
+      {error && (
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ mt: 1 }}
+        >
+          {error}
+        </Alert>
+      )}
+    </Box>
   );
 };
 
