@@ -78,6 +78,7 @@ const PodcastDetail = () => {
   const [visibilityUpdating, setVisibilityUpdating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showBackgroundGenNotice, setShowBackgroundGenNotice] = useState(false);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
 
   // Get the current user's email (for ownership check)
   const { userEmail } = useAuth();
@@ -473,16 +474,16 @@ const PodcastDetail = () => {
                 {isOwner && (
                   <Stack direction="row" spacing={1}>
                     <IconButton
-                      onClick={() => setShowSettings(!showSettings)}
+                      onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
                       aria-label="Settings"
                     >
                       <SettingsIcon />
                     </IconButton>
                     
                     <Menu
-                      anchorEl={document.querySelector('.settings-menu')}
-                      open={showSettings}
-                      onClose={() => setShowSettings(false)}
+                      anchorEl={settingsAnchorEl}
+                      open={Boolean(settingsAnchorEl)}
+                      onClose={() => setSettingsAnchorEl(null)}
                     >
                       <MenuItem onClick={handleEditPrompt}>
                         <ListItemIcon>
@@ -600,14 +601,40 @@ const PodcastDetail = () => {
                         </Typography>
                         
                         {isOwner && (
-                          <IconButton
-                            size="small"
-                            onClick={(e) => toggleMenu(e, episode.id!)}
-                            aria-label="Episode options"
-                            data-episode-id={episode.id}
-                          >
-                            <MoreVertIcon />
-                          </IconButton>
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => toggleMenu(e, episode.id!)}
+                              aria-label="Episode options"
+                              data-episode-id={episode.id}
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
+                            <Menu
+                              anchorEl={menuEpisodeId === episode.id ? menuAnchorEl : null}
+                              open={menuEpisodeId === episode.id}
+                              onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
+                            >
+                              <MenuItem onClick={() => { toggleEpisodeContent(episode.id!); }}>
+                                <ListItemIcon>
+                                  {expandedEpisodes[episode.id!] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                </ListItemIcon>
+                                <ListItemText>{expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}</ListItemText>
+                              </MenuItem>
+                              <MenuItem onClick={() => handleRegenerateAudio(episode.id!)} disabled={regeneratingAudio === episode.id}>
+                                <ListItemIcon>
+                                  <RefreshIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText>Regenerate Audio</ListItemText>
+                              </MenuItem>
+                              <MenuItem onClick={() => handleDeleteEpisode(episode.id!)} disabled={deleting === episode.id}>
+                                <ListItemIcon>
+                                  <DeleteIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText>Delete Episode</ListItemText>
+                              </MenuItem>
+                            </Menu>
+                          </>
                         )}
                       </Stack>
                     </Stack>
