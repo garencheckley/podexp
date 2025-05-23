@@ -102,7 +102,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
   if (!log) {
     return (
       <Alert severity="info" sx={{ mb: 2 }}>
-        Generation log not found
+        Generation log not found or incomplete for this episode.
       </Alert>
     );
   }
@@ -131,14 +131,16 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
   };
 
   const renderStageDetails = (stage: string) => {
+    if (!log || !log.stages || !log.decisions) {
+      return <Typography>No data available for this stage</Typography>;
+    }
     const stageData = log.stages[stage as keyof typeof log.stages];
-    
     if (!stageData) {
       return <Typography>No data available for this stage</Typography>;
     }
     
     // Decisions related to this stage
-    const stageDecisions = log.decisions.filter(d => d.stage === stage);
+    const stageDecisions = Array.isArray(log.decisions) ? log.decisions.filter(d => d.stage === stage) : [];
     
     // Render different content based on the stage
     let stageSpecificContent = null;
@@ -414,52 +416,58 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
   };
 
   return (
-    <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={1}>
-          <Typography variant="h6">
-            Generation Log
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Started: {formatTimestamp(log.startTime)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Duration: {formatDuration(log.duration)}
-          </Typography>
+    <>
+      {(!log || !log.stages || !log.timestamp || !log.duration || typeof log.duration.totalMs !== 'number') ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Generation log not found or incomplete for this episode.
+        </Alert>
+      ) : (
+        <Stack spacing={2}>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="h6">
+                Generation Log
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Started: {formatTimestamp(log.timestamp)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Duration: {formatDuration(log.duration.totalMs)}
+              </Typography>
+            </Stack>
+          </Paper>
+          <Stack spacing={1}>
+            {Object.keys(log.stages).map((stage) => {
+              const stageData = log.stages[stage as keyof typeof log.stages];
+              if (!stageData) return null;
+              return (
+                <Accordion
+                  key={stage}
+                  expanded={activeStage === stage}
+                  onChange={() => setActiveStage(activeStage === stage ? null : stage)}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="subtitle1">
+                        {stageLabels[stage] || stage}
+                      </Typography>
+                      <Chip
+                        icon={<TimerIcon />}
+                        label={stageData.duration ? formatDuration(stageData.duration) : ''}
+                        size="small"
+                      />
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {renderStageDetails(stage)}
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })}
+          </Stack>
         </Stack>
-      </Paper>
-      
-      <Stack spacing={1}>
-        {Object.keys(log.stages).map((stage) => {
-          const stageData = log.stages[stage as keyof typeof log.stages];
-          if (!stageData) return null;
-          
-          return (
-            <Accordion
-              key={stage}
-              expanded={activeStage === stage}
-              onChange={() => setActiveStage(activeStage === stage ? null : stage)}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="subtitle1">
-                    {stageLabels[stage] || stage}
-                  </Typography>
-                  <Chip
-                    icon={<TimerIcon />}
-                    label={formatDuration(stageData.duration)}
-                    size="small"
-                  />
-                </Stack>
-              </AccordionSummary>
-              <AccordionDetails>
-                {renderStageDetails(stage)}
-              </AccordionDetails>
-            </Accordion>
-          );
-        })}
-      </Stack>
-    </Stack>
+      )}
+    </>
   );
 };
 
