@@ -63,7 +63,8 @@ const PodcastDetail = () => {
   const [regeneratingAudio, setRegeneratingAudio] = useState<string | null>(null);
   const [expandedEpisodes, setExpandedEpisodes] = useState<Record<string, boolean>>({});
   const [currentAudio, setCurrentAudio] = useState<{url: string, title: string} | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuEpisodeId, setMenuEpisodeId] = useState<string | null>(null);
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptValue, setPromptValue] = useState('');
   const [savingPrompt, setSavingPrompt] = useState(false);
@@ -217,7 +218,8 @@ const PodcastDetail = () => {
       } finally {
         setDeleting(null);
         // Close menu after deletion
-        setOpenMenuId(null);
+        setMenuAnchorEl(null);
+        setMenuEpisodeId(null);
       }
     }
   };
@@ -239,7 +241,8 @@ const PodcastDetail = () => {
       );
       
       // Close menu after action
-      setOpenMenuId(null);
+      setMenuAnchorEl(null);
+      setMenuEpisodeId(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate audio';
       setError(errorMessage);
@@ -255,7 +258,8 @@ const PodcastDetail = () => {
       [episodeId]: !prev[episodeId]
     }));
     // Close menu after action
-    setOpenMenuId(null);
+    setMenuAnchorEl(null);
+    setMenuEpisodeId(null);
   };
   
   const playEpisode = (episode: Episode) => {
@@ -267,8 +271,14 @@ const PodcastDetail = () => {
     }
   };
   
-  const toggleMenu = (episodeId: string) => {
-    setOpenMenuId(openMenuId === episodeId ? null : episodeId);
+  const toggleMenu = (event: React.MouseEvent<HTMLElement>, episodeId: string) => {
+    if (menuEpisodeId === episodeId) {
+      setMenuAnchorEl(null);
+      setMenuEpisodeId(null);
+    } else {
+      setMenuAnchorEl(event.currentTarget);
+      setMenuEpisodeId(episodeId);
+    }
   };
 
   const handleEditPrompt = () => {
@@ -327,7 +337,8 @@ const PodcastDetail = () => {
     }
     
     // Close menu after tab switch
-    setOpenMenuId(null);
+    setMenuAnchorEl(null);
+    setMenuEpisodeId(null);
   };
 
   // Helper function to format date with time
@@ -534,27 +545,28 @@ const PodcastDetail = () => {
                 </Typography>
               )}
               
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Button
-                  variant="contained"
-                  onClick={handleGenerateEpisode}
-                  disabled={generating}
-                  startIcon={<RefreshIcon />}
-                >
-                  {generating ? 'Generating...' : 'Generate New Episode'}
-                </Button>
-                
-                <TextField
-                  type="number"
-                  label="Episode Length (minutes)"
-                  value={episodeLength}
-                  onChange={handleEpisodeLengthChange}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">min</InputAdornment>,
-                  }}
-                  sx={{ width: 200 }}
-                />
-              </Stack>
+              {isOwner && (
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateEpisode}
+                    disabled={generating}
+                    startIcon={<RefreshIcon />}
+                  >
+                    {generating ? 'Generating...' : 'Generate New Episode'}
+                  </Button>
+                  <TextField
+                    type="number"
+                    label="Episode Length (minutes)"
+                    value={episodeLength}
+                    onChange={handleEpisodeLengthChange}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                    }}
+                    sx={{ width: 200 }}
+                  />
+                </Stack>
+              )}
               
               {showBackgroundGenNotice && (
                 <Alert 
@@ -590,36 +602,13 @@ const PodcastDetail = () => {
                         {isOwner && (
                           <IconButton
                             size="small"
-                            onClick={() => toggleMenu(episode.id!)}
+                            onClick={(e) => toggleMenu(e, episode.id!)}
                             aria-label="Episode options"
+                            data-episode-id={episode.id}
                           >
                             <MoreVertIcon />
                           </IconButton>
                         )}
-                        
-                        <Menu
-                          anchorEl={document.querySelector(`[data-episode-id="${episode.id}"]`)}
-                          open={openMenuId === episode.id}
-                          onClose={() => setOpenMenuId(null)}
-                        >
-                          <MenuItem onClick={() => handleRegenerateAudio(episode.id!)}>
-                            <ListItemIcon>
-                              <RefreshIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText>
-                              {regeneratingAudio === episode.id ? 'Regenerating...' : 'Regenerate Audio'}
-                            </ListItemText>
-                          </MenuItem>
-                          
-                          <MenuItem onClick={() => handleDeleteEpisode(episode.id!)}>
-                            <ListItemIcon>
-                              <DeleteIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText>
-                              {deleting === episode.id ? 'Deleting...' : 'Delete Episode'}
-                            </ListItemText>
-                          </MenuItem>
-                        </Menu>
                       </Stack>
                     </Stack>
                     
@@ -631,15 +620,6 @@ const PodcastDetail = () => {
                         startIcon={<PlayArrowIcon />}
                       >
                         Play
-                      </Button>
-                      
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => toggleEpisodeContent(episode.id!)}
-                        endIcon={expandedEpisodes[episode.id!] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      >
-                        {expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}
                       </Button>
                     </Stack>
                     
