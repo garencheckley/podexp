@@ -586,8 +586,8 @@ const PodcastDetail = () => {
               <Card key={episode.id}>
                 <CardContent>
                   <Stack spacing={1}>
-                    <Stack direction="row" sx={{ width: '100%' }}>
-                      <Box sx={{ alignSelf: 'flex-start' }}>
+                    <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', border: '1px dashed orange' }}>
+                      <Box>
                         <Typography variant="h6">
                           {episode.title}
                         </Typography>
@@ -596,44 +596,19 @@ const PodcastDetail = () => {
                         </Typography>
                       </Box>
                       {isOwner ? (
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ marginLeft: 'auto', alignSelf: 'flex-start' }}>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => toggleMenu(e, episode.id!)}
-                            aria-label="Episode options"
-                            data-episode-id={episode.id}
-                          >
-                            <MoreVertIcon />
-                          </IconButton>
-                          <Menu
-                            anchorEl={menuEpisodeId === episode.id ? menuAnchorEl : null}
-                            open={menuEpisodeId === episode.id}
-                            onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
-                          >
-                            <MenuItem onClick={() => { toggleEpisodeContent(episode.id!); }}>
-                              <ListItemIcon>
-                                {expandedEpisodes[episode.id!] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                              </ListItemIcon>
-                              <ListItemText>{expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}</ListItemText>
-                            </MenuItem>
-                            <MenuItem onClick={() => handleRegenerateAudio(episode.id!)} disabled={regeneratingAudio === episode.id}>
-                              <ListItemIcon>
-                                <RefreshIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText>Regenerate Audio</ListItemText>
-                            </MenuItem>
-                            <MenuItem onClick={() => handleDeleteEpisode(episode.id!)} disabled={deleting === episode.id}>
-                              <ListItemIcon>
-                                <DeleteIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText>Delete Episode</ListItemText>
-                            </MenuItem>
-                          </Menu>
-                        </Stack>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => toggleMenu(e, episode.id!)}
+                          aria-label="Episode options"
+                          data-episode-id={episode.id}
+                          sx={{ marginLeft: 'auto' }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
                       ) : (
-                        <Box sx={{ width: 40, height: 40, marginLeft: 'auto', alignSelf: 'flex-start' }} />
+                        <Box sx={{ width: 40, height: 40, marginLeft: 'auto' }} />
                       )}
-                    </Stack>
+                    </Box>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                       <Button
                         variant="outlined"
