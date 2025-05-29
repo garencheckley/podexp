@@ -608,7 +608,7 @@ const PodcastDetail = () => {
                       {isOwner ? (
                         <IconButton
                           size="small"
-                          onClick={(e) => toggleMenu(e, episode.id!)}
+                          onClick={(e) => { setMenuAnchorEl(e.currentTarget); setMenuEpisodeId(episode.id!); }}
                           aria-label="Episode options"
                           data-episode-id={episode.id}
                           sx={{ marginLeft: 'auto' }}
@@ -645,6 +645,21 @@ const PodcastDetail = () => {
                 </CardContent>
               </Card>
             ))}
+            {/* Render the Menu once at the root, controlled by menuAnchorEl/menuEpisodeId */}
+            <Menu
+              anchorEl={menuAnchorEl}
+              open={Boolean(menuAnchorEl)}
+              onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
+            >
+              <MenuItem onClick={() => { if (menuEpisodeId) handleRegenerateAudio(menuEpisodeId); }}>
+                <ListItemIcon><RefreshIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Regenerate Audio</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { if (menuEpisodeId) handleDeleteEpisode(menuEpisodeId); }}>
+                <ListItemIcon><DeleteIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>Delete Episode</ListItemText>
+              </MenuItem>
+            </Menu>
           </Stack>
         </>
       ) : null}
