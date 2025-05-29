@@ -585,8 +585,8 @@ const PodcastDetail = () => {
             {episodes.map((episode) => (
               <Card key={episode.id}>
                 <CardContent>
-                  <Stack spacing={2}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ width: '100%' }}>
                       <Box>
                         <Typography variant="h6">
                           {episode.title}
@@ -631,19 +631,19 @@ const PodcastDetail = () => {
                           </Menu>
                         </Stack>
                       ) : (
-                        <Box sx={{ width: 40 }} />
+                        <Box sx={{ width: 40, height: 40 }} />
                       )}
                     </Stack>
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => playEpisode(episode)}
-                      startIcon={<PlayArrowIcon />}
-                    >
-                      Play
-                    </Button>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => playEpisode(episode)}
+                        startIcon={<PlayArrowIcon />}
+                      >
+                        Play
+                      </Button>
+                    </Stack>
                   </Stack>
                   {expandedEpisodes[episode.id!] && (
                     <Box>
