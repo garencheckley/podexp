@@ -3,6 +3,7 @@ import { executeWebSearch } from './search';
 import { EpisodeAnalysis } from './episodeAnalyzer';
 import { Podcast } from './database';
 import { FAST_MODEL_ID, POWERFUL_MODEL_ID } from '../config';
+import { getHybridTopicRecommendations, HybridTopicResult } from './hybridTopicService';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -16,6 +17,12 @@ export interface SearchResults {
   recencyMapping: { [topic: string]: string };
   combinedResearch?: string;
   allSources?: string[];
+  hybridMetadata?: {
+    geminiTopics: number;
+    perplexityTopics: number;
+    hybridScore: number;
+    processingTimeMs: number;
+  };
 }
 
 /**
@@ -68,17 +75,21 @@ interface RawTopicIdea {
  */
 async function generateDirectTopicIdeas_Phase1(
   podcast: Podcast,
-  _analysis: EpisodeAnalysis // Analysis might be used in future prompt refinement
+  analysis: EpisodeAnalysis
 ): Promise<RawTopicIdea[]> {
   console.log(`[Phase 1] Attempting direct topic generation for podcast: ${podcast.title}`);
-  const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
-  let sourceListString = "any reputable major news outlets";
-  if (sourceUrls.length > 0) {
-    sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast\'s theme and the specified preferred sources.`;
-  }
+  
+  try {
+    // Use Gemini-based approach for fallback
+    console.log(`[Phase 1] Using Gemini for topic generation`);
+    const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
+    let sourceListString = "any reputable major news outlets";
+    if (sourceUrls.length > 0) {
+      sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast\'s theme and the specified preferred sources.`;
+    }
 
-  // Using the prompt from scratchpad.md (Step 3)
-  const geminiPrompt = `
+    // Using the prompt from scratchpad.md (Step 3)
+    const geminiPrompt = `
 You are an AI assistant tasked with generating compelling and timely podcast episode topic ideas for a news-focused podcast.
 
 Podcast Details:
@@ -109,34 +120,38 @@ Example of a single topic object:
   "key_questions": ["What is the impact of Z?", "How will this affect Q?"],
   "supporting_sources": ["http://example.com/news-article-1", "http://another-source.com/related-story"]
 }
-  `;
+    `;
 
-  console.log(`[Phase 1] Sending direct topic generation prompt to Gemini for podcast: ${podcast.title}`);
-  // Using POWERFUL_MODEL_ID for this complex generation task
-  const searchResult = await executeWebSearch(geminiPrompt); // Assuming executeWebSearch uses a model with web grounding
+    console.log(`[Phase 1] Sending direct topic generation prompt to Gemini for podcast: ${podcast.title}`);
+    // Using POWERFUL_MODEL_ID for this complex generation task
+    const searchResult = await executeWebSearch(geminiPrompt); // Assuming executeWebSearch uses a model with web grounding
 
-  console.log(`[Phase 1] Received raw response from Gemini for ${podcast.title}:`, searchResult.content.substring(0, 500) + "..."); // Log snippet
+    console.log(`[Phase 1] Received raw response from Gemini for ${podcast.title}:`, searchResult.content.substring(0, 500) + "..."); // Log snippet
 
-  try {
-    // Attempt to clean and parse the JSON response
-    const cleanedResponse = searchResult.content.replace(/^```json\\n?|\\n?```$/g, "").trim();
-    const parsedTopics = JSON.parse(cleanedResponse) as RawTopicIdea[];
+    try {
+      // Attempt to clean and parse the JSON response
+      const cleanedResponse = searchResult.content.replace(/^```json\\n?|\\n?```$/g, "").trim();
+      const parsedTopics = JSON.parse(cleanedResponse) as RawTopicIdea[];
 
-    if (!Array.isArray(parsedTopics)) {
-      console.error(`[Phase 1] Parsed response for ${podcast.title} is not an array. Response:`, cleanedResponse);
-      throw new Error("Parsed response for direct topic generation is not an array.");
+      if (!Array.isArray(parsedTopics)) {
+        console.error(`[Phase 1] Parsed response for ${podcast.title} is not an array. Response:`, cleanedResponse);
+        throw new Error("Parsed response for direct topic generation is not an array.");
+      }
+      // Basic validation of the first topic's structure
+      if (parsedTopics.length > 0 && typeof parsedTopics[0].topic_title !== 'string') {
+          console.error(`[Phase 1] Parsed topics for ${podcast.title} do not match expected structure. First topic:`, parsedTopics[0]);
+          throw new Error("Parsed topics do not match expected structure for direct topic generation.");
+      }
+
+      console.log(`[Phase 1] Successfully parsed ${parsedTopics.length} direct topic ideas for ${podcast.title}.`);
+      return parsedTopics;
+    } catch (error: any) {
+      console.error(`[Phase 1] Failed to parse direct topic ideas for ${podcast.title}. Error: ${error.message}. Raw content:`, searchResult.content);
+      throw new Error(`Failed to parse direct topic ideas from Gemini: ${error.message}`); // Re-throw to trigger fallback
     }
-    // Basic validation of the first topic's structure
-    if (parsedTopics.length > 0 && typeof parsedTopics[0].topic_title !== 'string') {
-        console.error(`[Phase 1] Parsed topics for ${podcast.title} do not match expected structure. First topic:`, parsedTopics[0]);
-        throw new Error("Parsed topics do not match expected structure for direct topic generation.");
-    }
-
-    console.log(`[Phase 1] Successfully parsed ${parsedTopics.length} direct topic ideas for ${podcast.title}.`);
-    return parsedTopics;
-  } catch (error: any) {
-    console.error(`[Phase 1] Failed to parse direct topic ideas for ${podcast.title}. Error: ${error.message}. Raw content:`, searchResult.content);
-    throw new Error(`Failed to parse direct topic ideas from Gemini: ${error.message}`); // Re-throw to trigger fallback
+  } catch (error) {
+    console.error(`[Phase 1] Error in topic generation:`, error);
+    return [];
   }
 }
 
@@ -174,6 +189,58 @@ function adaptDirectResultsToSearchResults_Phase1(
 }
 
 /**
+ * NEW Function for Phase 1: Uses hybrid topic discovery
+ */
+async function generateHybridTopicIdeas_Phase1(
+  podcast: Podcast,
+  analysis: EpisodeAnalysis
+): Promise<SearchResults> {
+  console.log(`[Hybrid Phase 1] Starting hybrid topic generation for podcast: ${podcast.title}`);
+  
+  try {
+    // Get recommendations from both APIs
+    const recommendations = await getHybridTopicRecommendations(podcast, analysis);
+    
+    if (recommendations.topics.length > 0) {
+      console.log(`[Hybrid Phase 1] Found ${recommendations.topics.length} topics using hybrid approach`);
+      
+      // Convert hybrid results to SearchResults format
+      const potentialTopics = recommendations.topics.map(topic => ({
+        topic: topic.topic,
+        relevance: topic.relevance,
+        query: topic.topic, // Use topic as query for further research
+        recency: topic.recency
+      }));
+      
+      const recencyMapping = Object.fromEntries(
+        recommendations.topics.map(t => [t.topic, t.recency])
+      );
+      
+      const allSources = [...new Set(recommendations.topics.flatMap(t => t.sources))];
+      
+      return {
+        potentialTopics,
+        relevantSources: allSources,
+        recencyMapping,
+        combinedResearch: '', // No combined research blob from hybrid method
+        allSources,
+        hybridMetadata: {
+          geminiTopics: recommendations.geminiResults.length,
+          perplexityTopics: recommendations.perplexityResults.length,
+          hybridScore: recommendations.hybridScore,
+          processingTimeMs: recommendations.processingStats.processingTimeMs
+        }
+      };
+    } else {
+      throw new Error("Hybrid topic generation yielded no topics.");
+    }
+  } catch (error) {
+    console.error(`[Hybrid Phase 1] Error in hybrid topic generation:`, error);
+    throw error; // Re-throw to trigger fallback
+  }
+}
+
+/**
  * Performs initial exploratory search based on podcast info and previous episode analysis
  * @param podcast Podcast information
  * @param analysis Previous episode analysis
@@ -183,56 +250,62 @@ export async function performInitialSearch(
   podcast: Podcast,
   analysis: EpisodeAnalysis
 ): Promise<SearchResults & { geminiPrompt?: string }> {
-  // --- START NEW Phase 1 Logic ---
+  // --- START NEW Hybrid Phase 1 Logic ---
   try {
-    console.log(`[Phase 1 Path] Attempting new direct topic generation for podcast: ${podcast.title}`);
-    const podcastPromptText = podcast.prompt || podcast.description || podcast.title;
-    const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
-    let sourceListString = "any reputable major news outlets";
-    if (sourceUrls.length > 0) {
-      sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast's theme and the specified preferred sources.`;
-    }
-    const geminiPrompt = `\nYou are an AI assistant tasked with generating compelling and timely podcast episode topic ideas for a news-focused podcast.\n\nPodcast Details:\n- Main Theme/Description: \"${podcastPromptText}\"\n- Preferred Information Sources: Please prioritize news and updates from ${sourceListString}\n\nYour Task:\nIdentify 5-7 distinct and newsworthy podcast episode topic ideas based on significant developments, stories, or updates that have emerged primarily from the preferred information sources (and other relevant major news outlets as a secondary consideration) strictly within the **last 14 days**.\n\nOutput Requirements:\nFor each topic idea, provide the following in a clear, structured format (e.g., JSON):\n1.  \`topic_title\`: A concise, engaging title for a potential podcast episode (e.g., \"The Future of Contactless Payments: What's Next?\").\n2.  \`topic_summary\`: A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme and preferred sources.\n3.  \`key_questions\`: 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., \"How are consumer adoption rates changing?\", \"What are the latest security concerns?\").\n4.  \`supporting_sources\`: A list of 1-3 specific URLs from the web search (ideally from the preferred sources, or other reputable sources) that directly support this topic idea and its timeliness.\n\nImportant Considerations:\n- Focus on distinct topics. Avoid multiple slight variations of the same core event unless the different angles are themselves uniquely newsworthy and substantial.\n- Ensure the information used to derive these topics is current (within the last 14 days).\n- The output should be a list of these structured topic ideas.\n- If no sufficiently newsworthy topics are found from the preferred sources within the last 14 days, indicate that clearly.\n\nPlease return the output as a JSON array, where each element is an object representing a topic idea with the fields: \`topic_title\`, \`topic_summary\`, \`key_questions\`, and \`supporting_sources\` (which itself is an array of strings/URLs).\nExample of a single topic object:\n{\n  \"topic_title\": \"Example Topic Title\",\n  \"topic_summary\": \"This topic is relevant because of recent X event reported by Source Y within the last 14 days.\",\n  \"key_questions\": [\"What is the impact of Z?\", \"How will this affect Q?\"],\n  \"supporting_sources\": [\"http://example.com/news-article-1\", \"http://another-source.com/related-story\"]\n}\n      `;
-    const rawTopicIdeas = await generateDirectTopicIdeas_Phase1(podcast, analysis);
-    if (rawTopicIdeas && rawTopicIdeas.length > 0) {
-      const adaptedResults = adaptDirectResultsToSearchResults_Phase1(rawTopicIdeas, podcast);
-      return { ...adaptedResults, geminiPrompt };
-    } else {
-      throw new Error("Direct topic generation yielded no topics.");
-    }
-  } catch (newMethodError: any) {
-    console.warn(`[Phase 1 Path] New direct topic generation for ${podcast.title} failed: ${newMethodError.message}. Falling back to original method.`);
-    // --- FALLBACK to Original Logic ---
+    console.log(`[Hybrid Phase 1 Path] Attempting new hybrid topic generation for podcast: ${podcast.title}`);
+    const hybridResults = await generateHybridTopicIdeas_Phase1(podcast, analysis);
+    
+    console.log(`[Hybrid Phase 1 Path] Hybrid approach successful with ${hybridResults.potentialTopics.length} topics`);
+    return hybridResults;
+    
+  } catch (hybridError: any) {
+    console.warn(`[Hybrid Phase 1 Path] Hybrid topic generation for ${podcast.title} failed: ${hybridError.message}. Falling back to original method.`);
+    
+    // --- FALLBACK to Original Phase 1 Logic ---
     try {
-      console.log(`[Fallback Path] Performing original initial search for podcast: ${podcast.title}`);
+      console.log(`[Original Phase 1 Path] Attempting original direct topic generation for podcast: ${podcast.title}`);
+      const rawTopicIdeas = await generateDirectTopicIdeas_Phase1(podcast, analysis);
+      if (rawTopicIdeas && rawTopicIdeas.length > 0) {
+        const adaptedResults = adaptDirectResultsToSearchResults_Phase1(rawTopicIdeas, podcast);
+        return adaptedResults;
+      } else {
+        throw new Error("Direct topic generation yielded no topics.");
+      }
+    } catch (originalMethodError: any) {
+      console.warn(`[Original Phase 1 Path] Original direct topic generation for ${podcast.title} failed: ${originalMethodError.message}. Falling back to search-based method.`);
       
-      // Generate search queries based on podcast prompt and analysis
-      const searchQueries = await generateExploratoryQueries(podcast, analysis);
-      console.log(`[Fallback Path] Generated ${searchQueries.length} exploratory search queries for ${podcast.title}`);
-      
-      // Execute searches in parallel
-      const searchResultsPromises = searchQueries.map(query => executeWebSearch(query));
-      const searchResultsArray = await Promise.all(searchResultsPromises);
-      
-      console.log(`[Fallback Path] All initial searches completed for ${podcast.title}`);
-      
-      // Identify potential topics from search results
-      const potentialTopicsResponse = await identifyPotentialTopics(searchResultsArray, analysis, podcast);
-      console.log(`[Fallback Path] Original method identified ${potentialTopicsResponse.potentialTopics.length} topics for ${podcast.title}.`);
-      return potentialTopicsResponse;
+      // --- FINAL FALLBACK to Search-Based Logic ---
+      try {
+        console.log(`[Fallback Path] Performing search-based initial search for podcast: ${podcast.title}`);
+        
+        // Generate search queries based on podcast prompt and analysis
+        const searchQueries = await generateExploratoryQueries(podcast, analysis);
+        console.log(`[Fallback Path] Generated ${searchQueries.length} exploratory search queries for ${podcast.title}`);
+        
+        // Execute searches in parallel
+        const searchResultsPromises = searchQueries.map(query => executeWebSearch(query));
+        const searchResultsArray = await Promise.all(searchResultsPromises);
+        
+        console.log(`[Fallback Path] All initial searches completed for ${podcast.title}`);
+        
+        // Identify potential topics from search results
+        const potentialTopicsResponse = await identifyPotentialTopics(searchResultsArray, analysis, podcast);
+        console.log(`[Fallback Path] Search-based method identified ${potentialTopicsResponse.potentialTopics.length} topics for ${podcast.title}.`);
+        return potentialTopicsResponse;
 
-    } catch (fallbackError: any) {
-      console.error(`[Fallback Path] Original initial search method also failed for ${podcast.title}:`, fallbackError);
-      // If fallback also fails, return empty results as per original catch block
-      return {
-        potentialTopics: [],
-        relevantSources: [],
-        recencyMapping: {},
-        allSources: []
-      };
+      } catch (fallbackError: any) {
+        console.error(`[Fallback Path] Search-based method also failed for ${podcast.title}:`, fallbackError);
+        // If all methods fail, return empty results
+        return {
+          potentialTopics: [],
+          relevantSources: [],
+          recencyMapping: {},
+          allSources: []
+        };
+      }
     }
   }
-  // --- END NEW Phase 1 Logic with Fallback ---
+  // --- END Hybrid Phase 1 Logic with Multiple Fallbacks ---
 }
 
 /**
@@ -324,7 +397,6 @@ async function identifyPotentialTopics(
   analysis: EpisodeAnalysis,
   podcast: Podcast
 ): Promise<SearchResults> {
-  const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
   try {
     console.log('Identifying potential topics from search results');
     
@@ -332,7 +404,9 @@ async function identifyPotentialTopics(
     const combinedContent = searchResults.map(r => r.content).join('\n\n');
     const allSources = searchResults.flatMap(r => r.sources);
     
-    // Use Gemini to identify potential topics
+    // Use Gemini for topic identification (this is the final fallback)
+    console.log('Using Gemini for topic identification');
+    const model = genAI.getGenerativeModel({ model: FAST_MODEL_ID });
     const prompt = `
       Analyze these search results and identify potential topics for a podcast episode.
       Focus on finding content that hasn't been covered in previous episodes.

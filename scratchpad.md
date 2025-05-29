@@ -188,3 +188,164 @@ interface TopicOption {
 - All changes pushed to main branch
 
 ### 🎉 READY FOR USER TESTING! 🎉
+
+## Session Notes
+
+### Latest Progress - Hybrid Topic Service Integration (Current Session)
+
+#### Implementation Summary
+Successfully integrated a **hybrid topic service** that combines both Gemini and Perplexity Sonar APIs to improve episode topic selection:
+
+#### New Files Created:
+1. **`backend/src/services/hybridTopicService.ts`** - Main hybrid service
+   - Combines Gemini and Perplexity APIs in parallel
+   - Smart prompts optimized for each API's strengths:
+     - **Perplexity Sonar**: Real-time search, breaking news, timeliness (7-10 days)
+     - **Gemini**: Analytical depth, broader context, unique perspectives (14 days)
+   - Intelligent ranking and deduplication
+   - Hybrid scoring system with quality metrics
+
+#### Modified Files:
+1. **`backend/src/services/searchOrchestrator.ts`**
+   - Updated to use hybrid service as primary topic discovery method
+   - Maintains fallback chain: Hybrid → Original Gemini → Search-based
+   - Added metadata tracking for API success rates
+
+#### Key Features:
+- **Parallel API Execution**: Both APIs called simultaneously for speed
+- **Smart Deduplication**: Removes similar topics across APIs
+- **Intelligent Ranking**: Scoring based on relevance, recency, sources, depth
+- **Graceful Fallbacks**: System still works if either API fails
+- **Comprehensive Logging**: Tracks success rates and performance metrics
+
+#### API Prompt Strategies:
+**Perplexity (Real-time focus):**
+- Optimized for breaking news and trending topics
+- 7-10 day recency window
+- Emphasis on authoritative sources and citations
+- Focus on "what's happening now"
+
+**Gemini (Analytical focus):**
+- Optimized for depth and analytical potential
+- 14-day recency window  
+- Emphasis on multiple perspectives and storytelling
+- Focus on "what does this mean"
+
+#### Environment Setup:
+- Added `PERPLEXITY_API_KEY` to environment variables
+- Installed `axios` and `@types/axios` dependencies
+
+#### Integration Benefits:
+1. **Better Topic Quality**: Combines real-time data with analytical depth
+2. **Improved Relevance**: Dual scoring from different AI perspectives  
+3. **Higher Success Rate**: Fallback chain ensures topics are always found
+4. **Rich Metadata**: Tracking which APIs contribute to better optimization
+5. **Future-Proof**: Easy to add more APIs or adjust weighting
+
+#### Current Status:
+✅ Server compiles and runs successfully
+✅ Hybrid service integrated into topic discovery pipeline
+✅ Maintains backward compatibility with existing frontend
+✅ Ready for testing with actual podcast topic generation
+
+Next steps would be testing the actual topic generation flow and monitoring the quality improvements.
+
+---
+
+## Previous Session Progress
+
+### Topic Selector Implementation Status ✅ COMPLETED
+
+#### Frontend Changes Completed:
+1. **Modified `PodcastDetail.tsx`**:
+   - Added topic selection workflow
+   - 90-second countdown timer with auto-selection
+   - Loading states and error handling
+   - Background generation notice
+
+2. **Created `TopicSelector.tsx`**:
+   - Topic options display as cards
+   - Countdown timer with color coding
+   - Auto-selection after timeout
+   - Responsive design
+
+#### Backend Changes Completed:
+1. **New API Endpoint**: `POST /api/podcasts/:id/get-topic-options`
+   - Returns 6 topic options with metadata
+   - Filters out previously covered topics
+   - Includes relevance and recency scoring
+
+2. **Modified Episode Generation**: `POST /api/podcasts/:id/generate-episode`
+   - New Parameter: `selectedTopic` (optional - if not provided, auto-select for backward compatibility)
+   - Logic: Skip topic discovery/selection if selectedTopic provided, use it directly for deep research
+
+#### C. New API Endpoint: Auto-Select Topic (Timeout)
+- **Path**: `POST /api/podcasts/:id/auto-select-topic`
+- **Purpose**: Called after 90s timeout to proceed with auto-selection
+- **Logic**: Use existing topic selection logic to pick best option
+
+### 2. Frontend Changes
+
+#### A. New Component: TopicSelector
+- **Purpose**: Display topic options as clickable buttons/cards
+- **Features**:
+  - Show topic title, description, relevance indicator
+  - Countdown timer (90 seconds)
+  - Auto-proceed after timeout
+  - Loading states and error handling
+
+#### B. Modified PodcastDetail Component
+- **Flow**:
+  1. User clicks "Generate New Episode"
+  2. Button disabled, loading state shown
+  3. Call `get-topic-options` API
+  4. Show TopicSelector component
+  5. User selects topic OR 90s timeout occurs
+  6. Call `generate-episode` with selected topic
+  7. Continue with normal generation flow
+
+#### C. State Management
+- New states: `showTopicSelector`, `topicOptions`, `selectedTopic`, `timeoutCountdown`
+- Handle loading, error, and timeout states appropriately
+
+### 3. UX Flow
+
+1. **Initial State**: "Generate New Episode" button available
+2. **User Clicks**: Button becomes "Thinking..." with spinner
+3. **Topic Options Loaded**: Show topic selection interface with countdown
+4. **User Selects OR Timeout**: Proceed to generation with chosen/auto-selected topic
+5. **Generation**: Continue with existing flow (background generation notice)
+
+### 4. Technical Implementation Details
+
+#### Backend Topic Options Structure:
+```typescript
+interface TopicOption {
+  id: string;
+  topic: string;
+  description: string;
+  relevance: number;
+  recency: string;
+  query: string;
+  reasoning: string;
+}
+```
+
+#### Frontend Timeout Logic:
+- 90-second countdown timer
+- Visual countdown indicator
+- Auto-select most relevant topic on timeout
+- Graceful fallback if no topics available
+
+### 5. Current Status ✅ IMPLEMENTED
+
+The topic selector system is now fully implemented and functional:
+
+- ✅ Backend API endpoints for topic options and generation
+- ✅ Frontend TopicSelector component with countdown
+- ✅ Integration with existing episode generation flow  
+- ✅ Error handling and fallback mechanisms
+- ✅ Loading states and user feedback
+- ✅ Auto-selection timeout functionality
+
+The system provides a smooth user experience where users can either actively select a topic or let the system auto-select after 90 seconds, ensuring episode generation always proceeds.
