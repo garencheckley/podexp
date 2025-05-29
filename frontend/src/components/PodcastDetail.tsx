@@ -651,6 +651,16 @@ const PodcastDetail = () => {
               open={Boolean(menuAnchorEl)}
               onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
             >
+              <MenuItem onClick={() => {
+                if (menuEpisodeId) {
+                  setExpandedEpisodes(prev => ({ ...prev, [menuEpisodeId]: true }));
+                  setMenuAnchorEl(null);
+                  setMenuEpisodeId(null);
+                }
+              }}>
+                <ListItemIcon><ExpandMoreIcon fontSize="small" /></ListItemIcon>
+                <ListItemText>View Details</ListItemText>
+              </MenuItem>
               <MenuItem onClick={() => { if (menuEpisodeId) handleRegenerateAudio(menuEpisodeId); }}>
                 <ListItemIcon><RefreshIcon fontSize="small" /></ListItemIcon>
                 <ListItemText>Regenerate Audio</ListItemText>
