@@ -154,6 +154,53 @@ The system uses Google Cloud Text-to-Speech API to convert episode text to audio
 - Visibility controls (public/private)
 - Owner-based access control
 
+## Recent Major Enhancements
+
+### Perplexity Sonar Pro Integration (December 2024)
+Enhanced episode research with real-time data and expert insights:
+- **5 Specialized Research Areas**: Recent developments, expert quotes, statistical data, competitive analysis, future predictions
+- **Real-time Data**: 7-day breaking news focus with authoritative source citations
+- **Expert Attribution**: Direct quotes from industry leaders with proper attribution
+- **Market Intelligence**: Competitive insights and quantitative metrics
+- **Enhanced Content Quality**: Data-rich episodes with specific statistics and expert predictions
+
+### Hybrid Topic Discovery System
+Combines multiple AI APIs for superior topic selection:
+- **Dual API Architecture**: Gemini + Perplexity APIs running in parallel
+- **Smart Prompting**: Optimized prompts for each API's strengths (analytical depth vs. real-time data)
+- **Intelligent Ranking**: Multi-factor scoring based on relevance, recency, sources, and depth
+- **Graceful Fallbacks**: Robust system continues working even if individual APIs fail
+
+### Interactive Topic Selection
+User-driven episode topic selection with intelligent fallbacks:
+- **Topic Options Display**: System presents 6 curated topic options with metadata
+- **90-Second Selection Window**: Users can choose preferred topics or auto-select most relevant
+- **Enhanced User Control**: Balance between automation and user preference
+- **Backward Compatibility**: Maintains existing automatic generation flow
+
+### Enhanced UI/UX Features
+Recent improvements to user experience:
+- **Clickable Navigation**: Main title links to homepage for better navigation
+- **RSS Feed Access**: Re-enabled RSS feed option in podcast settings menu
+- **Login Improvements**: Added spam folder notice for email authentication
+- **Content Readability**: Liberal paragraph breaks in episode transcripts for better readability
+
+## Current Deployment Status
+
+### Production URLs
+- **Frontend**: https://podcast-frontend-827681017824.us-west1.run.app
+- **Backend**: https://podcast-backend-827681017824.us-west1.run.app
+
+### Environment Configuration
+- **Project ID**: gcpg-452703
+- **Region**: us-west1
+- **APIs Enabled**: Gemini AI, Perplexity Sonar Pro, Google Cloud TTS
+- **Latest Deployment**: May 29, 2025 (both services health-checked ✅)
+
+### Known Development Issues
+- **Local Development**: TypeScript compilation errors in `deepDiveResearch.ts` (production deployment unaffected)
+- **Port Conflicts**: Local server startup may require killing existing processes on port 8080
+
 ## API Endpoints
 
 ### Authentication
