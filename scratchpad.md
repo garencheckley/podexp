@@ -242,13 +242,29 @@ Successfully integrated a **hybrid topic service** that combines both Gemini and
 4. **Rich Metadata**: Tracking which APIs contribute to better optimization
 5. **Future-Proof**: Easy to add more APIs or adjust weighting
 
-#### Current Status:
-✅ Server compiles and runs successfully
-✅ Hybrid service integrated into topic discovery pipeline
-✅ Maintains backward compatibility with existing frontend
-✅ Ready for testing with actual podcast topic generation
+#### Deployment Status:
+✅ **SUCCESSFULLY DEPLOYED TO PRODUCTION!** ✅
 
-Next steps would be testing the actual topic generation flow and monitoring the quality improvements.
+**Git Commit**: `c991069` - "Integrate hybrid topic service combining Gemini and Perplexity APIs"
+
+**Deployment URLs:**
+- **Backend**: https://podcast-backend-827681017824.us-west1.run.app
+- **Frontend**: https://podcast-frontend-827681017824.us-west1.run.app
+
+**Deployment Details:**
+- Both services built and deployed successfully using Google Cloud Build & Cloud Run
+- Environment variables properly configured (GEMINI_API_KEY + PERPLEXITY_API_KEY)
+- Backend revision: `podcast-backend-00149-xwx`
+- Frontend revision: `podcast-frontend-00084-mgz`
+- All health checks passing ✅
+
+**Ready for Production Testing:**
+The hybrid topic service is now live and ready to provide enhanced topic recommendations combining:
+- Real-time breaking news from Perplexity Sonar API
+- Analytical depth and broader context from Gemini API
+- Intelligent ranking and deduplication for optimal topic selection
+
+Next steps would be monitoring the quality improvements and gathering user feedback on the enhanced topic recommendations.
 
 ---
 
@@ -349,3 +365,118 @@ The topic selector system is now fully implemented and functional:
 - ✅ Auto-selection timeout functionality
 
 The system provides a smooth user experience where users can either actively select a topic or let the system auto-select after 90 seconds, ensuring episode generation always proceeds.
+
+# Project Status
+
+## Recent Implementation: Perplexity Sonar Pro Integration for Enhanced Episode Research (December 2024)
+
+### Overview
+Successfully integrated Perplexity Sonar Pro API into the episode generation research process as requested. This enhancement occurs **after** episode content/topics have been selected but **before** final content generation, specifically in the Deep Dive Research phase.
+
+### Implementation Details
+
+#### 1. New Service: `perplexityResearchService.ts`
+- **Purpose**: Conduct 5 specialized research calls using Sonar Pro for specific data enhancement
+- **API Calls**: 
+  - Recent Developments (last 7 days)
+  - Expert Quotes & Industry Perspectives  
+  - Statistical Data & Market Metrics
+  - Competitive Analysis & Market Positioning
+  - Future Implications & Predictions
+- **Model**: Uses `sonar-pro` for maximum citation accuracy and depth
+- **Parallel Execution**: All 5 calls run simultaneously for efficiency
+- **Error Handling**: Graceful fallback - continues without Perplexity if API fails
+
+#### 2. Enhanced Research Flow
+```
+Topic Selection → Deep Dive Research → **Perplexity Enhanced Research** → Content Synthesis → Content Generation → Audio
+```
+
+#### 3. Integration Points
+- **Modified `deepDiveResearch.ts`**:
+  - Added Perplexity research step in `conductLayeredResearch()`
+  - Enhanced `synthesizeLayeredResearch()` to incorporate Perplexity findings
+  - Updated `LayeredResearchResults` interface to include Perplexity data
+  - Enhanced `generateIntegratedContent()` to use expert quotes, recent developments, etc.
+
+#### 4. Data Enhancement Types
+- **Recent Developments**: Breaking news, timeline of events, current status
+- **Expert Quotes**: Direct quotes with attribution, industry perspectives
+- **Data & Metrics**: Statistics, growth rates, market metrics, comparisons
+- **Competitive Analysis**: Market positioning, competitive dynamics, strategic moves
+- **Future Implications**: Expert predictions, emerging trends, forecasts
+
+#### 5. Content Enhancement Features
+- **Real-time Data**: Last 7-day focus for breaking news and recent developments
+- **Expert Credibility**: Direct quotes from industry leaders with proper attribution
+- **Statistical Depth**: Specific metrics, percentages, and quantifiable data
+- **Market Intelligence**: Competitive insights and positioning analysis
+- **Forward-looking**: Expert predictions and trend analysis
+
+#### 6. Technical Specifications
+- **API Model**: `sonar-pro` for maximum citation accuracy
+- **Timeout**: 30 seconds per API call
+- **Token Limit**: 2000 tokens per call to manage costs
+- **Source Tracking**: All Perplexity citations added to episode source list
+- **Performance Logging**: Processing time and citation counts tracked
+
+#### 7. User Requirements Met
+- ✅ **3-5 API Calls**: Implemented 5 specialized calls per episode
+- ✅ **Universal Enhancement**: Applied to all episodes automatically
+- ✅ **No Caching**: Each episode gets fresh research (no topic repetition)
+- ✅ **Cost Management**: Efficient parallel execution and reasonable token limits
+
+#### 8. Quality Improvements Expected
+- **Real-time Accuracy**: Latest developments within 7 days
+- **Expert Authority**: Direct industry leader quotes
+- **Data Richness**: Specific statistics and market metrics
+- **Competitive Intelligence**: Market positioning insights
+- **Trend Analysis**: Forward-looking expert predictions
+
+#### 9. Fallback Strategy
+- System continues normally if Perplexity API fails
+- Enhanced research is additive, not required
+- Existing research pipeline remains fully functional
+- Graceful degradation with logging
+
+### Environment Variables Required
+- `PERPLEXITY_API_KEY`: Set to provided API key value
+
+### Monitoring & Logging
+- Processing time tracking for performance optimization
+- Citation count logging for usage monitoring
+- Error logging for API failures
+- Success rate tracking for reliability metrics
+
+### Status: ✅ COMPLETED AND READY FOR TESTING
+
+The Perplexity Sonar Pro integration is now fully implemented and ready for episode generation. The system will automatically enhance all episodes with real-time research, expert quotes, current data, competitive analysis, and future predictions using Perplexity's advanced search capabilities.
+
+---
+
+## Previous Work Log
+
+### Step 1: Hybrid Topic Service Development ✅
+- Successfully deployed hybrid topic service combining Gemini + Perplexity APIs
+- Smart prompts optimized for each API's strengths
+- Perplexity: Real-time search, breaking news, 7-10 day focus
+- Gemini: Analytical depth, broader perspectives, 14-day focus
+- Intelligent ranking and deduplication
+- Production deployment successful
+
+### Step 2: Enhanced Research Integration ✅ (Just Completed)
+- Perplexity Sonar Pro integration in Deep Dive Research phase
+- 5 specialized research enhancement areas
+- Real-time data, expert quotes, competitive analysis
+- Seamless integration with existing research pipeline
+
+### Next Steps
+- Monitor episode generation with enhanced research
+- Track Perplexity API usage and costs
+- Optimize prompts based on real-world results
+- Consider additional enhancement opportunities
+
+### Deployment Notes
+- Backend: https://podcast-backend-827681017824.us-west1.run.app
+- Frontend: https://podcast-frontend-827681017824.us-west1.run.app
+- Project: gcpg-452703, Region: us-west1

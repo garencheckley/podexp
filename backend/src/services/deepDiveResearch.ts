@@ -3,6 +3,7 @@ import { executeWebSearch } from './search';
 import { EpisodeAnalysis } from './episodeAnalyzer';
 import { SearchResults, EpisodePlan } from './searchOrchestrator';
 import { FAST_MODEL_ID, POWERFUL_MODEL_ID } from '../config';
+import { conductPerplexityResearch, PerplexityResearchResults } from './perplexityResearchService';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -38,6 +39,7 @@ export interface LayeredResearchResults {
     contextualDepth: number; // 1-10 scale
     overallDepthScore: number;  // 1-10 scale
   };
+  perplexityResearch?: PerplexityResearchResults; // Enhanced research from Perplexity
 }
 
 /**
@@ -237,9 +239,20 @@ export async function conductLayeredResearch(topic: DeepResearchTopic): Promise<
         keyInsights: layer3Insights
       }
     ];
+
+    // NEW: Perplexity Enhanced Research
+    console.log('Conducting Perplexity Enhanced Research');
+    let perplexityResearch: PerplexityResearchResults | undefined;
+    try {
+      perplexityResearch = await conductPerplexityResearch(topic.topic);
+      console.log(`Perplexity research completed: ${perplexityResearch.totalCitations} citations`);
+    } catch (perplexityError) {
+      console.warn(`Perplexity research failed for topic "${topic.topic}":`, perplexityError);
+      // Continue without Perplexity research - this is an enhancement, not a requirement
+    }
     
-    // Synthesize findings across all layers
-    const synthesizedContent = await synthesizeLayeredResearch(topic, layers);
+    // Synthesize findings across all layers (including Perplexity if available)
+    const synthesizedContent = await synthesizeLayeredResearch(topic, layers, perplexityResearch);
     
     // Calculate depth metrics
     const depthMetrics = await calculateDepthMetrics(topic, layers, synthesizedContent);
@@ -248,7 +261,8 @@ export async function conductLayeredResearch(topic: DeepResearchTopic): Promise<
       topic: topic.topic,
       layers,
       synthesizedContent,
-      depthMetrics
+      depthMetrics,
+      perplexityResearch
     };
   } catch (error) {
     console.error(`Error conducting layered research for topic "${topic.topic}":`, error);
@@ -466,22 +480,88 @@ async function synthesizeLayeredResearch(
     content: string;
     sources: string[];
     keyInsights: string[];
-  }>
+  }>,
+  perplexityResearch?: PerplexityResearchResults
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: POWERFUL_MODEL_ID });
   try {
     console.log(`Synthesizing layered research for topic: "${topic.topic}"`);
     
     // Prepare combined content for synthesis, prioritizing deeper layers
-    // Pass complete content instead of truncating to fixed character limit
     let synthesisInput = `Topic: ${topic.topic}\nKey Questions to Answer:\n${topic.keyQuestions.join('\n- ')}\n\n`;
     synthesisInput += "Key Insights & Content from Research Layers:\n";
     layers.forEach(layer => {
       synthesisInput += `\n--- Layer ${layer.level} ---\n`;
       synthesisInput += `Insights: ${layer.keyInsights.join(', ')}\n`;
-      // Pass full content for each layer rather than a limited snippet
       synthesisInput += `Content: ${layer.content}\n`;
     });
+
+    // NEW: Add Perplexity research findings if available
+    if (perplexityResearch && perplexityResearch.totalCitations > 0) {
+      synthesisInput += `\n\n--- PERPLEXITY ENHANCED RESEARCH ---\n`;
+      
+      // Recent developments
+      if (perplexityResearch.recentDevelopments.content) {
+        synthesisInput += `\nRECENT DEVELOPMENTS (${perplexityResearch.recentDevelopments.recency}):\n`;
+        synthesisInput += perplexityResearch.recentDevelopments.content + '\n';
+        if (perplexityResearch.recentDevelopments.keyEvents.length > 0) {
+          synthesisInput += `Key Events: ${perplexityResearch.recentDevelopments.keyEvents.join('; ')}\n`;
+        }
+      }
+      
+      // Expert quotes
+      if (perplexityResearch.expertQuotes.quotes.length > 0) {
+        synthesisInput += `\nEXPERT QUOTES & PERSPECTIVES:\n`;
+        perplexityResearch.expertQuotes.quotes.forEach(quote => {
+          synthesisInput += `"${quote.quote}" - ${quote.source} (${quote.context})\n`;
+        });
+        if (perplexityResearch.expertQuotes.industryPerspectives.length > 0) {
+          synthesisInput += `Industry Perspectives: ${perplexityResearch.expertQuotes.industryPerspectives.join('; ')}\n`;
+        }
+      }
+      
+      // Data and metrics
+      if (perplexityResearch.dataMetrics.statistics.length > 0 || perplexityResearch.dataMetrics.metrics.length > 0) {
+        synthesisInput += `\nDATA & METRICS:\n`;
+        if (perplexityResearch.dataMetrics.statistics.length > 0) {
+          synthesisInput += `Statistics: ${perplexityResearch.dataMetrics.statistics.join('; ')}\n`;
+        }
+        if (perplexityResearch.dataMetrics.metrics.length > 0) {
+          synthesisInput += `Key Metrics: ${perplexityResearch.dataMetrics.metrics.join('; ')}\n`;
+        }
+        if (perplexityResearch.dataMetrics.comparisons.length > 0) {
+          synthesisInput += `Comparisons: ${perplexityResearch.dataMetrics.comparisons.join('; ')}\n`;
+        }
+      }
+      
+      // Competitive analysis
+      if (perplexityResearch.competitiveAnalysis.insights.length > 0) {
+        synthesisInput += `\nCOMPETITIVE ANALYSIS:\n`;
+        synthesisInput += `Market Insights: ${perplexityResearch.competitiveAnalysis.insights.join('; ')}\n`;
+        if (perplexityResearch.competitiveAnalysis.comparisons.length > 0) {
+          synthesisInput += `Competitive Comparisons: ${perplexityResearch.competitiveAnalysis.comparisons.join('; ')}\n`;
+        }
+        if (perplexityResearch.competitiveAnalysis.marketPositioning.length > 0) {
+          synthesisInput += `Market Positioning: ${perplexityResearch.competitiveAnalysis.marketPositioning.join('; ')}\n`;
+        }
+      }
+      
+      // Future implications
+      if (perplexityResearch.futureImplications.predictions.length > 0) {
+        synthesisInput += `\nFUTURE IMPLICATIONS:\n`;
+        if (perplexityResearch.futureImplications.predictions.length > 0) {
+          synthesisInput += `Predictions: ${perplexityResearch.futureImplications.predictions.join('; ')}\n`;
+        }
+        if (perplexityResearch.futureImplications.trends.length > 0) {
+          synthesisInput += `Emerging Trends: ${perplexityResearch.futureImplications.trends.join('; ')}\n`;
+        }
+        if (perplexityResearch.futureImplications.expertForecasts.length > 0) {
+          synthesisInput += `Expert Forecasts: ${perplexityResearch.futureImplications.expertForecasts.join('; ')}\n`;
+        }
+      }
+      
+      console.log(`Added Perplexity research with ${perplexityResearch.totalCitations} citations to synthesis`);
+    }
 
     const synthesisPrompt = `
       Synthesize the following research findings for the topic "${topic.topic}" into a data-rich, evidence-based market research analysis (approx 400-600 words).
@@ -489,16 +569,20 @@ async function synthesizeLayeredResearch(
       REQUIRED CONTENT ELEMENTS:
       1. SPECIFIC DATA POINTS: Include concrete statistics, percentages, metrics, and quantifiable information
       2. PRECISE EXAMPLES: Cite specific companies, products, or case studies that illustrate key points
-      3. EXPERT ANALYSIS: Interpret data patterns and implications as a market research expert would
-      4. COMPARATIVE METRICS: Use numerical comparisons (YoY changes, market share shifts, growth rates)
-      5. DOMAIN-SPECIFIC INSIGHTS: Use specialized terminology and analysis frameworks appropriate for industry experts
+      3. EXPERT QUOTES: Use the direct quotes provided to support key points and add credibility
+      4. RECENT DEVELOPMENTS: Highlight the most current developments and their significance
+      5. COMPARATIVE METRICS: Use numerical comparisons (YoY changes, market share shifts, growth rates)
+      6. COMPETITIVE INSIGHTS: Include market positioning and competitive dynamics
+      7. FUTURE OUTLOOK: Incorporate expert predictions and emerging trends
       
       KEY APPROACH REQUIREMENTS:
-      - Extract and highlight the MOST SPECIFIC statistical information from all research layers
+      - Extract and highlight the MOST SPECIFIC statistical information from all research sources
+      - Use DIRECT QUOTES strategically to support key points (format: "According to [Source], 'quote'")
+      - Prioritize RECENT DEVELOPMENTS and breaking news for timeliness
       - Ensure EVERY significant claim is supported by specific data points or concrete examples
-      - Write for an audience that already understands the domain fundamentals - focus on advanced insights
-      - Transform vague statements (e.g., "sales grew significantly") into precise ones (e.g., "sales grew 37% YoY")
       - Connect disparate data points to reveal non-obvious patterns and implications
+      - Include competitive analysis and market positioning insights
+      - Reference expert predictions and future trends
       
       STRICTLY AVOID:
       - Generic statements without supporting quantitative evidence
@@ -510,7 +594,7 @@ async function synthesizeLayeredResearch(
       Research Input:
       ${synthesisInput}
 
-      Generate only the synthesized market research analysis with emphasis on SPECIFIC DATA POINTS, STATISTICS, and CONCRETE EXAMPLES throughout.
+      Generate only the synthesized market research analysis with emphasis on SPECIFIC DATA POINTS, EXPERT QUOTES, RECENT DEVELOPMENTS, and CONCRETE EXAMPLES throughout.
     `;
 
     const result = await model.generateContent(synthesisPrompt);
@@ -621,12 +705,27 @@ export async function conductDeepDiveResearch(
       };
     });
     
-    // Collect all sources
-    const allSources = [...new Set(
-      researchedTopics.flatMap(research => 
+    // Collect all sources (including Perplexity sources)
+    const allSources = [...new Set([
+      // Traditional research sources
+      ...researchedTopics.flatMap(research => 
         research.layers.flatMap(layer => layer.sources)
+      ),
+      // Perplexity research sources
+      ...researchedTopics.flatMap(research => 
+        research.perplexityResearch?.allSources || []
       )
-    )];
+    ])];
+    
+    console.log(`Collected ${allSources.length} total sources including Perplexity research`);
+    
+    // Log Perplexity research summary
+    const totalPerplexityCitations = researchedTopics.reduce((sum, research) => 
+      sum + (research.perplexityResearch?.totalCitations || 0), 0
+    );
+    if (totalPerplexityCitations > 0) {
+      console.log(`Enhanced research with ${totalPerplexityCitations} Perplexity citations across all topics`);
+    }
     
     // Generate overall content that integrates all topics
     const overallContent = await generateIntegratedContent(
@@ -677,18 +776,46 @@ async function generateIntegratedContent(
     const prompt = `
       Synthesize the following deep research findings into a coherent, data-driven podcast segment approximately ${targetWordCount} words long.
       Maintain a professional, analytical tone suitable for domain experts.
-      Focus on connecting insights across topics and highlighting key data points.
+      Focus on connecting insights across topics and highlighting key data points, expert quotes, and recent developments.
       
       Topic Allocations:
       ${topicDistribution.map(dist => `- ${dist.topic}: ${dist.allocation}%`).join('\n')}
       
       Research Findings:
-      ${researchedTopics.map(topic => `
+      ${researchedTopics.map(topic => {
+        let topicContent = `
       --- Topic: ${topic.topic} ---
       ${topic.synthesizedContent}
       Key Insights:
-      ${topic.layers.flatMap(l => l.keyInsights).map(insight => `- ${insight}`).join('\n')}
-      `).join('\n\n')}
+      ${topic.layers.flatMap(l => l.keyInsights).map(insight => `- ${insight}`).join('\n')}`;
+      
+        // Add Perplexity research if available
+        if (topic.perplexityResearch && topic.perplexityResearch.totalCitations > 0) {
+          topicContent += `\n\nENHANCED RESEARCH DATA:`;
+          
+          if (topic.perplexityResearch.expertQuotes.quotes.length > 0) {
+            topicContent += `\nExpert Quotes: ${topic.perplexityResearch.expertQuotes.quotes.map(q => `"${q.quote}" - ${q.source}`).join('; ')}`;
+          }
+          
+          if (topic.perplexityResearch.recentDevelopments.keyEvents.length > 0) {
+            topicContent += `\nRecent Events: ${topic.perplexityResearch.recentDevelopments.keyEvents.join('; ')}`;
+          }
+          
+          if (topic.perplexityResearch.dataMetrics.statistics.length > 0) {
+            topicContent += `\nKey Statistics: ${topic.perplexityResearch.dataMetrics.statistics.join('; ')}`;
+          }
+          
+          if (topic.perplexityResearch.competitiveAnalysis.insights.length > 0) {
+            topicContent += `\nCompetitive Insights: ${topic.perplexityResearch.competitiveAnalysis.insights.join('; ')}`;
+          }
+          
+          if (topic.perplexityResearch.futureImplications.predictions.length > 0) {
+            topicContent += `\nFuture Predictions: ${topic.perplexityResearch.futureImplications.predictions.join('; ')}`;
+          }
+        }
+        
+        return topicContent;
+      }).join('\n\n')}
       
       Requirements:
       1. DATA POINTS:
@@ -698,31 +825,42 @@ async function generateIntegratedContent(
          - Include year-over-year comparisons where relevant
       
       2. DIRECT QUOTES:
-         - Include at least 2-3 direct quotes per topic
+         - Include at least 2-3 direct quotes per topic from the Enhanced Research Data
          - Format as: "According to [Source], '[exact quote]'"
          - Ensure proper attribution
          - Use quotes that provide specific insights
       
-      3. SPECIFIC EXAMPLES:
+      3. RECENT DEVELOPMENTS:
+         - Highlight recent events and breaking news from Enhanced Research Data
+         - Include specific dates and current status
+         - Connect recent developments to broader implications
+      
+      4. SPECIFIC EXAMPLES:
          - Reference exact company names and products
          - Include specific dates and outcomes
          - Provide concrete metrics for each example
       
-      4. COMPARATIVE ANALYSIS:
-         - Use exact numbers for comparisons
-         - Include specific percentages for changes
-         - Reference precise time periods
+      5. COMPETITIVE ANALYSIS:
+         - Include market positioning insights from Enhanced Research Data
+         - Reference competitive dynamics and strategic moves
+         - Use specific market share data where available
       
-      5. SYNTHESIS REQUIREMENTS:
+      6. FUTURE OUTLOOK:
+         - Incorporate expert predictions from Enhanced Research Data
+         - Reference emerging trends and forecasts
+         - Connect predictions to current data patterns
+      
+      7. SYNTHESIS REQUIREMENTS:
          - Connect specific data points across topics
          - Highlight numerical patterns
          - Draw conclusions based on exact figures
+         - Weave in expert perspectives naturally
       
       Output Requirements:
       - Weave together findings from different topics naturally
       - Prioritize content based on Topic Allocations
       - Ensure well-structured and logical flow
-      - Include specific data points and quotes
+      - Include specific data points, quotes, and recent developments
       - Adhere strictly to word count
       - Output ONLY the integrated podcast content text
       - Use standard punctuation only
@@ -812,4 +950,4 @@ export async function generateDeepResearch(
     console.error('Error generating deep research:', error);
     return `Unable to generate deep research on ${searchTopic}. The search results provided may not contain sufficient data for quantitative analysis.`;
   }
-} 
+}
