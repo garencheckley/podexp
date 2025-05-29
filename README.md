@@ -122,8 +122,11 @@ The system uses a multi-stage process for generating high-quality podcast conten
    - 14-day recency window for up-to-date content
    - Podcast-specific reference websites integration
    - Enhanced relevance scoring and filtering
-   - **Directly selects topics based on newness (not previously covered) and timeliness (e.g., breaking news, ongoing development)**
-   - Skips clustering and prioritization steps
+   - **Interactive topic selection process:**
+     - System analyzes and presents multiple topic options to the user
+     - 90-second selection window with auto-selection fallback
+     - Topics ranked by relevance and recency
+     - User can select preferred topic or let system auto-select
    - Comprehensive logging for debugging
 
 3. **Deep Research**
@@ -167,7 +170,8 @@ The system uses Google Cloud Text-to-Speech API to convert episode text to audio
 ### Episodes
 - `GET /api/podcasts/:podcastId/episodes` - Get all episodes for a podcast
 - `POST /api/podcasts/:podcastId/episodes` - Create a new episode
-- `POST /api/podcasts/:podcastId/generate-episode` - Generate a new episode using AI
+- `POST /api/podcasts/:podcastId/get-topic-options` - Get potential topics for episode generation
+- `POST /api/podcasts/:podcastId/generate-episode` - Generate a new episode using AI (accepts optional selectedTopic parameter)
 - `DELETE /api/podcasts/:podcastId/episodes/:episodeId` - Delete an episode and its audio file
 - `POST /api/podcasts/:podcastId/generate-bullet-points` - Generate bullet points for an episode
 
