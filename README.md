@@ -171,37 +171,23 @@ The system uses Google Cloud Text-to-Speech API to convert episode text to audio
 - `DELETE /api/podcasts/:podcastId/episodes/:episodeId` - Delete an episode and its audio file
 - `POST /api/podcasts/:podcastId/generate-bullet-points` - Generate bullet points for an episode
 
-## Deployment Process
+## Deployment URLs
 
-The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. See the deployment section in the original README for detailed instructions.
+**IMPORTANT:** The only correct frontend URL is:
 
-## Development Workflow
+- https://podcast-frontend-827681017824.us-west1.run.app
 
-1. **Code Changes**: Make changes to the codebase on the local development machine
-2. **Local Testing**: Test changes using local development servers
-3. **Docker Build**: Build Docker containers for the updated services
-4. **Cloud Deployment**: Deploy the containers to Google Cloud Run
-5. **Verification**: Verify the changes in the production environment
-6. **Documentation**: Update the README.md with details of the changes
-7. **Version Control**: Commit changes to Git repository
-
-**IMPORTANT**: When implementing new features, always remember to commit and push your changes to the Git repository. This ensures that all changes are properly tracked and that other team members have access to the latest code. Use meaningful commit messages that clearly describe the changes made.
-
-## Development Workflow
-
-The development process follows these steps:
-
-1. **Code Changes**: Make changes to the codebase on the local development machine
-2. **Local Testing**: Test changes using local development servers
-3. **Docker Build**: Build Docker containers for the updated services
-4. **Cloud Deployment**: Deploy the containers to Google Cloud Run
-5. **Verification**: Verify the changes in the production environment
-6. **Documentation**: Update the README.md with details of the changes
-7. **Version Control**: Commit changes to Git repository
-
-**IMPORTANT**: When implementing new features, always remember to commit and push your changes to the Git repository. This ensures that all changes are properly tracked and that other team members have access to the latest code. Use meaningful commit messages that clearly describe the changes made.
+Do NOT use or deploy to any other frontend service (such as https://frontend-827681017824.us-west1.run.app). All deployments and testing should use the `podcast-frontend` service and URL.
 
 ## Deployment Process
+
+When deploying the frontend, always use the following command:
+
+```
+gcloud run deploy podcast-frontend --source=./frontend --region=us-west1 --platform=managed --allow-unauthenticated
+```
+
+Do NOT deploy to a service named `frontend`. If you see multiple frontend services, delete the incorrect one to avoid confusion.
 
 The deployment process involves building and deploying both the backend and frontend services to Google Cloud Run. There are two main approaches to deployment: using local Docker or using Google Cloud Build directly.
 
