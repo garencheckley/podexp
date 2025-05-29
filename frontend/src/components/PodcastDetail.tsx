@@ -586,7 +586,7 @@ const PodcastDetail = () => {
               <Card key={episode.id}>
                 <CardContent>
                   <Stack spacing={1}>
-                    <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', border: '1px dashed orange' }}>
+                    <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start' }}>
                       <Box>
                         <Typography variant="h6">
                           {episode.title}
@@ -595,6 +595,16 @@ const PodcastDetail = () => {
                           {formatDateTime(episode.created_at!)}
                         </Typography>
                       </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', mt: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => playEpisode(episode)}
+                        startIcon={<PlayArrowIcon />}
+                      >
+                        Play
+                      </Button>
                       {isOwner ? (
                         <IconButton
                           size="small"
@@ -609,16 +619,6 @@ const PodcastDetail = () => {
                         <Box sx={{ width: 40, height: 40, marginLeft: 'auto' }} />
                       )}
                     </Box>
-                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => playEpisode(episode)}
-                        startIcon={<PlayArrowIcon />}
-                      >
-                        Play
-                      </Button>
-                    </Stack>
                   </Stack>
                   {expandedEpisodes[episode.id!] && (
                     <Box>
