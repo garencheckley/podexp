@@ -153,7 +153,6 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
             <Typography>
               Analyzed {typeof stageData.episodeCount === 'number' ? stageData.episodeCount : 0} episodes
             </Typography>
-            
             {Array.isArray(stageData.recentTopics) && stageData.recentTopics.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
@@ -173,7 +172,6 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
             ) : (
               <Typography>No recent topics available</Typography>
             )}
-            
             {Array.isArray(stageData.recurrentThemes) && stageData.recurrentThemes.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
@@ -196,8 +194,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <Stack spacing={2}>
             <Typography variant="h6">Initial Search Results</Typography>
-            
-            {stageData.geminiPrompt && (
+            {typeof stageData.geminiPrompt === 'string' && stageData.geminiPrompt.length > 0 && (
               <Box>
                 <Button
                   variant="outlined"
@@ -222,8 +219,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                 )}
               </Box>
             )}
-            
-            {stageData.potentialTopics && stageData.potentialTopics.length > 0 && (
+            {Array.isArray(stageData.potentialTopics) && stageData.potentialTopics.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
                   Potential Topics Found
@@ -239,9 +235,10 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   ))}
                 </List>
               </Box>
+            ) : (
+              <Typography>No potential topics found</Typography>
             )}
-            
-            {stageData.relevantSources && stageData.relevantSources.length > 0 && (
+            {Array.isArray(stageData.relevantSources) && stageData.relevantSources.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
                   Sources
@@ -262,6 +259,8 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   ))}
                 </List>
               </Box>
+            ) : (
+              <Typography>No sources found</Typography>
             )}
           </Stack>
         );
@@ -271,15 +270,13 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <Stack spacing={2}>
             <Typography variant="h6">Deep Research</Typography>
-            
-            {stageData.researchedTopics && stageData.researchedTopics.length > 0 ? (
+            {Array.isArray(stageData.researchedTopics) && stageData.researchedTopics.length > 0 ? (
               <Stack spacing={2}>
                 {stageData.researchedTopics.map((topic: { topic: string; layerCount: number; sourcesConsulted: { url: string }[]; keyInsights: string[] }, idx: number) => (
                   <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="subtitle1" gutterBottom>
                       {topic.topic}
                     </Typography>
-                    
                     <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                       <Chip
                         icon={<TopicIcon />}
@@ -288,30 +285,28 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                       />
                       <Chip
                         icon={<LinkIcon />}
-                        label={`${topic.sourcesConsulted.length} sources`}
+                        label={`${Array.isArray(topic.sourcesConsulted) ? topic.sourcesConsulted.length : 0} sources`}
                         size="small"
                       />
                     </Stack>
-                    
                     <Typography variant="subtitle2" gutterBottom>
                       Key Insights
                     </Typography>
                     <List dense>
-                      {topic.keyInsights.map((insight: string, insightIdx: number) => (
+                      {Array.isArray(topic.keyInsights) && topic.keyInsights.length > 0 ? topic.keyInsights.map((insight: string, insightIdx: number) => (
                         <ListItem key={insightIdx}>
                           <ListItemText
                             primary={insight}
                             primaryTypographyProps={{ variant: 'body2' }}
                           />
                         </ListItem>
-                      ))}
+                      )) : <ListItem><ListItemText primary="No key insights available" /></ListItem>}
                     </List>
-                    
                     <Typography variant="subtitle2" gutterBottom>
                       Sources Consulted
                     </Typography>
                     <List dense>
-                      {topic.sourcesConsulted.map((source: { url: string }, sourceIdx: number) => (
+                      {Array.isArray(topic.sourcesConsulted) && topic.sourcesConsulted.length > 0 ? topic.sourcesConsulted.map((source: { url: string }, sourceIdx: number) => (
                         <ListItem key={sourceIdx}>
                           <Link
                             href={source.url}
@@ -322,7 +317,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                             {source.url}
                           </Link>
                         </ListItem>
-                      ))}
+                      )) : <ListItem><ListItemText primary="No sources available" /></ListItem>}
                     </List>
                   </Paper>
                 ))}
@@ -338,16 +333,14 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <div className="stage-data">
             <h4>Content Generation</h4>
-            
             <div className="data-section">
               <h5>Generated Content</h5>
-              <p><strong>Title:</strong> {stageData.generatedTitle}</p>
-              <p><strong>Description:</strong> {stageData.generatedDescription}</p>
-              <p><strong>Word Count:</strong> {stageData.estimatedWordCount} words</p>
-              <p><strong>Estimated Duration:</strong> {Math.round(stageData.estimatedDuration * 10) / 10} minutes</p>
+              <p><strong>Title:</strong> {typeof stageData.generatedTitle === 'string' ? stageData.generatedTitle : 'N/A'}</p>
+              <p><strong>Description:</strong> {typeof stageData.generatedDescription === 'string' ? stageData.generatedDescription : 'N/A'}</p>
+              <p><strong>Word Count:</strong> {typeof stageData.estimatedWordCount === 'number' ? stageData.estimatedWordCount : 'N/A'} words</p>
+              <p><strong>Estimated Duration:</strong> {typeof stageData.estimatedDuration === 'number' ? Math.round(stageData.estimatedDuration * 10) / 10 : 'N/A'} minutes</p>
             </div>
-            
-            {stageData.topicDistribution && stageData.topicDistribution.length > 0 && (
+            {Array.isArray(stageData.topicDistribution) && stageData.topicDistribution.length > 0 ? (
               <div className="data-section">
                 <h5>Topic Distribution</h5>
                 <ul>
@@ -358,6 +351,8 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   ))}
                 </ul>
               </div>
+            ) : (
+              <p>No topic distribution data available</p>
             )}
           </div>
         );
@@ -367,7 +362,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <div className="stage-data">
             <h4>Audio Generation</h4>
-            <p><strong>Audio Duration:</strong> {Math.round(stageData.audioDuration * 10) / 10} minutes</p>
+            <p><strong>Audio Duration:</strong> {typeof stageData.audioDuration === 'number' ? Math.round(stageData.audioDuration * 10) / 10 : 'N/A'} minutes</p>
           </div>
         );
         break;
@@ -378,12 +373,14 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
             <h4>Topic Selection</h4>
             <div className="data-section">
               <p>Selected topics based on newness and timeliness.</p>
-              {stageData.selectedTopics && stageData.selectedTopics.length > 0 && (
+              {Array.isArray(stageData.selectedTopics) && stageData.selectedTopics.length > 0 ? (
                 <ul>
                   {stageData.selectedTopics.map((topic: { topic: string }, idx: number) => (
                     <li key={idx}>{topic.topic}</li>
                   ))}
                 </ul>
+              ) : (
+                <p>No selected topics available</p>
               )}
             </div>
           </div>

@@ -46,10 +46,11 @@ import {
   Verified as VerifiedIcon
 } from '@mui/icons-material';
 import { Podcast, Episode } from '../types';
-import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl } from '../services/api';
+import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl, getTopicOptions, TopicOption, TopicOptionsResponse } from '../services/api';
 import AudioPlayer from './AudioPlayer';
 import GenerationLogViewer from './GenerationLogViewer';
 import VisibilityToggle from './VisibilityToggle';
+import TopicSelector from './TopicSelector';
 import { useAuth } from '../contexts/AuthContext';
 
 const PodcastDetail = () => {
@@ -79,6 +80,12 @@ const PodcastDetail = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showBackgroundGenNotice, setShowBackgroundGenNotice] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+
+  // Topic selection states
+  const [showTopicSelector, setShowTopicSelector] = useState(false);
+  const [topicOptions, setTopicOptions] = useState<TopicOption[]>([]);
+  const [fetchingTopics, setFetchingTopics] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<TopicOption | null>(null);
 
   // Get the current user's email (for ownership check)
   const { userEmail } = useAuth();
@@ -179,22 +186,62 @@ const PodcastDetail = () => {
   const handleGenerateEpisode = async () => {
     if (!podcastId) return;
     setError(null);
-    setGenerating(true);
+    setFetchingTopics(true);
     setShowBackgroundGenNotice(false);
+    
     try {
+      console.log('Fetching topic options...');
+      const topicOptionsResponse = await getTopicOptions(podcastId);
+      setTopicOptions(topicOptionsResponse.topicOptions);
+      setShowTopicSelector(true);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get topic options. Please try again.';
+      setError(errorMessage);
+      console.error('Error fetching topic options:', err);
+    } finally {
+      setFetchingTopics(false);
+    }
+  };
+
+  const handleTopicSelect = async (topic: TopicOption) => {
+    if (!podcastId) return;
+    setSelectedTopic(topic);
+    setShowTopicSelector(false);
+    setGenerating(true);
+    setError(null);
+
+    try {
+      console.log('Generating episode with selected topic:', topic.topic);
       // Fire off the request but do not wait for completion
-      generateEpisode(podcastId, { targetMinutes: episodeLength })
-        .catch((err) => {
-          // If the API call fails immediately, show error
-          const errorMessage = err instanceof Error ? err.message : 'Failed to start episode generation. Please try again.';
-          setError(errorMessage);
-        });
+      generateEpisode(podcastId, { 
+        targetMinutes: episodeLength,
+        selectedTopic: topic 
+      }).catch((err) => {
+        // If the API call fails immediately, show error
+        const errorMessage = err instanceof Error ? err.message : 'Failed to start episode generation. Please try again.';
+        setError(errorMessage);
+      });
       // Show background generation notice
       setShowBackgroundGenNotice(true);
     } finally {
       // Always stop loading after a short delay for UX
       setTimeout(() => setGenerating(false), 1000);
     }
+  };
+
+  const handleTopicTimeout = async () => {
+    if (!podcastId || topicOptions.length === 0) return;
+    
+    // Auto-select the most relevant topic (first one)
+    const autoSelectedTopic = topicOptions[0];
+    console.log('Auto-selecting topic due to timeout:', autoSelectedTopic.topic);
+    await handleTopicSelect(autoSelectedTopic);
+  };
+
+  const handleCancelTopicSelection = () => {
+    setShowTopicSelector(false);
+    setTopicOptions([]);
+    setSelectedTopic(null);
   };
 
   const handleDeleteEpisode = async (episodeId: string) => {
@@ -551,10 +598,10 @@ const PodcastDetail = () => {
                   <Button
                     variant="contained"
                     onClick={handleGenerateEpisode}
-                    disabled={generating}
+                    disabled={fetchingTopics || generating || showTopicSelector}
                     startIcon={<RefreshIcon />}
                   >
-                    {generating ? 'Generating...' : 'Generate New Episode'}
+                    {fetchingTopics ? 'Thinking...' : generating ? 'Generating...' : 'Generate New Episode'}
                   </Button>
                   <TextField
                     type="number"
@@ -565,8 +612,19 @@ const PodcastDetail = () => {
                       endAdornment: <InputAdornment position="end">min</InputAdornment>,
                     }}
                     sx={{ width: 200 }}
+                    disabled={fetchingTopics || generating || showTopicSelector}
                   />
                 </Stack>
+              )}
+
+              {showTopicSelector && (
+                <TopicSelector
+                  topicOptions={topicOptions}
+                  onTopicSelect={handleTopicSelect}
+                  onCancel={handleCancelTopicSelection}
+                  onTimeout={handleTopicTimeout}
+                  timeoutSeconds={90}
+                />
               )}
               
               {showBackgroundGenNotice && (

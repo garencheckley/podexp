@@ -390,6 +390,135 @@ router.post('/:podcastId/episodes', authenticateToken, async (req, res) => {
   }
 });
 
+// Interface for topic options response
+interface TopicOption {
+  id: string;
+  topic: string;
+  description: string;
+  relevance: number;
+  recency: string;
+  query: string;
+  reasoning: string;
+}
+
+// New endpoint to get topic options before generation
+router.post('/:id/get-topic-options', authenticateToken, async (req, res) => {
+  const { id: podcastId } = req.params;
+
+  try {
+    console.log(`--- START Get Topic Options for Podcast ID: ${podcastId} ---`);
+
+    // Add userId check (early)
+    if (!req.userId) {
+      console.error('Get topic options error: No userId found on request.');
+      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
+    }
+    console.log(`Getting topic options for user ${req.userId}`);
+
+    // --- Get Podcast --- 
+    const podcast = await getPodcast(podcastId, req.userId);
+    if (!podcast) {
+      return res.status(404).json({ error: 'Podcast not found or access denied' });
+    }
+
+    // Check ownership
+    if (podcast.ownerEmail !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not own this podcast' });
+    }
+
+    // --- Source Refresh --- 
+    try {
+      console.log('[Topic Options] Refreshing Sources...');
+      const updatedSources = await sourceManager.refreshSourcesIfNeeded(podcast);
+      if (updatedSources && JSON.stringify(updatedSources) !== JSON.stringify(podcast.sources)) {
+        await updatePodcast(podcastId, { sources: updatedSources });
+        podcast.sources = updatedSources;
+        console.log(`[Topic Options] Sources refreshed: ${updatedSources.length} sources`);
+      } else {
+        console.log('[Topic Options] Sources did not require refresh.');
+      }
+    } catch (sourceRefreshError: any) {
+      console.error(`[Topic Options] Non-fatal error refreshing sources: ${sourceRefreshError.message}. Proceeding with existing sources.`);
+    }
+
+    // --- Episode Analysis --- 
+    console.log('[Topic Options] Analyzing Existing Episodes...');
+    const episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
+    console.log(`[Topic Options] Episode analysis complete.`);
+
+    // --- Initial Search --- 
+    console.log('[Topic Options] Performing Initial Search...');
+    const initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
+    console.log(`[Topic Options] Initial search complete.`);
+
+    // --- Source-Guided Search --- 
+    let combinedResearchContent = initialSearchResults.combinedResearch;
+    let combinedSources = initialSearchResults.allSources;
+    try {
+      console.log('[Topic Options] Performing Source-Guided Search...');
+      const topicNames = initialSearchResults.potentialTopics.map(topic => topic.topic);
+      const sourceGuidedResults = await sourceManager.performSourceGuidedSearch(podcast, topicNames);
+      if (sourceGuidedResults.content) {
+        combinedResearchContent += '\n\n--- Source Guided Search Results ---\n' + sourceGuidedResults.content;
+        combinedSources = [...new Set([...combinedSources, ...sourceGuidedResults.sources])];
+      }
+      console.log(`[Topic Options] Source-guided search complete.`);
+    } catch (sourceSearchError: any) {
+      console.error(`[Topic Options] Non-fatal error during source-guided search: ${sourceSearchError.message}. Proceeding without these results.`);
+    }
+
+    // --- Filter and Format Topic Options ---
+    console.log('[Topic Options] Processing topic options...');
+    const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
+    
+    // Filter out previously covered topics and format for frontend
+    const topicOptions: TopicOption[] = initialSearchResults.potentialTopics
+      .filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()))
+      .slice(0, 6) // Limit to 6 options max
+      .map((topic, index) => ({
+        id: `topic-${index}`,
+        topic: topic.topic,
+        description: `Explore ${topic.topic} - ${topic.recency || 'Recent developments'}`,
+        relevance: topic.relevance,
+        recency: topic.recency || 'Recent',
+        query: topic.query,
+        reasoning: `Selected for newness and ${topic.recency ? 'timeliness' : 'relevance'}`
+      }));
+
+    // If no new topics, include some relevant ones anyway
+    if (topicOptions.length === 0 && initialSearchResults.potentialTopics.length > 0) {
+      const fallbackTopic = initialSearchResults.potentialTopics[0];
+      topicOptions.push({
+        id: 'topic-fallback',
+        topic: fallbackTopic.topic,
+        description: `Explore ${fallbackTopic.topic} - Latest updates`,
+        relevance: fallbackTopic.relevance,
+        recency: fallbackTopic.recency || 'Current',
+        query: fallbackTopic.query,
+        reasoning: 'Selected as most relevant available topic'
+      });
+    }
+
+    console.log(`[Topic Options] Found ${topicOptions.length} topic options`);
+    console.log(`--- END Get Topic Options for Podcast ID: ${podcastId} ---`);
+
+    res.json({
+      topicOptions,
+      episodeAnalysis: {
+        episodeCount: episodeAnalysis.episodeCount,
+        recentTopics: episodeAnalysis.recentTopics?.slice(0, 5) // Just show a few recent topics
+      }
+    });
+
+  } catch (error: any) {
+    console.error(`[Topic Options] Error: ${error.message}`);
+    res.status(500).json({ 
+      error: 'Failed to get topic options', 
+      details: error.message 
+    });
+  }
+});
+
 // Generate a new episode for a podcast (Protected)
 router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
   const { id: podcastId } = req.params;
@@ -550,29 +679,47 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
     // --- Topic Selection (No Clustering/Prioritization) ---
     let selectedTopics = [];
     try {
-      console.log('[Generate Step] Selecting Topic(s) based on newness and timeliness...');
-      // Filter out topics that have been covered before
-      const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
-      const timelyTopics = initialSearchResults.potentialTopics.filter(t => {
-        const isNew = !previouslyCovered.has((t.topic || '').toLowerCase());
-        const isTimely = t.recency && [
-          'breaking news',
-          'ongoing development',
-          'recent',
-          'new',
-          'current',
-        ].some(keyword => t.recency.toLowerCase().includes(keyword));
-        return isNew && isTimely;
-      });
-      // Fallback: if no timely topics, pick any new topic
-      selectedTopics = timelyTopics.length > 0 ? timelyTopics : initialSearchResults.potentialTopics.filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()));
-      // Fallback: if still empty, pick the most relevant topic
-      if (selectedTopics.length === 0 && initialSearchResults.potentialTopics.length > 0) {
-        selectedTopics = [initialSearchResults.potentialTopics[0]];
+      // Check if a specific topic was selected by the user
+      if (req.body.selectedTopic) {
+        console.log('[Generate Step] Using user-selected topic...');
+        const selectedTopic = req.body.selectedTopic;
+        
+        // Convert the selected topic to the expected format
+        selectedTopics = [{
+          topic: selectedTopic.topic,
+          relevance: selectedTopic.relevance || 8,
+          recency: selectedTopic.recency || 'user-selected',
+          query: selectedTopic.query || selectedTopic.topic
+        }];
+        
+        generationLog = addDecision(generationLog, 'topic_selection', `Using user-selected topic: ${selectedTopic.topic}`, 'User made manual selection');
+        await logService.saveEpisodeGenerationLog(generationLog);
+        console.log(`[Generate Step] User-selected topic: ${selectedTopic.topic}`);
+      } else {
+        console.log('[Generate Step] Selecting Topic(s) based on newness and timeliness...');
+        // Filter out topics that have been covered before
+        const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
+        const timelyTopics = initialSearchResults.potentialTopics.filter(t => {
+          const isNew = !previouslyCovered.has((t.topic || '').toLowerCase());
+          const isTimely = t.recency && [
+            'breaking news',
+            'ongoing development',
+            'recent',
+            'new',
+            'current',
+          ].some(keyword => t.recency.toLowerCase().includes(keyword));
+          return isNew && isTimely;
+        });
+        // Fallback: if no timely topics, pick any new topic
+        selectedTopics = timelyTopics.length > 0 ? timelyTopics : initialSearchResults.potentialTopics.filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()));
+        // Fallback: if still empty, pick the most relevant topic
+        if (selectedTopics.length === 0 && initialSearchResults.potentialTopics.length > 0) {
+          selectedTopics = [initialSearchResults.potentialTopics[0]];
+        }
+        generationLog = addDecision(generationLog, 'topic_selection', `Auto-selected ${selectedTopics.length} topic(s) for deep research`, 'Criteria: new and timely');
+        await logService.saveEpisodeGenerationLog(generationLog);
+        console.log(`[Generate Step] Auto-selected topics: ${selectedTopics.map(t => t.topic).join(', ')}`);
       }
-      generationLog = addDecision(generationLog, 'topic_selection', `Selected ${selectedTopics.length} topic(s) for deep research`, 'Criteria: new and timely');
-      await logService.saveEpisodeGenerationLog(generationLog);
-      console.log(`[Generate Step] Topic selection complete. Topics: ${selectedTopics.map(t => t.topic).join(', ')}`);
     } catch (topicSelectError: any) {
       console.error(`[Generate Step] Error during topic selection: ${topicSelectError.message}`);
       await logService.saveEpisodeGenerationLog(failLog(generationLog, `Topic selection failed: ${topicSelectError.message}`));

@@ -150,12 +150,75 @@ export async function createEpisode(
 }
 
 /**
+ * Interface for topic option
+ */
+export interface TopicOption {
+  id: string;
+  topic: string;
+  description: string;
+  relevance: number;
+  recency: string;
+  query: string;
+  reasoning: string;
+}
+
+/**
+ * Interface for topic options response
+ */
+export interface TopicOptionsResponse {
+  topicOptions: TopicOption[];
+  episodeAnalysis: {
+    episodeCount: number;
+    recentTopics: Array<{ topic: string; frequency: number }>;
+  };
+}
+
+/**
+ * Get topic options for episode generation
+ * @param podcastId The ID of the podcast
+ * @returns Topic options and episode analysis
+ */
+export async function getTopicOptions(podcastId: string): Promise<TopicOptionsResponse> {
+  try {
+    const fetchOptions = addAuthHeaders({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const response = await fetch(`${API_URL}/podcasts/${podcastId}/get-topic-options`, fetchOptions);
+
+    if (!response.ok) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {}
+      console.error(`Get topic options failed: ${response.status} ${response.statusText}`, errorBody);
+      throw new Error(`Failed to get topic options: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in getTopicOptions function:', error);
+    throw error;
+  }
+}
+
+/**
  * Generate a new episode for a podcast
  * @param podcastId The ID of the podcast
- * @param options Generation options
+ * @param options Generation options including optional selectedTopic
  * @returns The generated episode and generation log ID
  */
-export async function generateEpisode(podcastId: string, options: { targetMinutes?: number; targetWordCount?: number } = {}): Promise<{ episode: Episode; generationLogId: string }> {
+export async function generateEpisode(
+  podcastId: string, 
+  options: { 
+    targetMinutes?: number; 
+    targetWordCount?: number;
+    selectedTopic?: TopicOption;
+  } = {}
+): Promise<{ episode: Episode; generationLogId: string }> {
   try {
     // Use addAuthHeaders to include potential X-User-Email header
     const fetchOptions = addAuthHeaders({
