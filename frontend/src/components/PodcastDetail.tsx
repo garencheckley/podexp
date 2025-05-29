@@ -595,7 +595,7 @@ const PodcastDetail = () => {
                           {formatDateTime(episode.created_at!)}
                         </Typography>
                       </Box>
-                      {isOwner && (
+                      {isOwner ? (
                         <Stack direction="row" spacing={1} alignItems="center">
                           <IconButton
                             size="small"
@@ -630,6 +630,8 @@ const PodcastDetail = () => {
                             </MenuItem>
                           </Menu>
                         </Stack>
+                      ) : (
+                        <Box sx={{ width: 40 }} />
                       )}
                     </Stack>
                   </Stack>
