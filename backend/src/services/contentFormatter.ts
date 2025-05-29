@@ -101,6 +101,9 @@ export async function generateStructuredContent(
       7. NEVER include text that can't be read aloud
       8. NEVER reference specific time periods
       9. AVOID assumptions about publication frequency
+      10. USE PARAGRAPH BREAKS LIBERALLY: Break content into short, digestible paragraphs (2-4 sentences each)
+      11. START NEW PARAGRAPHS when changing topics, introducing new data points, or transitioning between ideas
+      12. ENSURE READABILITY: Content should never be a dense wall of text - use frequent paragraph breaks for clarity
       
       REQUIRED: Structure the content exactly according to the word counts specified. Every paragraph must include SPECIFIC DATA POINTS, STATISTICS, or DIRECT QUOTES. Write as an authoritative market researcher speaking to other domain experts.
     `;

@@ -76,6 +76,8 @@ const Login: React.FC = () => {
           >
             Enter your email address below to receive a login link.
             No password needed!
+            <br />
+            <strong>Note:</strong> The email usually goes to your spam folder, so please check there if you don't see it in your inbox.
           </Typography>
           
           {message && (

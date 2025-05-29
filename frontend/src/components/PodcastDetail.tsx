@@ -43,7 +43,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Source as SourceIcon,
-  Verified as VerifiedIcon
+  Verified as VerifiedIcon,
+  RssFeed as RssIcon
 } from '@mui/icons-material';
 import { Podcast, Episode } from '../types';
 import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl, getTopicOptions, TopicOption, TopicOptionsResponse } from '../services/api';
@@ -537,6 +538,19 @@ const PodcastDetail = () => {
                           <EditIcon fontSize="small" />
                         </ListItemIcon>
                         <ListItemText>Edit Prompt</ListItemText>
+                      </MenuItem>
+                      
+                      <MenuItem 
+                        component="a" 
+                        href={getRssFeedUrl(podcast.id!)} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        onClick={() => setSettingsAnchorEl(null)}
+                      >
+                        <ListItemIcon>
+                          <RssIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>View RSS Feed</ListItemText>
                       </MenuItem>
                       
                       <MenuItem onClick={handleDeletePodcast}>
