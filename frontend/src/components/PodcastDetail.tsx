@@ -587,7 +587,7 @@ const PodcastDetail = () => {
                 <CardContent>
                   <Stack spacing={1}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ width: '100%' }}>
-                      <Box>
+                      <Box sx={{ flexGrow: 1 }}>
                         <Typography variant="h6">
                           {episode.title}
                         </Typography>
