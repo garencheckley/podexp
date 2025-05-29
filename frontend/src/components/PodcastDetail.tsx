@@ -586,8 +586,8 @@ const PodcastDetail = () => {
               <Card key={episode.id}>
                 <CardContent>
                   <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ width: '100%' }}>
-                      <Box sx={{ flexGrow: 1 }}>
+                    <Stack direction="row" justifyContent="space-between" sx={{ width: '100%' }}>
+                      <Box sx={{ flexGrow: 1, alignSelf: 'flex-start' }}>
                         <Typography variant="h6">
                           {episode.title}
                         </Typography>
@@ -596,7 +596,7 @@ const PodcastDetail = () => {
                         </Typography>
                       </Box>
                       {isOwner ? (
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ alignSelf: 'flex-start' }}>
                           <IconButton
                             size="small"
                             onClick={(e) => toggleMenu(e, episode.id!)}
@@ -631,7 +631,7 @@ const PodcastDetail = () => {
                           </Menu>
                         </Stack>
                       ) : (
-                        <Box sx={{ width: 40, height: 40 }} />
+                        <Box sx={{ width: 40, height: 40, alignSelf: 'flex-start' }} />
                       )}
                     </Stack>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
