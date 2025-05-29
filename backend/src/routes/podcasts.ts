@@ -196,26 +196,23 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
   }
 });
 
-// Get episodes by podcast ID (Apply REQUIRED auth - need to check parent access)
-router.get('/:podcastId/episodes', authenticateToken, async (req, res) => {
+// Get episodes by podcast ID (Apply OPTIONAL auth)
+router.get('/:podcastId/episodes', authenticateTokenOptional, async (req, res) => {
   try {
     const { podcastId } = req.params;
-    // authenticateToken ensures req.userId is set here
-    if (!req.userId) { // Should theoretically not happen now
-      console.error('Error getting episodes: No userId found after authentication.');
-      return res.status(403).json({ error: 'Forbidden: User ID not found after authentication.' });
-    }
-    console.log(`GET /api/podcasts/${podcastId}/episodes for user ${req.userId}`);
+    // req.userId may be undefined if not logged in
+    console.log(`GET /api/podcasts/${podcastId}/episodes for user ${req.userId || 'anonymous'}`);
 
-    // Pass userId to getPodcast for parent check
-    // Must use req.userId here for the check
-    const podcast = await getPodcast(podcastId, req.userId); 
+    // Fetch the podcast with or without userId
+    const podcast = await getPodcast(podcastId, req.userId);
     if (!podcast) {
-      // Handles "Not Found" or "Access Denied" from getPodcast
       return res.status(404).json({ error: 'Podcast not found or access denied' });
     }
-    
-    // Fetch episodes - database function doesn't need userId directly
+    // If the podcast is private and the user is not the owner, deny access
+    if (podcast.visibility === 'private' && podcast.ownerEmail !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden: This podcast is private.' });
+    }
+    // Fetch episodes
     const episodes = await getEpisodesByPodcastId(podcastId);
     res.json(episodes);
   } catch (error) {

@@ -207,6 +207,9 @@ function removeUndefined(obj: any): any {
 
 export async function saveEpisodeGenerationLog(log: EpisodeGenerationLog): Promise<void> {
   try {
+    if (!log.episodeId) {
+      console.warn('WARNING: Saving episode generation log without episodeId:', log.id);
+    }
     const cleanedLog = removeUndefined(log);
     console.log('Saving cleaned episode generation log (undefineds removed):', JSON.stringify(cleanedLog));
     await getDb().collection('episodeGenerationLogs').doc(log.id).set(cleanedLog);

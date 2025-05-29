@@ -35,13 +35,18 @@ app.use(bodyParser.json());
 // Apply CORS globally BEFORE routes
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'https://podcast-frontend-827681017824.us-west1.run.app',
+    process.env.FRONTEND_URL || 'https://podcast-frontend-918120828699.us-west1.run.app',
+    'https://podcast-frontend-918120828699.us-west1.run.app',
+    'https://podcast-frontend-827681017824.us-west1.run.app',
     'http://localhost:5173'
   ],
   // credentials: false, // No credentials needed
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'Accept']
 })); 
+
+// Explicitly handle preflight requests for all routes
+app.options('*', cors());
 
 // Initialize Firebase
 try {

@@ -135,7 +135,7 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
       return <Typography>No data available for this stage</Typography>;
     }
     const stageData = log.stages[stage as keyof typeof log.stages];
-    if (!stageData) {
+    if (!stageData || typeof stageData !== 'object') {
       return <Typography>No data available for this stage</Typography>;
     }
     
@@ -150,9 +150,11 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
         stageSpecificContent = (
           <Stack spacing={2}>
             <Typography variant="h6">Previous Episode Analysis</Typography>
-            <Typography>Analyzed {stageData.episodeCount} episodes</Typography>
+            <Typography>
+              Analyzed {typeof stageData.episodeCount === 'number' ? stageData.episodeCount : 0} episodes
+            </Typography>
             
-            {stageData.recentTopics && stageData.recentTopics.length > 0 && (
+            {Array.isArray(stageData.recentTopics) && stageData.recentTopics.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
                   Recent Topics
@@ -168,9 +170,11 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   ))}
                 </List>
               </Box>
+            ) : (
+              <Typography>No recent topics available</Typography>
             )}
             
-            {stageData.recurrentThemes && stageData.recurrentThemes.length > 0 && (
+            {Array.isArray(stageData.recurrentThemes) && stageData.recurrentThemes.length > 0 ? (
               <Box>
                 <Typography variant="subtitle1" gutterBottom>
                   Recurrent Themes
@@ -181,6 +185,8 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
                   ))}
                 </Stack>
               </Box>
+            ) : (
+              <Typography>No recurrent themes available</Typography>
             )}
           </Stack>
         );
