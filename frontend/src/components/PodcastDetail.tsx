@@ -586,94 +586,85 @@ const PodcastDetail = () => {
               <Card key={episode.id}>
                 <CardContent>
                   <Stack spacing={2}>
-                    <Stack 
-                      direction="row" 
-                      justifyContent="space-between" 
-                      alignItems="center"
-                    >
-                      <Typography variant="h6">
-                        {episode.title}
-                      </Typography>
-                      
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="caption" color="text.secondary">
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Box>
+                        <Typography variant="h6">
+                          {episode.title}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                           {formatDateTime(episode.created_at!)}
                         </Typography>
-                        
-                        {isOwner && (
-                          <>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => toggleMenu(e, episode.id!)}
-                              aria-label="Episode options"
-                              data-episode-id={episode.id}
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                            <Menu
-                              anchorEl={menuEpisodeId === episode.id ? menuAnchorEl : null}
-                              open={menuEpisodeId === episode.id}
-                              onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
-                            >
-                              <MenuItem onClick={() => { toggleEpisodeContent(episode.id!); }}>
-                                <ListItemIcon>
-                                  {expandedEpisodes[episode.id!] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                </ListItemIcon>
-                                <ListItemText>{expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}</ListItemText>
-                              </MenuItem>
-                              <MenuItem onClick={() => handleRegenerateAudio(episode.id!)} disabled={regeneratingAudio === episode.id}>
-                                <ListItemIcon>
-                                  <RefreshIcon fontSize="small" />
-                                </ListItemIcon>
-                                <ListItemText>Regenerate Audio</ListItemText>
-                              </MenuItem>
-                              <MenuItem onClick={() => handleDeleteEpisode(episode.id!)} disabled={deleting === episode.id}>
-                                <ListItemIcon>
-                                  <DeleteIcon fontSize="small" />
-                                </ListItemIcon>
-                                <ListItemText>Delete Episode</ListItemText>
-                              </MenuItem>
-                            </Menu>
-                          </>
-                        )}
-                      </Stack>
-                    </Stack>
-                    
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => playEpisode(episode)}
-                        startIcon={<PlayArrowIcon />}
-                      >
-                        Play
-                      </Button>
-                    </Stack>
-                    
-                    {expandedEpisodes[episode.id!] && (
-                      <Box>
-                        <Tabs
-                          value={activeEpisodeTabs[episode.id!] || 'transcript'}
-                          onChange={(_, value) => toggleEpisodeTab(episode.id!, value)}
-                          sx={{ mb: 2 }}
-                        >
-                          <Tab value="transcript" label="Transcript" />
-                          <Tab value="log" label="Generation Log" />
-                        </Tabs>
-                        
-                        {activeEpisodeTabs[episode.id!] === 'transcript' ? (
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                            {episode.content}
-                          </Typography>
-                        ) : (
-                          <GenerationLogViewer
-                            episodeId={episode.id!}
-                            logId={episodeGenerationLogs[episode.id!]}
-                          />
-                        )}
                       </Box>
-                    )}
+                      {isOwner && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => toggleMenu(e, episode.id!)}
+                            aria-label="Episode options"
+                            data-episode-id={episode.id}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                          <Menu
+                            anchorEl={menuEpisodeId === episode.id ? menuAnchorEl : null}
+                            open={menuEpisodeId === episode.id}
+                            onClose={() => { setMenuAnchorEl(null); setMenuEpisodeId(null); }}
+                          >
+                            <MenuItem onClick={() => { toggleEpisodeContent(episode.id!); }}>
+                              <ListItemIcon>
+                                {expandedEpisodes[episode.id!] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                              </ListItemIcon>
+                              <ListItemText>{expandedEpisodes[episode.id!] ? 'Hide Details' : 'Show Details'}</ListItemText>
+                            </MenuItem>
+                            <MenuItem onClick={() => handleRegenerateAudio(episode.id!)} disabled={regeneratingAudio === episode.id}>
+                              <ListItemIcon>
+                                <RefreshIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText>Regenerate Audio</ListItemText>
+                            </MenuItem>
+                            <MenuItem onClick={() => handleDeleteEpisode(episode.id!)} disabled={deleting === episode.id}>
+                              <ListItemIcon>
+                                <DeleteIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText>Delete Episode</ListItemText>
+                            </MenuItem>
+                          </Menu>
+                        </Stack>
+                      )}
+                    </Stack>
                   </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => playEpisode(episode)}
+                      startIcon={<PlayArrowIcon />}
+                    >
+                      Play
+                    </Button>
+                  </Stack>
+                  {expandedEpisodes[episode.id!] && (
+                    <Box>
+                      <Tabs
+                        value={activeEpisodeTabs[episode.id!] || 'transcript'}
+                        onChange={(_, value) => toggleEpisodeTab(episode.id!, value)}
+                        sx={{ mb: 2 }}
+                      >
+                        <Tab value="transcript" label="Transcript" />
+                        <Tab value="log" label="Generation Log" />
+                      </Tabs>
+                      {activeEpisodeTabs[episode.id!] === 'transcript' ? (
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {episode.content}
+                        </Typography>
+                      ) : (
+                        <GenerationLogViewer
+                          episodeId={episode.id!}
+                          logId={episodeGenerationLogs[episode.id!]}
+                        />
+                      )}
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             ))}
