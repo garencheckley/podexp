@@ -30,6 +30,7 @@ import { authenticateToken, authenticateTokenOptional } from '../middleware/auth
 import * as logService from '../services/logService';
 import { addDecision, updateStage, setEpisodeId, completeLog, failLog } from '../services/logService';
 import { generateRssFeed } from '../services/rssGenerator';
+import { llmLogger } from '../services/llmLogger';
 
 const router = express.Router();
 
@@ -618,7 +619,17 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
     try {
       console.log('[Generate Step] Analyzing Existing Episodes...');
       const analysisStartTime = Date.now();
+      
+      // Set LLM logger context for this stage
+      llmLogger.setContext(generationLog, 'episodeAnalysis');
+      
       episodeAnalysis = await episodeAnalyzer.analyzeExistingEpisodes(podcastId);
+      
+      // Update log with any prompts captured during analysis
+      const updatedLog = llmLogger.getCurrentLog();
+      if (updatedLog) {
+        generationLog = updatedLog;
+      }
       generationLog = updateStage(generationLog, 'episodeAnalysis', { ...episodeAnalysis, processingTimeMs: Date.now() - analysisStartTime }, Date.now() - analysisStartTime);
       generationLog = addDecision(generationLog, 'episode_analysis', `Analyzed ${episodeAnalysis.episodeCount} previous episodes`, 'Required for content differentiation');
       await logService.saveEpisodeGenerationLog(generationLog);
@@ -635,7 +646,17 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
     try {
       console.log('[Generate Step] Performing Initial Search...');
       const searchStartTime = Date.now();
+      
+      // Set LLM logger context for this stage
+      llmLogger.setContext(generationLog, 'initialSearch');
+      
       initialSearchResults = await searchOrchestrator.performInitialSearch(podcast, episodeAnalysis);
+      
+      // Update log with any prompts captured during search
+      const updatedLog = llmLogger.getCurrentLog();
+      if (updatedLog) {
+        generationLog = updatedLog;
+      }
       generationLog = updateStage(generationLog, 'initialSearch', {
         potentialTopics: initialSearchResults.potentialTopics,
         relevantSources: initialSearchResults.relevantSources || [],

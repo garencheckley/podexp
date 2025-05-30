@@ -397,6 +397,98 @@ const GenerationLogViewer: React.FC<GenerationLogViewerProps> = ({ logId, episod
       <Stack spacing={2}>
         {stageSpecificContent}
         
+        {/* LLM Prompts Section - works for all stages */}
+        {Array.isArray(stageData.llmPrompts) && stageData.llmPrompts.length > 0 && (
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              LLM Prompts ({stageData.llmPrompts.length})
+            </Typography>
+            <Stack spacing={2}>
+              {stageData.llmPrompts.map((promptLog: any, idx: number) => (
+                <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={1}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip
+                        label={promptLog.apiType}
+                        color={promptLog.apiType === 'gemini' ? 'primary' : 'secondary'}
+                        size="small"
+                      />
+                      <Chip
+                        label={promptLog.model}
+                        variant="outlined"
+                        size="small"
+                      />
+                      <Chip
+                        icon={<TimerIcon />}
+                        label={`${promptLog.processingTimeMs}ms`}
+                        size="small"
+                      />
+                      {promptLog.tokenCount && (
+                        <Chip
+                          label={`${promptLog.tokenCount} tokens`}
+                          size="small"
+                        />
+                      )}
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      {promptLog.purpose}
+                    </Typography>
+                    <Accordion>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="subtitle2">
+                          View Prompt & Response
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={2}>
+                          <Box>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Prompt:
+                            </Typography>
+                            <Paper 
+                              variant="outlined" 
+                              sx={{ 
+                                p: 2,
+                                bgcolor: 'grey.50',
+                                fontFamily: 'monospace',
+                                fontSize: '0.875rem',
+                                whiteSpace: 'pre-wrap',
+                                maxHeight: '300px',
+                                overflow: 'auto'
+                              }}
+                            >
+                              {promptLog.promptText}
+                            </Paper>
+                          </Box>
+                          <Box>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Response:
+                            </Typography>
+                            <Paper 
+                              variant="outlined" 
+                              sx={{ 
+                                p: 2,
+                                bgcolor: 'grey.50',
+                                fontFamily: 'monospace',
+                                fontSize: '0.875rem',
+                                whiteSpace: 'pre-wrap',
+                                maxHeight: '300px',
+                                overflow: 'auto'
+                              }}
+                            >
+                              {promptLog.responseText}
+                            </Paper>
+                          </Box>
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </Box>
+        )}
+        
         {stageDecisions.length > 0 && (
           <Box>
             <Typography variant="subtitle1" gutterBottom>

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDb, Episode } from './database';
 import { POWERFUL_MODEL_ID } from '../config';
+import { llmLogger } from './llmLogger';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -115,7 +116,11 @@ export async function analyzeExistingEpisodes(podcastId: string, limit = 15): Pr
       
       try {
         console.log(`Sending consolidated analysis request for ${episodeSummaries.length} episodes`);
-        const result = await model.generateContent(analysisPrompt);
+        const { result } = await llmLogger.logGeminiCall(
+          model, 
+          analysisPrompt, 
+          'Episode analysis and topic extraction'
+        );
         const responseText = result.response.text();
         
         // Parse the JSON response

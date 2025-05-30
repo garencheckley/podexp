@@ -331,10 +331,28 @@ export async function updatePodcastVisibility(
 }
 
 /**
+ * Interface for LLM prompt log data
+ */
+export interface LLMPromptLog {
+  id: string;
+  apiType: 'gemini' | 'perplexity';
+  model: string;
+  promptText: string;
+  responseText: string;
+  tokenCount?: number;
+  processingTimeMs: number;
+  timestamp: string;
+  stage: string;
+  purpose: string;
+  metadata?: Record<string, any>;
+}
+
+/**
  * Interface for episode generation log stage data
  */
 export interface EpisodeGenerationStage {
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
   [key: string]: any;
 }
 

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from './database';
+import { LLMPromptLog } from './promptLogger';
 
 export interface EpisodeAnalysisLog {
   recentTopics: Array<{ topic: string; frequency: number }>;
@@ -7,6 +8,7 @@ export interface EpisodeAnalysisLog {
   recurrentThemes: string[];
   episodeCount: number;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface InitialSearchLog {
@@ -19,6 +21,7 @@ export interface InitialSearchLog {
   relevantSources: string[];
   processingTimeMs: number;
   geminiPrompt?: string;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface ClusteringLog {
@@ -30,6 +33,7 @@ export interface ClusteringLog {
     originalTopicIds: string[];
   }>;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface PrioritizationLog {
@@ -44,6 +48,7 @@ export interface PrioritizationLog {
   discardedTopics: string[];
   selectionReasoning: string;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface DeepResearchLog {
@@ -55,6 +60,7 @@ export interface DeepResearchLog {
     layerCount: number;
   }>;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface ContentGenerationLog {
@@ -67,12 +73,14 @@ export interface ContentGenerationLog {
   estimatedWordCount: number;
   estimatedDuration: number;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 export interface AudioGenerationLog {
   audioFileSize: number;
   audioDuration: number;
   processingTimeMs: number;
+  llmPrompts?: LLMPromptLog[];
 };
 
 /**
@@ -263,4 +271,54 @@ export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promi
     console.error('Error retrieving episode generation log for episode:', error);
     throw error;
   }
+}
+
+/**
+ * Adds an LLM prompt log to a specific stage of an episode generation log
+ */
+export function addPromptToStage(
+  log: EpisodeGenerationLog,
+  stage: keyof EpisodeGenerationLog['stages'],
+  promptLog: LLMPromptLog
+): EpisodeGenerationLog {
+  const updatedLog = { ...log };
+  const stageData = updatedLog.stages[stage];
+  
+  if (stageData && typeof stageData === 'object') {
+    if (!stageData.llmPrompts) {
+      stageData.llmPrompts = [];
+    }
+    stageData.llmPrompts.push(promptLog);
+  }
+  
+  return updatedLog;
+}
+
+/**
+ * Gets all prompts from a generation log across all stages
+ */
+export function getAllPrompts(log: EpisodeGenerationLog): LLMPromptLog[] {
+  const allPrompts: LLMPromptLog[] = [];
+  
+  Object.values(log.stages).forEach(stage => {
+    if (stage && typeof stage === 'object' && stage.llmPrompts) {
+      allPrompts.push(...stage.llmPrompts);
+    }
+  });
+  
+  return allPrompts;
+}
+
+/**
+ * Gets prompts for a specific stage
+ */
+export function getPromptsForStage(
+  log: EpisodeGenerationLog,
+  stage: keyof EpisodeGenerationLog['stages']
+): LLMPromptLog[] {
+  const stageData = log.stages[stage];
+  if (stageData && typeof stageData === 'object' && stageData.llmPrompts) {
+    return stageData.llmPrompts;
+  }
+  return [];
 } 
