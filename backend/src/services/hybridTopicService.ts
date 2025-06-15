@@ -184,6 +184,12 @@ async function searchTopicsWithGemini(
       - Recently covered: ${analysis.recentTopics.map(t => t.topic).join(', ')}
       - Avoid repetition of these themes
       
+      // --- MODIFIED PROMPT REQUIREMENTS ---
+      // 1. At least one topic must be a 'Top Headline' or 'Trending Now' story from the last 24-48 hours (not necessarily breaking news).
+      // 2. Ensure diversity: include at least one regulatory/legal update, one financial/market update, and one public impact story (e.g., consumer, safety, or environmental).
+      // 3. Force specificity: discourage generic topics, require concrete events, named entities, or specific policy changes.
+      // 4. Do NOT include any 'breaking news' language or requirements.
+      
       Your Mission:
       Identify 5-7 topics that offer:
       1. Fresh angles on current events (last 14 days)
@@ -191,6 +197,9 @@ async function searchTopicsWithGemini(
       3. Multiple perspectives and expert viewpoints
       4. Connection to broader trends or implications
       5. Strong storytelling potential
+      6. At least one 'Top Headline' or 'Trending Now' story from the last 24-48 hours
+      7. At least one regulatory/legal update, one financial/market update, and one public impact story
+      8. Avoid generic topics; require concrete events, named entities, or specific policy changes
       
       For each topic, provide:
       - An analytical topic title that promises depth

@@ -99,6 +99,12 @@ Podcast Details:
 Your Task:
 Identify 5-7 distinct and newsworthy podcast episode topic ideas based on significant developments, stories, or updates that have emerged primarily from the preferred information sources (and other relevant major news outlets as a secondary consideration) strictly within the **last 14 days**.
 
+// --- MODIFIED PROMPT REQUIREMENTS ---
+// 1. At least one topic must be a 'Top Headline' or 'Trending Now' story from the last 24-48 hours (not necessarily breaking news).
+// 2. Ensure diversity: include at least one regulatory/legal update, one financial/market update, and one public impact story (e.g., consumer, safety, or environmental).
+// 3. Force specificity: discourage generic topics, require concrete events, named entities, or specific policy changes.
+// 4. Do NOT include any 'breaking news' language or requirements.
+
 Output Requirements:
 For each topic idea, provide the following in a clear, structured format (e.g., JSON):
 1.  \`topic_title\`: A concise, engaging title for a potential podcast episode (e.g., "The Future of Contactless Payments: What's Next?").
@@ -111,6 +117,9 @@ Important Considerations:
 - Ensure the information used to derive these topics is current (within the last 14 days).
 - The output should be a list of these structured topic ideas.
 - If no sufficiently newsworthy topics are found from the preferred sources within the last 14 days, indicate that clearly.
+- At least one topic must be a 'Top Headline' or 'Trending Now' story from the last 24-48 hours.
+- Include at least one regulatory/legal update, one financial/market update, and one public impact story.
+- Avoid generic topics; require concrete events, named entities, or specific policy changes.
 
 Please return the output as a JSON array, where each element is an object representing a topic idea with the fields: \`topic_title\`, \`topic_summary\`, \`key_questions\`, and \`supporting_sources\` (which itself is an array of strings/URLs).
 Example of a single topic object:
