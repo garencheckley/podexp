@@ -470,12 +470,9 @@ router.post('/:id/get-topic-options', authenticateToken, async (req, res) => {
 
     // --- Filter and Format Topic Options ---
     console.log('[Topic Options] Processing topic options...');
-    const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
-    
-    // Filter out previously covered topics and format for frontend
+    // REMOVE ALL FILTERING: Always return all topics from initialSearchResults.potentialTopics, up to 7
     let topicOptions: TopicOption[] = initialSearchResults.potentialTopics
-      .filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()))
-      .slice(0, 6) // Limit to 6 options max
+      .slice(0, 7) // Limit to 7 options max
       .map((topic, index) => ({
         id: `topic-${index}`,
         topic: topic.topic,
@@ -483,35 +480,20 @@ router.post('/:id/get-topic-options', authenticateToken, async (req, res) => {
         relevance: topic.relevance,
         recency: topic.recency || 'Recent',
         query: topic.query,
-        reasoning: `Selected for newness and ${topic.recency ? 'timeliness' : 'relevance'}`
+        reasoning: `Selected by AI topic generation` // No more filtering logic
       }));
 
-    // If no new topics, include some relevant ones anyway
-    if (topicOptions.length === 0 && initialSearchResults.potentialTopics.length > 0) {
-      const fallbackTopic = initialSearchResults.potentialTopics[0];
-      topicOptions.push({
-        id: 'topic-fallback',
-        topic: fallbackTopic.topic,
-        description: `Explore ${fallbackTopic.topic} - Latest updates`,
-        relevance: fallbackTopic.relevance,
-        recency: fallbackTopic.recency || 'Current',
-        query: fallbackTopic.query,
-        reasoning: 'Selected as most relevant available topic'
-      });
-    }
-
-    // NEW: If topicOptions is still empty (e.g., all filtered out for missing sources), add the first available topic as a fallback
-    if (topicOptions.length === 0 && initialSearchResults.potentialTopics.length > 0) {
-      const fallback = initialSearchResults.potentialTopics[0];
-      topicOptions.push({
-        id: 'topic-fallback-any',
-        topic: fallback.topic,
-        description: `Explore ${fallback.topic} (no sources found, but still relevant)`,
-        relevance: fallback.relevance,
-        recency: fallback.recency || 'Current',
-        query: fallback.query,
-        reasoning: 'Fallback: No topics with sources, showing most relevant topic found.'
-      });
+    // Require a minimum of 5 topics if available
+    if (topicOptions.length < 5 && initialSearchResults.potentialTopics.length >= 5) {
+      topicOptions = initialSearchResults.potentialTopics.slice(0, 5).map((topic, index) => ({
+        id: `topic-${index}`,
+        topic: topic.topic,
+        description: `Explore ${topic.topic} - ${topic.recency || 'Recent developments'}`,
+        relevance: topic.relevance,
+        recency: topic.recency || 'Recent',
+        query: topic.query,
+        reasoning: `Selected by AI topic generation`
+      }));
     }
 
     console.log(`[Topic Options] Found ${topicOptions.length} topic options`);
