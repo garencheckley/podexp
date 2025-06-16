@@ -70,7 +70,7 @@ const PodcastDetail = () => {
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptValue, setPromptValue] = useState('');
   const [savingPrompt, setSavingPrompt] = useState(false);
-  const [episodeLength, setEpisodeLength] = useState(3); // Default to 3 minutes
+  const [episodeLength, setEpisodeLength] = useState(5); // Default to 5 minutes
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const [showTrustedSources, setShowTrustedSources] = useState(false);
   const [episodeGenerationLogs, setEpisodeGenerationLogs] = useState<Record<string, string>>({});
@@ -159,6 +159,20 @@ const PodcastDetail = () => {
         fetchData();
     }
   }, [podcastId, userEmail]);
+
+  // Set episode length default based on most recent episode
+  useEffect(() => {
+    if (episodes.length > 0) {
+      const mostRecent = episodes[0];
+      if (mostRecent && mostRecent.content) {
+        const wordCount = mostRecent.content.split(/\s+/).length;
+        const estimatedMinutes = Math.max(1, Math.round(wordCount / 130));
+        setEpisodeLength(estimatedMinutes);
+      }
+    } else {
+      setEpisodeLength(5); // fallback default
+    }
+  }, [episodes]);
 
   useEffect(() => {
     // Update promptValue when podcast data is loaded
