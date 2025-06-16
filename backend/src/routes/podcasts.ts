@@ -717,9 +717,13 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
         await logService.saveEpisodeGenerationLog(generationLog);
         console.log(`[Generate Step] User-selected topic: ${selectedTopic.topic}`);
       } else {
-        console.log('[Generate Step] Selecting Topic(s) based on newness and timeliness...');
+        // Auto-selection logic when no topic is provided
+        console.log('[Generate Step] No topic selected - performing auto-selection...');
+        
         // Filter out topics that have been covered before
         const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
+        
+        // First try to find timely topics
         const timelyTopics = initialSearchResults.potentialTopics.filter(t => {
           const isNew = !previouslyCovered.has((t.topic || '').toLowerCase());
           const isTimely = t.recency && [
@@ -731,15 +735,29 @@ router.post('/:id/generate-episode', authenticateToken, async (req, res) => {
           ].some(keyword => t.recency.toLowerCase().includes(keyword));
           return isNew && isTimely;
         });
-        // Fallback: if no timely topics, pick any new topic
-        selectedTopics = timelyTopics.length > 0 ? timelyTopics : initialSearchResults.potentialTopics.filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()));
-        // Fallback: if still empty, pick the most relevant topic
-        if (selectedTopics.length === 0 && initialSearchResults.potentialTopics.length > 0) {
-          selectedTopics = [initialSearchResults.potentialTopics[0]];
+
+        // If we have timely topics, use those
+        if (timelyTopics.length > 0) {
+          selectedTopics = [timelyTopics[0]]; // Take the first timely topic
+          generationLog = addDecision(generationLog, 'topic_selection', `Auto-selected timely topic: ${selectedTopics[0].topic}`, 'Selected most relevant timely topic');
+        } else {
+          // Fallback: find any new topic
+          const newTopics = initialSearchResults.potentialTopics.filter(t => 
+            !previouslyCovered.has((t.topic || '').toLowerCase())
+          );
+          
+          if (newTopics.length > 0) {
+            selectedTopics = [newTopics[0]]; // Take the first new topic
+            generationLog = addDecision(generationLog, 'topic_selection', `Auto-selected new topic: ${selectedTopics[0].topic}`, 'Selected most relevant new topic');
+          } else if (initialSearchResults.potentialTopics.length > 0) {
+            // Final fallback: use the most relevant topic
+            selectedTopics = [initialSearchResults.potentialTopics[0]];
+            generationLog = addDecision(generationLog, 'topic_selection', `Auto-selected most relevant topic: ${selectedTopics[0].topic}`, 'Selected most relevant available topic');
+          }
         }
-        generationLog = addDecision(generationLog, 'topic_selection', `Auto-selected ${selectedTopics.length} topic(s) for deep research`, 'Criteria: new and timely');
+        
         await logService.saveEpisodeGenerationLog(generationLog);
-        console.log(`[Generate Step] Auto-selected topics: ${selectedTopics.map(t => t.topic).join(', ')}`);
+        console.log(`[Generate Step] Auto-selected topic: ${selectedTopics[0]?.topic || 'none'}`);
       }
     } catch (topicSelectError: any) {
       console.error(`[Generate Step] Error during topic selection: ${topicSelectError.message}`);
