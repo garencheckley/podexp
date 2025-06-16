@@ -106,9 +106,9 @@ Identify 5-7 distinct and newsworthy podcast episode topic ideas based on signif
 
 Output Requirements:
 For each topic idea, provide the following in a clear, structured format (e.g., JSON):
-1.  `topic_title`: A concise, engaging title for a potential podcast episode (e.g., "The Future of Contactless Payments: What's Next?").
-2.  `topic_summary`: A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme.
-3.  `key_questions`: 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., "How are consumer adoption rates changing?", "What are the latest security concerns?").
+1.  \`\`\`topic_title\`\`\` A concise, engaging title for a potential podcast episode (e.g., "The Future of Contactless Payments: What's Next?").
+2.  \`\`\`topic_summary\`\`\` A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme.
+3.  \`\`\`key_questions\`\`\` 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., "How are consumer adoption rates changing?", "What are the latest security concerns?").
 
 Important Considerations:
 - Focus on distinct topics. Avoid multiple slight variations of the same core event unless the different angles are themselves uniquely newsworthy and substantial.
@@ -118,13 +118,16 @@ Important Considerations:
 - Include at least one regulatory/legal update, one financial/market update, and one public impact story.
 - Avoid generic topics; require concrete events, named entities, or specific policy changes.
 
-Please return the output as a JSON array, where each element is an object representing a topic idea with the fields: `topic_title`, `topic_summary`, and `key_questions` (which itself is an array of strings).
+Please return the output as a JSON array, where each element is an object representing a topic idea with the fields: \`\`\`topic_title\`\`\`, \`\`\`topic_summary\`\`\`, and \`\`\`key_questions\`\`\` (which itself is an array of strings).
+
 Example of a single topic object:
+\`\`\`
 {
   "topic_title": "Example Topic Title",
   "topic_summary": "This topic is relevant because of recent X event reported by Source Y within the last 14 days.",
   "key_questions": ["What is the impact of Z?", "How will this affect Q?"]
 }
+\`\`\`
 `;
 
     console.log(`[Phase 1] Sending direct topic generation prompt to Gemini for podcast: ${podcast.title}`);
@@ -216,22 +219,10 @@ async function generateHybridTopicIdeas_Phase1(
     if (recommendations.topics.length > 0) {
       console.log(`[Hybrid Phase 1] Found ${recommendations.topics.length} topics using hybrid approach`);
       
-      // --- NEW: Filter topics by real, accessible source ---
-      const filteredTopics = [];
-      for (const topic of recommendations.topics) {
-        // HybridTopicResult does not have a 'query' property; use topic.topic as the search query
-        const query = topic.topic;
-        const searchResult = await executeWebSearch(query);
-        if (searchResult.sources && searchResult.sources.length > 0) {
-          filteredTopics.push(topic);
-        } else {
-          console.log(`[Hybrid Phase 1] Excluding topic with no real sources: ${topic.topic}`);
-        }
-      }
-      // --- END NEW ---
-      
+      // REMOVE FILTERING: Always use all topics
+      const allTopics = recommendations.topics;
       // Convert hybrid results to SearchResults format
-      const potentialTopics = filteredTopics.map(topic => ({
+      const potentialTopics = allTopics.map(topic => ({
         topic: topic.topic,
         relevance: topic.relevance,
         query: topic.topic, // Use topic as query for further research
@@ -239,10 +230,10 @@ async function generateHybridTopicIdeas_Phase1(
       }));
       
       const recencyMapping = Object.fromEntries(
-        filteredTopics.map(t => [t.topic, t.recency])
+        allTopics.map(t => [t.topic, t.recency])
       );
       
-      const allSources = [...new Set(filteredTopics.flatMap(t => t.sources))];
+      const allSources = [...new Set(allTopics.flatMap(t => t.sources))];
       
       return {
         potentialTopics,
