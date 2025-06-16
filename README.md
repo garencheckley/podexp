@@ -128,6 +128,7 @@ The system uses a multi-stage process for generating high-quality podcast conten
      - Topics ranked by relevance and recency
      - User can select preferred topic or let system auto-select
    - Comprehensive logging for debugging
+   - **Robust Fallbacks:** The system includes multiple layers of fallbacks to ensure topic options are always presented to the user, even if primary AI generation methods fail. Filtering based on "credible sources" has been removed to prevent the UI from showing an empty list, guaranteeing a consistent user experience.
 
 3. **Deep Research**
    - Multi-layer research strategy
