@@ -137,8 +137,12 @@ Example of a single topic object:
     console.log(`[Phase 1] Received raw response from Gemini for ${podcast.title}:`, searchResult.content.substring(0, 500) + "..."); // Log snippet
 
     try {
-      // Attempt to clean and parse the JSON response
+      // FIX: Add a check to ensure the response is valid JSON before parsing
       const cleanedResponse = searchResult.content.replace(/^```json\\n?|\\n?```$/g, "").trim();
+      if (!cleanedResponse.startsWith('[') && !cleanedResponse.startsWith('{')) {
+        throw new Error("Response from Gemini is not valid JSON.");
+      }
+
       const parsedTopics = JSON.parse(cleanedResponse) as RawTopicIdea[];
 
       if (!Array.isArray(parsedTopics)) {
@@ -309,19 +313,7 @@ export async function performInitialSearch(
         const potentialTopicsResponse = await identifyPotentialTopics(searchResultsArray, analysis, podcast);
         console.log(`[Fallback Path] Search-based method identified ${potentialTopicsResponse.potentialTopics.length} topics for ${podcast.title}.`);
         
-        // --- NEW: Filter topics by real, accessible source ---
-        const filteredPotentialTopics = [];
-        for (const topic of potentialTopicsResponse.potentialTopics) {
-          const query = topic.query || topic.topic;
-          const searchResult = await executeWebSearch(query);
-          if (searchResult.sources && searchResult.sources.length > 0) {
-            filteredPotentialTopics.push(topic);
-          } else {
-            console.log(`[Fallback Path] Excluding topic with no real sources: ${topic.topic}`);
-          }
-        }
-        potentialTopicsResponse.potentialTopics = filteredPotentialTopics;
-        // --- END NEW ---
+        // --- REMOVED: All filtering logic ---
         
         return potentialTopicsResponse;
 
