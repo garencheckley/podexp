@@ -213,8 +213,22 @@ async function generateHybridTopicIdeas_Phase1(
     if (recommendations.topics.length > 0) {
       console.log(`[Hybrid Phase 1] Found ${recommendations.topics.length} topics using hybrid approach`);
       
+      // --- NEW: Filter topics by real, accessible source ---
+      const filteredTopics = [];
+      for (const topic of recommendations.topics) {
+        // HybridTopicResult does not have a 'query' property; use topic.topic as the search query
+        const query = topic.topic;
+        const searchResult = await executeWebSearch(query);
+        if (searchResult.sources && searchResult.sources.length > 0) {
+          filteredTopics.push(topic);
+        } else {
+          console.log(`[Hybrid Phase 1] Excluding topic with no real sources: ${topic.topic}`);
+        }
+      }
+      // --- END NEW ---
+      
       // Convert hybrid results to SearchResults format
-      const potentialTopics = recommendations.topics.map(topic => ({
+      const potentialTopics = filteredTopics.map(topic => ({
         topic: topic.topic,
         relevance: topic.relevance,
         query: topic.topic, // Use topic as query for further research
@@ -222,10 +236,10 @@ async function generateHybridTopicIdeas_Phase1(
       }));
       
       const recencyMapping = Object.fromEntries(
-        recommendations.topics.map(t => [t.topic, t.recency])
+        filteredTopics.map(t => [t.topic, t.recency])
       );
       
-      const allSources = [...new Set(recommendations.topics.flatMap(t => t.sources))];
+      const allSources = [...new Set(filteredTopics.flatMap(t => t.sources))];
       
       return {
         potentialTopics,
@@ -300,6 +314,21 @@ export async function performInitialSearch(
         // Identify potential topics from search results
         const potentialTopicsResponse = await identifyPotentialTopics(searchResultsArray, analysis, podcast);
         console.log(`[Fallback Path] Search-based method identified ${potentialTopicsResponse.potentialTopics.length} topics for ${podcast.title}.`);
+        
+        // --- NEW: Filter topics by real, accessible source ---
+        const filteredPotentialTopics = [];
+        for (const topic of potentialTopicsResponse.potentialTopics) {
+          const query = topic.query || topic.topic;
+          const searchResult = await executeWebSearch(query);
+          if (searchResult.sources && searchResult.sources.length > 0) {
+            filteredPotentialTopics.push(topic);
+          } else {
+            console.log(`[Fallback Path] Excluding topic with no real sources: ${topic.topic}`);
+          }
+        }
+        potentialTopicsResponse.potentialTopics = filteredPotentialTopics;
+        // --- END NEW ---
+        
         return potentialTopicsResponse;
 
       } catch (fallbackError: any) {
