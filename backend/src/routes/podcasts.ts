@@ -473,7 +473,7 @@ router.post('/:id/get-topic-options', authenticateToken, async (req, res) => {
     const previouslyCovered = new Set((episodeAnalysis.recentTopics || []).map(t => t.topic.toLowerCase()));
     
     // Filter out previously covered topics and format for frontend
-    const topicOptions: TopicOption[] = initialSearchResults.potentialTopics
+    let topicOptions: TopicOption[] = initialSearchResults.potentialTopics
       .filter(t => !previouslyCovered.has((t.topic || '').toLowerCase()))
       .slice(0, 6) // Limit to 6 options max
       .map((topic, index) => ({
@@ -497,6 +497,20 @@ router.post('/:id/get-topic-options', authenticateToken, async (req, res) => {
         recency: fallbackTopic.recency || 'Current',
         query: fallbackTopic.query,
         reasoning: 'Selected as most relevant available topic'
+      });
+    }
+
+    // NEW: If topicOptions is still empty (e.g., all filtered out for missing sources), add the first available topic as a fallback
+    if (topicOptions.length === 0 && initialSearchResults.potentialTopics.length > 0) {
+      const fallback = initialSearchResults.potentialTopics[0];
+      topicOptions.push({
+        id: 'topic-fallback-any',
+        topic: fallback.topic,
+        description: `Explore ${fallback.topic} (no sources found, but still relevant)`,
+        relevance: fallback.relevance,
+        recency: fallback.recency || 'Current',
+        query: fallback.query,
+        reasoning: 'Fallback: No topics with sources, showing most relevant topic found.'
       });
     }
 
