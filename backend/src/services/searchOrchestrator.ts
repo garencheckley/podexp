@@ -67,7 +67,6 @@ interface RawTopicIdea {
   topic_title: string;
   topic_summary: string;
   key_questions: string[];
-  supporting_sources: string[];
 }
 
 /**
@@ -85,10 +84,10 @@ async function generateDirectTopicIdeas_Phase1(
     const sourceUrls = podcast.sources?.map(s => s.url).filter(url => !!url) || [];
     let sourceListString = "any reputable major news outlets";
     if (sourceUrls.length > 0) {
-      sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast\'s theme and the specified preferred sources.`;
+      sourceListString = `the following websites: ${sourceUrls.join(', ')}. You may also consider highly relevant breaking news from other reputable major news outlets if it directly pertains to the podcast's theme and the specified preferred sources.`;
     }
 
-    // Using the prompt from scratchpad.md (Step 3)
+    // UPDATED PROMPT: Remove all requirements for supporting_sources/credible sources
     const geminiPrompt = `
 You are an AI assistant tasked with generating compelling and timely podcast episode topic ideas for a news-focused podcast.
 
@@ -107,29 +106,26 @@ Identify 5-7 distinct and newsworthy podcast episode topic ideas based on signif
 
 Output Requirements:
 For each topic idea, provide the following in a clear, structured format (e.g., JSON):
-1.  \`topic_title\`: A concise, engaging title for a potential podcast episode (e.g., "The Future of Contactless Payments: What's Next?").
-2.  \`topic_summary\`: A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme and preferred sources.
-3.  \`key_questions\`: 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., "How are consumer adoption rates changing?", "What are the latest security concerns?").
-4.  \`supporting_sources\`: A list of 1-3 specific URLs from the web search (ideally from the preferred sources, or other reputable sources) that directly support this topic idea and its timeliness.
+1.  `topic_title`: A concise, engaging title for a potential podcast episode (e.g., "The Future of Contactless Payments: What's Next?").
+2.  `topic_summary`: A brief explanation (1-2 sentences) of why this is a good candidate for an episode, highlighting its timeliness (within the last 14 days) and relevance to the podcast's theme.
+3.  `key_questions`: 2-3 key questions that an episode on this topic could explore to provide depth and insight for the listener (e.g., "How are consumer adoption rates changing?", "What are the latest security concerns?").
 
 Important Considerations:
 - Focus on distinct topics. Avoid multiple slight variations of the same core event unless the different angles are themselves uniquely newsworthy and substantial.
 - Ensure the information used to derive these topics is current (within the last 14 days).
 - The output should be a list of these structured topic ideas.
-- If no sufficiently newsworthy topics are found from the preferred sources within the last 14 days, indicate that clearly.
 - At least one topic must be a 'Top Headline' or 'Trending Now' story from the last 24-48 hours.
 - Include at least one regulatory/legal update, one financial/market update, and one public impact story.
 - Avoid generic topics; require concrete events, named entities, or specific policy changes.
 
-Please return the output as a JSON array, where each element is an object representing a topic idea with the fields: \`topic_title\`, \`topic_summary\`, \`key_questions\`, and \`supporting_sources\` (which itself is an array of strings/URLs).
+Please return the output as a JSON array, where each element is an object representing a topic idea with the fields: `topic_title`, `topic_summary`, and `key_questions` (which itself is an array of strings).
 Example of a single topic object:
 {
   "topic_title": "Example Topic Title",
   "topic_summary": "This topic is relevant because of recent X event reported by Source Y within the last 14 days.",
-  "key_questions": ["What is the impact of Z?", "How will this affect Q?"],
-  "supporting_sources": ["http://example.com/news-article-1", "http://another-source.com/related-story"]
+  "key_questions": ["What is the impact of Z?", "How will this affect Q?"]
 }
-    `;
+`;
 
     console.log(`[Phase 1] Sending direct topic generation prompt to Gemini for podcast: ${podcast.title}`);
     // Using POWERFUL_MODEL_ID for this complex generation task
@@ -152,8 +148,14 @@ Example of a single topic object:
           throw new Error("Parsed topics do not match expected structure for direct topic generation.");
       }
 
-      console.log(`[Phase 1] Successfully parsed ${parsedTopics.length} direct topic ideas for ${podcast.title}.`);
-      return parsedTopics;
+      // Ensure at least 5 topics are returned if available
+      const limitedTopics = parsedTopics.slice(0, 7); // 5-7 topics
+      if (limitedTopics.length < 5) {
+        console.warn(`[Phase 1] Fewer than 5 topics returned for ${podcast.title}. Returning all available topics.`);
+      }
+
+      console.log(`[Phase 1] Successfully parsed ${limitedTopics.length} direct topic ideas for ${podcast.title}.`);
+      return limitedTopics;
     } catch (error: any) {
       console.error(`[Phase 1] Failed to parse direct topic ideas for ${podcast.title}. Error: ${error.message}. Raw content:`, searchResult.content);
       throw new Error(`Failed to parse direct topic ideas from Gemini: ${error.message}`); // Re-throw to trigger fallback
@@ -179,7 +181,8 @@ function adaptDirectResultsToSearchResults_Phase1(
     recency: "Within 14 days" // Explicitly set based on prompt
   }));
 
-  const allSources = [...new Set(rawTopics.flatMap(rt => rt.supporting_sources || []))];
+  // No sources logic anymore
+  const allSources: string[] = [];
   
   const recencyMapping: { [topic: string]: string } = {};
   potentialTopics.forEach(pt => {
@@ -190,10 +193,10 @@ function adaptDirectResultsToSearchResults_Phase1(
 
   return {
     potentialTopics,
-    relevantSources: allSources, // For Phase 1, these are directly from Gemini's suggestions
+    relevantSources: allSources, // No sources
     recencyMapping,
     combinedResearch: "", // No combined research blob from this direct method in Phase 1
-    allSources // Populated from supporting_sources
+    allSources // Empty
   };
 }
 
