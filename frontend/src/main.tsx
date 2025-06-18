@@ -1,25 +1,22 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import theme from './theme';
+import { AuthProvider } from './contexts/AuthContext';
+import './index.css';
 
-// Firebase Imports - REMOVED
-// import { initializeApp } from "firebase/app";
-// import { getAuth } from "firebase/auth";
-
-// Firebase configuration - REMOVED
-// const firebaseConfig = { ... };
-
-// Firebase initialization - REMOVED
-// const app = initializeApp(firebaseConfig);
-// export const auth = getAuth(app);
-
-// Analytics initialization - REMOVED
-// import { getAnalytics } from "firebase/analytics";
-// const analytics = getAnalytics(app);
-
+// The purpose of this edit is to isolate the render crash.
+// We are re-introducing the App component without any providers
+// to see if it renders on its own.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-)
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
+  </StrictMode>
+);

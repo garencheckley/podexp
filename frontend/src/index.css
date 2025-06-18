@@ -1,10 +1,23 @@
+/* 
+  This file is now primarily for global, non-MUI styles or quick fixes.
+  The main component styling is handled in theme.ts.
+*/
+
+/* Reset some old styles that might interfere */
+.podcast-card, .episode-item, .card,
+button, .create-button, .delete-button,
+button:hover, .create-button:hover, .delete-button:hover,
+button:disabled, .create-button:disabled, .delete-button:disabled {
+  all: unset;
+}
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #f3f3f3;
+  color: #e6edf3; /* Brighter default text */
   background-color: #18191c;
-  --primary-color: #4cc9f0;
+  --primary-color: #5865f2;
   --secondary-color: #4361ee;
   --success-color: #3dd68c;
   --danger-color: #f72585;
@@ -26,33 +39,35 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--background-darkest);
-  color: var(--text-color);
+  background: #0d1117; /* Fallback */
+  background-image: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
+  color: #e6edf3;
+  overflow-y: scroll;
 }
 
 .app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-}
-
-.app-header {
-  background: transparent;
-  color: var(--text-color);
-  padding: 1.5rem 0;
-  text-align: center;
-  position: relative;
   z-index: 10;
 }
 
+.app-header {
+  background: transparent !important;
+  padding: 1.5rem 2rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .app-header h1 {
-  margin: 0;
+  color: #e6edf3 !important;
   font-weight: 600;
+  margin: 0;
 }
 
 .app-content {
   flex: 1;
   padding-bottom: 100px; /* Space for sticky player */
+  padding: 0.25rem 0.25rem 0 0.25rem;
 }
 
 .container {
@@ -69,43 +84,68 @@ body {
   padding: 0 !important;
 }
 
-/* Card styling */
-.podcast-card, .episode-item, .card {
-  background: none !important;
+/* Glass Components */
+.MuiPaper-root, .MuiCard-root {
+  background: rgba(30, 30, 40, 0.75) !important;
+  backdrop-filter: blur(10px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(180%) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.125) !important;
+  transition: all 0.2s ease-in-out !important;
   box-shadow: none !important;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  color: #e6edf3 !important; /* Ensure text inside is bright */
 }
 
-/* Button styling */
-button, .create-button, .delete-button {
-  background: none;
-  color: var(--primary-color);
-  border: 1.5px solid var(--primary-color);
-  padding: 0.7rem 1.4rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: var(--transition);
-  box-shadow: none;
-  outline: none;
+.MuiPaper-root:hover, .MuiCard-root:hover {
+  background: rgba(35, 35, 45, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-button:hover, .create-button:hover, .delete-button:hover {
-  background: var(--primary-color);
-  color: #18191c;
-  border-color: var(--primary-color);
-  transform: translateY(-1px) scale(1.03);
+/* Typography Overrides */
+.MuiTypography-root {
+  color: #e6edf3 !important;
 }
 
-button:disabled, .create-button:disabled, .delete-button:disabled {
-  background: #33353a;
-  color: #888;
-  border-color: #33353a;
-  cursor: not-allowed;
-  transform: none;
+.MuiTypography-colorTextSecondary {
+  color: #8b949e !important; /* Lighter secondary text */
+}
+
+/* Button Overrides */
+.MuiButton-root {
+  background: rgba(40, 40, 50, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e6edf3 !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+  backdrop-filter: blur(5px) !important;
+  text-transform: none !important;
+}
+
+.MuiButton-root:hover {
+  background: rgba(55, 55, 65, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.MuiButton-contained, .MuiButton-containedPrimary {
+    background: #5865f2 !important;
+    border: none !important;
+}
+
+.MuiButton-contained:hover, .MuiButton-containedPrimary:hover {
+    background: #4752c4 !important;
+}
+
+/* Menu Overrides */
+.MuiMenu-paper {
+    background: rgba(25, 25, 35, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.MuiMenuItem-root:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Podcast list */

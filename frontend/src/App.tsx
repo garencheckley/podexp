@@ -1,14 +1,13 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
-import { theme } from './theme';
+import { BrowserRouter as Router, Routes, Route, Link as RouterLink } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
 import PodcastList from './components/PodcastList';
 import PodcastDetail from './components/PodcastDetail';
 import CreatePodcastForm from './components/CreatePodcastForm';
 import Login from './components/Login';
 import VerifyToken from './components/VerifyToken';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 const AppHeader: React.FC = () => {
@@ -19,7 +18,7 @@ const AppHeader: React.FC = () => {
       <Toolbar>
         <Typography 
           variant="h6" 
-          component={Link}
+          component={RouterLink}
           to="/"
           sx={{ 
             flexGrow: 1,
@@ -50,7 +49,7 @@ const AppHeader: React.FC = () => {
             </Button>
           ) : (
             <Button 
-              component={Link} 
+              component={RouterLink} 
               to="/login" 
               color="inherit"
               variant="outlined"
@@ -71,7 +70,7 @@ const AppHeader: React.FC = () => {
   );
 };
 
-function AppContent() {
+function App() {
   // Load Roboto font
   useEffect(() => {
     const link = document.createElement('link');
@@ -85,50 +84,39 @@ function AppContent() {
   }, []);
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      bgcolor: 'background.default'
-    }}>
-      <AppHeader />
-      <Container component="main" sx={{ 
-        flexGrow: 1,
-        py: 4,
+    <Router>
+      <Box sx={{ 
+        minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        bgcolor: 'background.default'
       }}>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/auth/verify" element={<VerifyToken />} />
-          {/* Make Podcast List public */}
-          <Route path="/" element={<PodcastList />} /> 
-          {/* Make Podcast Detail public */}
-          <Route path="/podcasts/:podcastId" element={<PodcastDetail />} /> 
-          
-          {/* Protected Routes */}
-          <Route path="/create-podcast" element={
-            <ProtectedRoute>
-              <CreatePodcastForm />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </Container>
-    </Box>
-  );
-}
-
-function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+        <AppHeader />
+        <Container component="main" sx={{ 
+          flexGrow: 1,
+          py: 4,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth/verify" element={<VerifyToken />} />
+            {/* Make Podcast List public */}
+            <Route path="/" element={<PodcastList />} /> 
+            {/* Make Podcast Detail public */}
+            <Route path="/podcasts/:podcastId" element={<PodcastDetail />} /> 
+            
+            {/* Protected Routes */}
+            <Route path="/create-podcast" element={
+              <ProtectedRoute>
+                <CreatePodcastForm />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Container>
+      </Box>
+    </Router>
   );
 }
 
