@@ -684,7 +684,7 @@ const PodcastDetail = () => {
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', mt: 1 }}>
                       <Button
-                        variant="outlined"
+                        variant="contained"
                         size="small"
                         onClick={() => playEpisode(episode)}
                         startIcon={<PlayArrowIcon />}

@@ -43,19 +43,18 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '50px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          background: 'linear-gradient(145deg, rgba(60, 60, 70, 0.8), rgba(40, 40, 50, 0.85))',
+          border: 'none',
+          background: 'linear-gradient(145deg, #424770, #2d314d)',
           color: '#e6edf3',
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(5px)',
-          '-webkit-backdrop-filter': 'blur(5px)',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
           textTransform: 'none',
           fontWeight: 'bold',
+          padding: '10px 24px',
           transition: 'all 0.3s ease',
           '&:hover': {
-            background: 'linear-gradient(145deg, rgba(80, 80, 90, 0.9), rgba(55, 55, 65, 0.95))',
-            boxShadow: '0 6px 35px rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
+            background: 'linear-gradient(145deg, #515782, #3a3e5f)',
+            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
+            border: 'none',
           },
         },
         outlined: {

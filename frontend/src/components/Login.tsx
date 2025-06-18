@@ -110,7 +110,12 @@ const Login: React.FC = () => {
               disabled={isSubmitting}
               sx={{
                 py: 1.5,
-                position: 'relative'
+                position: 'relative',
+                fontWeight: 'normal',
+                background: 'linear-gradient(145deg, #2c3e50, #1a252f)',
+                '&:hover': {
+                  background: 'linear-gradient(145deg, #34495e, #2c3e50)',
+                },
               }}
             >
               {isSubmitting ? (

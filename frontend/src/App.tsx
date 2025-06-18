@@ -51,15 +51,7 @@ const AppHeader: React.FC = () => {
             <Button 
               component={RouterLink} 
               to="/login" 
-              color="inherit"
-              variant="outlined"
-              sx={{ 
-                borderColor: 'white',
-                '&:hover': {
-                  borderColor: 'white',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
+              variant="contained"
             >
               Log In
             </Button>
