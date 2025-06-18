@@ -196,7 +196,7 @@ const PodcastList = () => {
                     <Button
                       component={Link}
                       to={`/podcasts/${podcastId}`}
-                      variant="contained"
+                      variant="outlined"
                       startIcon={<VisibilityIcon />}
                     >
                       View Episodes
