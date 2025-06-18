@@ -141,7 +141,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title }) => {
         right: 0,
         p: 2,
         zIndex: 1000,
-        borderRadius: 0
+        borderTopLeftRadius: '12px',
+        borderTopRightRadius: '12px',
+        borderRadius: 0,
       }}
     >
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
