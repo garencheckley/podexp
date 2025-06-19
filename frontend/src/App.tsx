@@ -29,7 +29,7 @@ const AppHeader: React.FC = () => {
             }
           }}
         >
-          Garen's Podcast Generator
+          Garen's PodAI Proto
         </Typography>
         <Box>
           {isAuthenticated ? (

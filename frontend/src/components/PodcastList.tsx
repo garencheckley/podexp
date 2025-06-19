@@ -105,6 +105,25 @@ const PodcastList = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
+      <Card sx={{ mb: 4,  border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            About this Prototype Exploration
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            <Box sx={{ fontStyle: 'italic', mb: 2 }}>
+              "I'm embarrassed I'm learning about this industry-news so late!" "I love following this issue and I missed that from 2 weeks ago!"
+            </Box>
+            <Box sx={{ mb: 1 }}>
+              <strong>Problem:</strong> It's hard to stay up to date with industry-news & topics-of-interest. Too many emails, blogs, and rambly podcasts.
+            </Box>
+            <Box>
+              <strong>Solution:</strong> Make your own curated, deeply-researched, ai-generated podcasts! Make pods here, listen in any podcast app via RSS.
+            </Box>
+          </Typography>
+        </CardContent>
+      </Card>
+
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 

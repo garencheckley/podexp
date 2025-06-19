@@ -65,7 +65,7 @@ const Login: React.FC = () => {
       >
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
-            Log In to Podcast Generator
+            Log In to Garen's PodAI Proto
           </Typography>
           
           <Typography 
