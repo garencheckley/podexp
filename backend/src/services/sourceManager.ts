@@ -372,7 +372,7 @@ async function executeSourceQuery(query: string): Promise<{content: string, sour
     // Create a model instance with the search tool configured
     const searchModel = genAI.getGenerativeModel({
       model: POWERFUL_MODEL_ID,
-      tools: [{ google_search: {} } as any], // Type cast to any to bypass TypeScript error
+      tools: [{ 'google_search_retrieval': {} } as any],
     });
 
     const result = await searchModel.generateContent({

@@ -207,6 +207,7 @@ const PodcastDetail = () => {
     try {
       console.log('Fetching topic options...');
       const topicOptionsResponse = await getTopicOptions(podcastId);
+      console.log('Received topic options response:', topicOptionsResponse);
       setTopicOptions(topicOptionsResponse.topicOptions);
       setShowTopicSelector(true);
     } catch (err) {
