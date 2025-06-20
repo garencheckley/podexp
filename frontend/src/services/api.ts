@@ -290,7 +290,7 @@ export async function deletePodcast(podcastId: string): Promise<void> {
 
 export async function updatePodcast(
   podcastId: string,
-  updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType'>>
+  updates: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'autoGenerate'>>
 ): Promise<Podcast> {
   const response = await fetch(`${API_URL}/podcasts/${podcastId}`, addAuthHeaders({
     method: 'PATCH',
@@ -459,4 +459,26 @@ export async function getEpisodeGenerationLogByEpisode(episodeId: string): Promi
 
 export function getRssFeedUrl(podcastId: string): string {
   return `${API_URL}/podcasts/${podcastId}/rss`;
+}
+
+/*
+export async function updatePodcastSettings(
+  podcastId: string,
+  settings: { autoGenerate: boolean }
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/podcasts/${podcastId}/settings`, addAuthHeaders({
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  }));
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to update podcast settings' }));
+    throw new Error(errorData.message);
+  }
+
+  return response.json();
 } 
+*/ 

@@ -87,6 +87,8 @@ const PodcastDetail = () => {
   const [topicOptions, setTopicOptions] = useState<TopicOption[]>([]);
   const [fetchingTopics, setFetchingTopics] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicOption | null>(null);
+  const [autoGenerate, setAutoGenerate] = useState(false);
+  const [updatingAutoGenerate, setUpdatingAutoGenerate] = useState(false);
 
   // Get the current user's email (for ownership check)
   const { userEmail } = useAuth();
@@ -159,6 +161,12 @@ const PodcastDetail = () => {
         fetchData();
     }
   }, [podcastId, userEmail]);
+
+  useEffect(() => {
+    if (podcast) {
+      setAutoGenerate(podcast.autoGenerate || false);
+    }
+  }, [podcast]);
 
   // Set episode length default based on most recent episode
   useEffect(() => {
@@ -482,6 +490,25 @@ const PodcastDetail = () => {
     }
   };
 
+  const handleAutoGenerateChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newAutoGenerate = event.target.checked;
+    setAutoGenerate(newAutoGenerate); // Optimistically update UI
+    setUpdatingAutoGenerate(true);
+    setError(null);
+
+    try {
+      if (!podcastId) return;
+      await updatePodcast(podcastId, { autoGenerate: newAutoGenerate });
+      // Optionally show a success message
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update setting.';
+      setError(errorMessage);
+      setAutoGenerate(!newAutoGenerate); // Revert UI on error
+    } finally {
+      setUpdatingAutoGenerate(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2 }}>
@@ -627,11 +654,25 @@ const PodcastDetail = () => {
                   <Button
                     variant="contained"
                     onClick={handleGenerateEpisode}
-                    disabled={fetchingTopics || generating || showTopicSelector}
-                    startIcon={<RefreshIcon />}
+                    disabled={generating || fetchingTopics}
+                    startIcon={fetchingTopics || generating ? <CircularProgress size={20} color="inherit" /> : null}
                   >
-                    {fetchingTopics ? 'Thinking...' : generating ? 'Generating...' : 'Generate New Episode'}
+                    {fetchingTopics ? 'Getting Topics...' : (generating ? 'Starting...' : 'Generate Episode')}
                   </Button>
+                  {isOwner && (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={autoGenerate}
+                          onChange={handleAutoGenerateChange}
+                          name="autoGenerate"
+                          color="primary"
+                          disabled={updatingAutoGenerate}
+                        />
+                      }
+                      label="Auto-generate every 3 days"
+                    />
+                  )}
                   <TextField
                     type="number"
                     label="Episode Length (minutes)"

@@ -11,6 +11,7 @@ export interface Podcast {
   last_updated?: string;
   episodes: Episode[];
   sources?: PodcastSource[];
+  autoGenerate?: boolean;
 }
 
 export interface PodcastSource {

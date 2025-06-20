@@ -16,6 +16,7 @@ export interface Podcast {
   last_updated?: string;
   episodes: Episode[];
   sources?: PodcastSource[];
+  autoGenerate?: boolean;
 }
 
 export interface PodcastSource {
@@ -271,9 +272,9 @@ export async function updateEpisodeAudio(episodeId: string | undefined, audioUrl
  */
 export async function updatePodcast(
   podcastId: string, 
-  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources' | 'userId' | 'ownerEmail' | 'visibility'>>
+  details: Partial<Pick<Podcast, 'title' | 'description' | 'prompt' | 'podcastType' | 'last_updated' | 'sources' | 'userId' | 'ownerEmail' | 'visibility' | 'autoGenerate'>>
 ): Promise<void> {
-  console.log(`Updating podcast ${podcastId}:`, details);
+  console.log(`Updating podcast ID: ${podcastId} with details:`, details);
   await getDb().collection('podcasts').doc(podcastId).update(details);
 }
 
