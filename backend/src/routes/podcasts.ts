@@ -850,4 +850,88 @@ router.get('/:id/rss', authenticateTokenOptional, async (req, res) => {
   }
 });
 
+router.post('/:podcastId/generate-episode', authenticateToken, async (req, res) => {
+  const { podcastId } = req.params;
+  const { selectedTopic } = req.body;
+
+  if (!req.userId) {
+    return res.status(403).json({ error: 'Forbidden: User ID not found.' });
+  }
+
+  let generationLog = logService.createEpisodeGenerationLog(podcastId);
+  await logService.saveEpisodeGenerationLog(generationLog);
+
+  try {
+    const podcast = await getPodcast(podcastId, req.userId);
+    if (!podcast) {
+      throw new Error('Podcast not found or access denied.');
+    }
+    if (podcast.ownerEmail !== req.userId) {
+      throw new Error('Forbidden: You do not own this podcast.');
+    }
+
+    // Don't wait for this to finish
+    generateAndFinalizeEpisode(podcast, selectedTopic, generationLog.id);
+
+    res.status(202).json({
+      message: 'Episode generation started in the background.',
+      generationLogId: generationLog.id,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    console.error(`[generate-episode] Initial request error for log ${generationLog.id}:`, error);
+    generationLog = await logService.failLog(generationLog, errorMessage);
+    await logService.saveEpisodeGenerationLog(generationLog);
+    res.status(500).json({ error: errorMessage, generationLogId: generationLog.id });
+  }
+});
+
+// This function runs in the background - SIMPLIFIED PLACEHOLDER
+async function generateAndFinalizeEpisode(podcast: Podcast, selectedTopic: any, logId: string) {
+  let log = await logService.getEpisodeGenerationLog(logId);
+  if (!log) {
+    console.error(`[generateAndFinalizeEpisode] FATAL: Could not retrieve log with ID ${logId}. Aborting.`);
+    return;
+  }
+
+  try {
+    console.log(`[generateAndFinalizeEpisode] Starting simplified generation for topic: ${selectedTopic.topic}`);
+    
+    // Create placeholder content
+    const content = `This is a generated episode for the topic: ${selectedTopic.topic}. The full content generation logic is being restored.`;
+    
+    const episodeData: Omit<Episode, 'id'> = {
+      podcastId: podcast.id!,
+      title: selectedTopic.topic,
+      description: `A placeholder episode about ${selectedTopic.topic}.`,
+      content: content,
+      sources: [],
+      bulletPoints: ["Placeholder content."],
+    };
+
+    const newEpisode = await createEpisode(episodeData);
+    log = logService.setEpisodeId(log, newEpisode.id!);
+    await logService.saveEpisodeGenerationLog(log);
+    
+    // Generate audio for the placeholder content
+    const audioStartTime = Date.now();
+    const audioUrl = await audio.generateAndStoreAudio(content, podcast.id!, newEpisode.id!);
+    await updateEpisodeAudio(newEpisode.id!, audioUrl);
+    log = logService.updateStage(log, 'audioGeneration', { audioUrl }, Date.now() - audioStartTime);
+    
+    log = logService.completeLog(log);
+    await logService.saveEpisodeGenerationLog(log);
+    
+    console.log(`[generateAndFinalizeEpisode] Successfully created placeholder episode ${newEpisode.id}`);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during background generation.';
+    console.error(`[generateAndFinalizeEpisode] Background error for log ${logId}:`, error);
+    if(log) {
+      log = logService.failLog(log, errorMessage);
+      await logService.saveEpisodeGenerationLog(log);
+    }
+  }
+}
+
 export default router; 
