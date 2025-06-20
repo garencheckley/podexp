@@ -22,7 +22,8 @@ import {
   Public as PublicIcon,
   Lock as LockIcon,
   Delete as DeleteIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  Autorenew as AutorenewIcon
 } from '@mui/icons-material';
 import { Podcast } from '../types';
 import { getAllPodcasts, deletePodcast, updatePodcastVisibility } from '../services/api';
@@ -203,6 +204,14 @@ const PodcastList = () => {
                       <Typography color="text.secondary" paragraph>
                         {podcast.description}
                       </Typography>
+                      {podcast.autoGenerate && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', mb: 2 }}>
+                          <AutorenewIcon fontSize="small" sx={{ mr: 1 }} />
+                          <Typography variant="body2">
+                            Auto-generates new episodes
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                     {isOwner && (
                       <IconButton onClick={(e) => handleMenuOpen(e, podcastId)}>
