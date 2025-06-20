@@ -107,6 +107,13 @@ REQUIREMENTS:
 6. Return ONLY the title text, nothing else
 
 Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This American Life", "Hardcore History"`;
+      
+      // Enhanced logging to debug Gemini API call
+      if (!process.env.GEMINI_API_KEY) {
+        console.error('GEMINI_API_KEY is not set. Proceeding to fallback.');
+      } else {
+        console.log('GEMINI_API_KEY is set. Proceeding to generate title.');
+      }
 
       console.log('Sending title prompt to Gemini:', titlePrompt);
       
@@ -117,9 +124,11 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
         
         // Add the generated title to the request body
         req.body.title = generatedTitle;
-      } catch (titleError) {
-        console.error('Error generating title:', titleError);
-        
+      } catch (titleError: any) {
+        // Log the specific error from the Gemini API call
+        console.error('Error generating title from Gemini:', titleError.message);
+        console.error('Full Gemini Error:', JSON.stringify(titleError, null, 2));
+
         // If title generation fails, create a descriptive title from the prompt
         const words = prompt.split(/\s+/);
         let descriptiveTitle = '';
