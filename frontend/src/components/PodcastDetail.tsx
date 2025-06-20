@@ -81,6 +81,7 @@ const PodcastDetail = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showBackgroundGenNotice, setShowBackgroundGenNotice] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const [rssCopied, setRssCopied] = useState(false);
 
   // Topic selection states
   const [showTopicSelector, setShowTopicSelector] = useState(false);
@@ -380,6 +381,21 @@ const PodcastDetail = () => {
     setEditingPrompt(false);
   };
 
+  const handleCopyRss = () => {
+    if (!podcast?.id) return;
+    const rssUrl = getRssFeedUrl(podcast.id);
+    navigator.clipboard.writeText(rssUrl).then(
+      () => {
+        setRssCopied(true);
+        setTimeout(() => setRssCopied(false), 2000); // Revert after 2s
+      },
+      (err) => {
+        console.error('Could not copy text: ', err);
+        setError('Failed to copy RSS URL.');
+      }
+    );
+  };
+
   const toggleSourcesVisibility = (episodeId: string) => {
     setExpandedSources(prev => ({
       ...prev,
@@ -651,6 +667,19 @@ const PodcastDetail = () => {
                 >
                   {podcast.prompt}
                 </Typography>
+              )}
+              
+              {(isOwner || podcast?.visibility === 'public') && (
+                <Box sx={{ mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<RssIcon />}
+                    onClick={handleCopyRss}
+                    disabled={rssCopied}
+                  >
+                    {rssCopied ? 'Copied!' : 'Copy RSS Feed'}
+                  </Button>
+                </Box>
               )}
               
               {isOwner && (
