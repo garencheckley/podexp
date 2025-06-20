@@ -44,7 +44,8 @@ import {
   ExpandLess as ExpandLessIcon,
   Source as SourceIcon,
   Verified as VerifiedIcon,
-  RssFeed as RssIcon
+  RssFeed as RssIcon,
+  Autorenew as AutorenewIcon
 } from '@mui/icons-material';
 import { Podcast, Episode } from '../types';
 import { getPodcast, getEpisodes, generateEpisode, deleteEpisode, regenerateAudio, updatePodcast, getEpisodeGenerationLogByEpisode, updatePodcastVisibility, getRssFeedUrl, getTopicOptions, TopicOption, TopicOptionsResponse } from '../services/api';
@@ -718,6 +719,15 @@ const PodcastDetail = () => {
                     disabled={fetchingTopics || generating || showTopicSelector}
                   />
                 </Stack>
+              )}
+
+              {!isOwner && podcast.autoGenerate && (
+                <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', mb: 2 }}>
+                  <AutorenewIcon fontSize="small" sx={{ mr: 1 }} />
+                  <Typography variant="body2">
+                    Auto-generates new episodes
+                  </Typography>
+                </Box>
               )}
 
               {showTopicSelector && (
