@@ -132,14 +132,15 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
           // Use the first 1-2 character names found
           const mainCharacters = uniqueNames.slice(0, 2);
           
-          // Look for themes or settings
-          const themeWords = ['adventures', 'journey', 'tales', 'stories', 'chronicles', 'quest'];
+          // Look for themes or settings - UPDATED for market research
+          const themeWords = ['analysis', 'report', 'trends', 'insights', 'study', 'market', 'review'];
           const foundThemes = words.filter((word: string) => themeWords.includes(word.toLowerCase()));
           
           if (foundThemes.length > 0) {
             descriptiveTitle = `${mainCharacters.join(' & ')}'s ${foundThemes[0]}`;
           } else {
-            descriptiveTitle = `${mainCharacters.join(' & ')}'s Adventures`;
+            // UPDATED default title
+            descriptiveTitle = `${mainCharacters.join(' & ')}'s Analysis`;
           }
         } else {
           // If no character names found, use the first 5-8 words
