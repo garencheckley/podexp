@@ -575,32 +575,36 @@ const PodcastDetail = () => {
                       open={Boolean(settingsAnchorEl)}
                       onClose={() => setSettingsAnchorEl(null)}
                     >
-                      <MenuItem onClick={handleEditPrompt}>
-                        <ListItemIcon>
-                          <EditIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>Edit Prompt</ListItemText>
-                      </MenuItem>
-                      
-                      <MenuItem 
-                        component="a" 
-                        href={getRssFeedUrl(podcast.id!)} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        onClick={() => setSettingsAnchorEl(null)}
-                      >
-                        <ListItemIcon>
-                          <RssIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>View RSS Feed</ListItemText>
-                      </MenuItem>
-                      
-                      <MenuItem onClick={handleDeletePodcast}>
-                        <ListItemIcon>
-                          <DeleteIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>Delete Podcast</ListItemText>
-                      </MenuItem>
+                      {isOwner && (
+                        <MenuItem onClick={() => {
+                          setShowSettings(true);
+                          setSettingsAnchorEl(null);
+                        }}>
+                          <ListItemIcon>
+                            <SettingsIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>Podcast Settings</ListItemText>
+                        </MenuItem>
+                      )}
+                      {(isOwner || podcast?.visibility === 'public') && (
+                        <MenuItem component="a" href={getRssFeedUrl(podcast.id!)} target="_blank" rel="noopener noreferrer" onClick={() => setSettingsAnchorEl(null)}>
+                          <ListItemIcon>
+                            <RssIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>View RSS Feed</ListItemText>
+                        </MenuItem>
+                      )}
+                      {isOwner && (
+                        <MenuItem onClick={() => {
+                          handleDeletePodcast();
+                          setSettingsAnchorEl(null);
+                        }} sx={{ color: 'error.main' }}>
+                          <ListItemIcon>
+                            <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+                          </ListItemIcon>
+                          <ListItemText>Delete Podcast</ListItemText>
+                        </MenuItem>
+                      )}
                     </Menu>
                   </Stack>
                 )}
