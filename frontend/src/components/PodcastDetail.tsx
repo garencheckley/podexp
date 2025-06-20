@@ -561,7 +561,7 @@ const PodcastDetail = () => {
                   {podcast.title}
                 </Typography>
                 
-                {isOwner && (
+                {(isOwner || podcast.visibility === 'public') && (
                   <Stack direction="row" spacing={1}>
                     <IconButton
                       onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
