@@ -119,43 +119,26 @@ Example good titles: "Tales from the Crypt", "The Daily", "Serial", "This Americ
         req.body.title = generatedTitle;
       } catch (titleError) {
         console.error('Error generating title:', titleError);
+        
         // If title generation fails, create a descriptive title from the prompt
-        // Extract key elements from the prompt to create a title
         const words = prompt.split(/\s+/);
         let descriptiveTitle = '';
         
-        // Look for character names and themes in the prompt
-        const nameMatches = prompt.match(/\b[A-Z][a-z]+\b/g) || [];
-        const uniqueNames = [...new Set(nameMatches)];
+        // NEW FALLBACK LOGIC: Use the start of the prompt for the title.
+        // This avoids the old logic of trying to find "character names".
         
-        if (uniqueNames.length > 0) {
-          // Use the first 1-2 character names found
-          const mainCharacters = uniqueNames.slice(0, 2);
-          
-          // Look for themes or settings - UPDATED for market research
-          const themeWords = ['analysis', 'report', 'trends', 'insights', 'study', 'market', 'review'];
-          const foundThemes = words.filter((word: string) => themeWords.includes(word.toLowerCase()));
-          
-          if (foundThemes.length > 0) {
-            descriptiveTitle = `${mainCharacters.join(' & ')}'s ${foundThemes[0]}`;
-          } else {
-            // UPDATED default title
-            descriptiveTitle = `${mainCharacters.join(' & ')}'s Analysis`;
-          }
-        } else {
-          // If no character names found, use the first 5-8 words
-          descriptiveTitle = words.slice(0, 8).join(' ');
-          if (descriptiveTitle.length > 50) {
-            descriptiveTitle = words.slice(0, 5).join(' ');
-          }
+        // Take the first 6 words, but not more than 60 characters.
+        descriptiveTitle = words.slice(0, 6).join(' ');
+        if (descriptiveTitle.length > 60) {
+          descriptiveTitle = words.slice(0, 4).join(' ');
         }
         
-        // Ensure the title is unique
+        // Ensure the title is unique by adding a number if needed
         let counter = 1;
         let finalTitle = descriptiveTitle;
         while (existingTitles.includes(finalTitle)) {
-          finalTitle = `${descriptiveTitle} ${counter}`;
           counter++;
+          finalTitle = `${descriptiveTitle} ${counter}`;
         }
         
         req.body.title = finalTitle;
