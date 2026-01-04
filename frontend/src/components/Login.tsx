@@ -1,45 +1,46 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Typography, 
-  TextField, 
-  Button, 
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
   Alert,
   CircularProgress
 } from '@mui/material';
-import { requestLogin } from '../services/api';
+import GoogleIcon from '@mui/icons-material/Google';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !email.includes('@')) {
-      setMessage({ text: 'Please enter a valid email address', type: 'error' });
-      return;
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
     }
-    
+  }, [isAuthenticated, navigate]);
+
+  const handleGoogleLogin = async () => {
     setIsSubmitting(true);
-    setMessage(null);
-    
+    setError(null);
+
     try {
-      await requestLogin(email);
-      setMessage({ 
-        text: 'Login link sent! Please check your email inbox.', 
-        type: 'success' 
-      });
-      setEmail('');
-    } catch (error) {
-      console.error('Login request failed:', error);
-      setMessage({ 
-        text: 'Failed to send login link. Please try again later.', 
-        type: 'error' 
-      });
+      await login();
+      navigate('/');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Pop-up blocked. Please allow pop-ups for this site.');
+      } else {
+        setError('Failed to sign in. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -55,7 +56,7 @@ const Login: React.FC = () => {
         px: 2
       }}
     >
-      <Card 
+      <Card
         elevation={2}
         sx={{
           maxWidth: 400,
@@ -65,82 +66,62 @@ const Login: React.FC = () => {
       >
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
-            Log In to Garen's PodAI Proto
+            Sign In
           </Typography>
-          
-          <Typography 
-            variant="body1" 
-            color="text.secondary" 
-            align="center" 
+
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            align="center"
             sx={{ mb: 4 }}
           >
-            Enter your email address below to receive a login link.
-            No password needed!
-            <br />
-            <strong>Note:</strong> The email usually goes to your spam folder, so please check there if you don't see it in your inbox.
+            Sign in with your Google account to access your podcasts.
           </Typography>
-          
-          {message && (
-            <Alert 
-              severity={message.type} 
-              sx={{ mb: 3 }}
-            >
-              {message.text}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
             </Alert>
           )}
-          
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              disabled={isSubmitting}
-              required
-              sx={{ mb: 3 }}
-            />
-            
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting}
-              sx={{
-                py: 1.5,
-                position: 'relative',
-                fontWeight: 'normal',
-                background: 'linear-gradient(145deg, #2c3e50, #1a252f)',
-                '&:hover': {
-                  background: 'linear-gradient(145deg, #34495e, #2c3e50)',
-                },
-              }}
-            >
-              {isSubmitting ? (
-                <>
-                  Sending...
-                  <CircularProgress
-                    size={24}
-                    sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      marginTop: '-12px',
-                      marginLeft: '-12px',
-                    }}
-                  />
-                </>
-              ) : (
-                'Send Login Link'
-              )}
-            </Button>
-          </form>
+
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={handleGoogleLogin}
+            disabled={isSubmitting}
+            startIcon={isSubmitting ? null : <GoogleIcon />}
+            sx={{
+              py: 1.5,
+              position: 'relative',
+              fontWeight: 'normal',
+              background: 'linear-gradient(145deg, #2c3e50, #1a252f)',
+              '&:hover': {
+                background: 'linear-gradient(145deg, #34495e, #2c3e50)',
+              },
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                Signing in...
+                <CircularProgress
+                  size={24}
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: 16,
+                    marginTop: '-12px',
+                  }}
+                />
+              </>
+            ) : (
+              'Continue with Google'
+            )}
+          </Button>
         </CardContent>
       </Card>
     </Box>
   );
 };
 
-export default Login; 
+export default Login;

@@ -1,45 +1,79 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { logout as apiLogout } from '../services/api';
-
-// Key for storing the user email in localStorage (mirrors api.ts)
-const USER_EMAIL_KEY = 'userEmail';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  User,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  getIdToken
+} from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   userEmail: string | null;
-  login: (email: string) => void;
-  logout: () => void;
+  user: User | null;
+  loading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  getToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Initialize state directly from localStorage
-  const initialEmail = localStorage.getItem(USER_EMAIL_KEY);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!initialEmail);
-  const [userEmail, setUserEmail] = useState<string | null>(initialEmail);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Function to handle login (called after token verification)
-  const handleLogin = (email: string) => {
-    console.log('AuthContext: Logging in with email:', email);
-    localStorage.setItem(USER_EMAIL_KEY, email);
-    setUserEmail(email);
-    setIsAuthenticated(true);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('AuthContext: Auth state changed:', firebaseUser?.email || 'logged out');
+      setUser(firebaseUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      console.log('AuthContext: Starting Google sign-in...');
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log('AuthContext: Logged in as:', result.user.email);
+    } catch (error) {
+      console.error('AuthContext: Login error:', error);
+      throw error;
+    }
   };
 
-  // Function to handle logout
-  const handleLogout = () => {
-    console.log('AuthContext: Logging out.');
-    apiLogout(); // Calls the api function (which just clears localStorage)
-    setIsAuthenticated(false);
-    setUserEmail(null);
+  const handleLogout = async () => {
+    try {
+      console.log('AuthContext: Logging out...');
+      await signOut(auth);
+      console.log('AuthContext: Logged out successfully');
+    } catch (error) {
+      console.error('AuthContext: Logout error:', error);
+      throw error;
+    }
   };
 
-  const value = {
-    isAuthenticated,
-    userEmail,
+  const getTokenAsync = async (): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      return await getIdToken(user);
+    } catch (error) {
+      console.error('AuthContext: Error getting token:', error);
+      return null;
+    }
+  };
+
+  const value: AuthContextType = {
+    isAuthenticated: !!user,
+    userEmail: user?.email || null,
+    user,
+    loading,
     login: handleLogin,
     logout: handleLogout,
+    getToken: getTokenAsync,
   };
 
   return (
@@ -55,4 +89,4 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

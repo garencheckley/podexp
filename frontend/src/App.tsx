@@ -5,22 +5,29 @@ import PodcastList from './components/PodcastList';
 import PodcastDetail from './components/PodcastDetail';
 import CreatePodcastForm from './components/CreatePodcastForm';
 import Login from './components/Login';
-import VerifyToken from './components/VerifyToken';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 const AppHeader: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth();
-  
+  const { isAuthenticated, logout, userEmail } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <AppBar position="static" color="primary" elevation={0}>
       <Toolbar>
-        <Typography 
-          variant="h6" 
+        <Typography
+          variant="h6"
           component={RouterLink}
           to="/"
-          sx={{ 
+          sx={{
             flexGrow: 1,
             textDecoration: 'none',
             color: 'inherit',
@@ -31,26 +38,31 @@ const AppHeader: React.FC = () => {
         >
           Garen's PodAI Proto
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {isAuthenticated ? (
-            <Button 
-              color="inherit" 
-              onClick={logout}
-              variant="outlined"
-              sx={{ 
-                borderColor: 'white',
-                '&:hover': {
+            <>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                {userEmail}
+              </Typography>
+              <Button
+                color="inherit"
+                onClick={handleLogout}
+                variant="outlined"
+                sx={{
                   borderColor: 'white',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              Log Out
-            </Button>
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Log Out
+              </Button>
+            </>
           ) : (
-            <Button 
-              component={RouterLink} 
-              to="/login" 
+            <Button
+              component={RouterLink}
+              to="/login"
               variant="contained"
             >
               Log In
@@ -93,12 +105,9 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
-            <Route path="/auth/verify" element={<VerifyToken />} />
-            {/* Make Podcast List public */}
-            <Route path="/" element={<PodcastList />} /> 
-            {/* Make Podcast Detail public */}
-            <Route path="/podcasts/:podcastId" element={<PodcastDetail />} /> 
-            
+            <Route path="/" element={<PodcastList />} />
+            <Route path="/podcasts/:podcastId" element={<PodcastDetail />} />
+
             {/* Protected Routes */}
             <Route path="/create-podcast" element={
               <ProtectedRoute>
