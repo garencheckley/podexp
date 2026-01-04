@@ -1,8 +1,17 @@
 # GCPG Backlog
 
-## 🚧 IN PROGRESS: Firebase Migration & OAuth Refactor
+## ✅ COMPLETED: Firebase Migration & OAuth Refactor
 **Started:** 2026-01-03
-**Status:** Planning
+**Completed:** 2026-01-04
+**Status:** DONE
+
+### Summary
+Successfully migrated from Cloud Run frontend + magic link auth to Firebase Hosting + Google OAuth.
+
+- ✅ Frontend deployed to Firebase Hosting
+- ✅ Google OAuth login working
+- ✅ Backend verifying Firebase ID tokens
+- ✅ GitHub Actions auto-deploy on push to main
 
 ### Goal
 Migrate from Cloud Run frontend + magic link auth to Firebase Hosting + Firebase OAuth authentication.
