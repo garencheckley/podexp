@@ -56,5 +56,4 @@ jobs:
             --set-env-vars "GOOGLE_CLOUD_PROJECT=gcpg-452703" \
             --set-env-vars "FRONTEND_URL=https://gcpg-452703.web.app" \
             --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest" \
-            --set-secrets "PERPLEXITY_API_KEY=PERPLEXITY_API_KEY:latest" \
-            --set-secrets "SENDGRID_API_KEY=SENDGRID_API_KEY:latest"
+            --set-secrets "PERPLEXITY_API_KEY=PERPLEXITY_API_KEY:latest"

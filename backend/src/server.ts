@@ -6,7 +6,6 @@ import { initializeFirebase } from './services/database';
 import podcastRoutes from './routes/podcasts';
 import adminRoutes from './routes/admin';
 import episodeLogRoutes from './routes/episodeLogs';
-import authRoutes from './routes/auth';
 import cronRoutes from './routes/cron';
 
 // Load environment variables
@@ -39,11 +38,10 @@ app.use(cors({
     process.env.FRONTEND_URL || 'https://gcpg-452703.web.app',
     'https://gcpg-452703.web.app',
     'https://gcpg-452703.firebaseapp.com',
-    'https://podcast-frontend-827681017824.us-west1.run.app',
     'http://localhost:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Email', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 })); 
 
 // Explicitly handle preflight requests for all routes
@@ -76,7 +74,6 @@ app.get('/', (req, res) => {
 });
 
 // Import and use route handlers -> Ensure CORS is applied BEFORE these
-app.use('/api/auth', authRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', episodeLogRoutes);
