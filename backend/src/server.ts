@@ -11,7 +11,7 @@ import cronRoutes from './routes/cron';
 // Load environment variables
 dotenv.config();
 
-console.log('Starting server initialization...');
+console.log('Starting server initialization... v2');
 
 // Initialize Express app
 const app = express();
