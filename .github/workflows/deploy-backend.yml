@@ -45,6 +45,12 @@ jobs:
           docker push gcr.io/gcpg-452703/podcast-backend:${{ github.sha }}
           docker push gcr.io/gcpg-452703/podcast-backend:latest
 
+      - name: Clear existing secret references
+        run: |
+          gcloud run services update podcast-backend \
+            --region us-west1 \
+            --remove-secrets GEMINI_API_KEY,PERPLEXITY_API_KEY || true
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy podcast-backend \
@@ -52,5 +58,4 @@ jobs:
             --region us-west1 \
             --platform managed \
             --allow-unauthenticated \
-            --clear-secrets \
-            --set-env-vars "NODE_ENV=production,GOOGLE_CLOUD_PROJECT=gcpg-452703,FRONTEND_URL=https://gcpg-452703.web.app,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}"
+            --update-env-vars "NODE_ENV=production,GOOGLE_CLOUD_PROJECT=gcpg-452703,FRONTEND_URL=https://gcpg-452703.web.app,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}"
