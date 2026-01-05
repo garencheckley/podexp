@@ -32,20 +32,22 @@ console.log('Starting server with configuration:', {
 // Middleware
 app.use(bodyParser.json());
 
-// Apply CORS globally BEFORE routes
-app.use(cors({
+// CORS configuration
+const corsOptions = {
   origin: [
-    process.env.FRONTEND_URL || 'https://gcpg-452703.web.app',
     'https://gcpg-452703.web.app',
     'https://gcpg-452703.firebaseapp.com',
     'http://localhost:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-})); 
+};
 
-// Explicitly handle preflight requests for all routes
-app.options('*', cors());
+// Apply CORS globally BEFORE routes
+app.use(cors(corsOptions));
+
+// Handle preflight requests with same config
+app.options('*', cors(corsOptions));
 
 // Initialize Firebase
 try {
