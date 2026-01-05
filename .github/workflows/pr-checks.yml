@@ -31,6 +31,10 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
+      - name: Run tests
+        working-directory: frontend
+        run: npm test
+
       - name: Build
         working-directory: frontend
         run: npm run build
@@ -55,6 +59,10 @@ jobs:
       - name: Type check
         working-directory: backend
         run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: backend
+        run: npm run test:ci
 
       - name: Build
         working-directory: backend

@@ -8,7 +8,10 @@
     "clean": "rm -rf dist/",
     "build": "npm run clean && tsc",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
     "migrate": "ts-node src/scripts/migrate-data.ts",
     "migrate-podcast-types": "ts-node src/scripts/migrate-podcast-types.ts",
     "migrate-visibility": "ts-node src/scripts/migrate-visibility.ts"
@@ -40,6 +43,11 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.2"
   }
