@@ -52,8 +52,5 @@ jobs:
             --region us-west1 \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production" \
-            --set-env-vars "GOOGLE_CLOUD_PROJECT=gcpg-452703" \
-            --set-env-vars "FRONTEND_URL=https://gcpg-452703.web.app" \
-            --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
-            --set-env-vars "PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}"
+            --clear-secrets \
+            --set-env-vars "NODE_ENV=production,GOOGLE_CLOUD_PROJECT=gcpg-452703,FRONTEND_URL=https://gcpg-452703.web.app,GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}"
